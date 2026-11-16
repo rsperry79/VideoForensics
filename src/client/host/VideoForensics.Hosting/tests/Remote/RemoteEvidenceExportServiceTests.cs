@@ -47,8 +47,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             // Act
             ExportResult result = await service.ExportEvidenceAsync(
                 caseId,
-                "Detective Smith",
-                "mypassphrase",
                 cts.Token);
 
             // Assert
@@ -82,8 +80,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             {
                 _ = await service.ExportEvidenceAsync(
                     Guid.NewGuid(),
-                    null,
-                    null,
                     CancellationToken.None);
             });
         }
@@ -105,8 +101,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             {
                 _ = await service.ExportEvidenceAsync(
                     Guid.NewGuid(),
-                    null,
-                    null,
                     CancellationToken.None);
             });
         }
@@ -135,8 +129,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             // Act
             _ = await service.ExportEvidenceAsync(
                 Guid.NewGuid(),
-                null,
-                null,
                 cts.Token);
 
             // Assert
@@ -168,8 +160,6 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             // Act
             ExportResult result = await service.ExportEvidenceAsync(
                 Guid.NewGuid(),
-                null,
-                null,
                 CancellationToken.None);
 
             // Assert
@@ -197,7 +187,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             });
             var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
 
-            _ = await service.ExportEvidenceAsync(Guid.NewGuid(), null, null, CancellationToken.None, "step-token");
+            _ = await service.ExportEvidenceAsync(Guid.NewGuid(), CancellationToken.None, "step-token");
 
             Assert.Equal("step-token", stepUpHeader);
         }
@@ -217,7 +207,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             });
             var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
 
-            _ = await service.ExportEvidenceAsync(Guid.NewGuid(), null, null, CancellationToken.None);
+            _ = await service.ExportEvidenceAsync(Guid.NewGuid(), CancellationToken.None);
 
             Assert.Null(stepUpHeader);
         }
@@ -238,7 +228,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
             var caseId = Guid.NewGuid();
 
-            _ = await service.ExportEvidenceAsync(caseId, "recipient", null, CancellationToken.None);
+            _ = await service.ExportEvidenceAsync(caseId, CancellationToken.None);
 
             using var doc = JsonDocument.Parse(body!);
             Assert.Equal(caseId, doc.RootElement.GetProperty("CaseId").GetGuid());

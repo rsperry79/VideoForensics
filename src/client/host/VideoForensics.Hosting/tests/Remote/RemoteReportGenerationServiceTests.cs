@@ -27,7 +27,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            EvidenceReviewReport result = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow.AddDays(-7), DateTime.UtcNow, CancellationToken.None);
+            EvidenceReviewReportDto result = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow.AddDays(-7), DateTime.UtcNow, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/reports/evidence-review", capturedUri?.Split('?')[0]);
             Assert.NotNull(result);
@@ -106,9 +106,9 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            EvidenceReviewReport result = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            EvidenceReviewReportDto result = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
-            MediaProviderEventLink link = Assert.Single(result.MediaProviderEventLinks);
+            MediaProviderEventLinkDto link = Assert.Single(result.MediaProviderEventLinks);
             Assert.Equal(mediaId, link.MediaItemId);
             Assert.Equal("ring-evt-1", link.ProviderEventId);
         }

@@ -1,7 +1,7 @@
 @page "/settings/security-events"
 @inject NavigationManager NavigationManager
 @using VideoForensics.Client.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using Microsoft.Extensions.Localization
@@ -196,7 +196,7 @@ else
                 return;
             }
 
-            _isSuperAdmin = Enum.TryParse(SessionState.Role, out OperatorRole role) && role == OperatorRole.SuperAdmin;
+            _isSuperAdmin = Enum.TryParse(SessionState.Role, out OperatorRoleDto role) && role == OperatorRoleDto.SuperAdmin;
 
             if (_isSuperAdmin)
             {

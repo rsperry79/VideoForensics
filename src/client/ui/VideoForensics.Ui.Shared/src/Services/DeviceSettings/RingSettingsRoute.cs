@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
 
@@ -6,7 +6,7 @@ namespace VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
 public static class RingSettingsRoute
 {
     /// <summary>True when the device is linked to a Ring account, so the Ring settings page applies.</summary>
-    public static bool IsRingDevice(Device device)
+    public static bool IsRingDevice(DeviceDto device)
     {
         return string.Equals(device.ProviderName, "Ring", StringComparison.Ordinal);
     }

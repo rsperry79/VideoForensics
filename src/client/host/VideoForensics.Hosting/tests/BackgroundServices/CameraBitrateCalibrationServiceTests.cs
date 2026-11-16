@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Data.Common.Entities;
 
@@ -25,13 +26,13 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             CameraBitrateCalibrationService Service,
             Mock<ICameraBitrateBaselineRepository> BaselineRepo,
             Mock<ILiveViewSessionService> SessionService,
-            Mock<IDeviceRepository> DeviceRepo,
+            Mock<IDeviceWriteRepository> DeviceRepo,
             Mock<IProviderApiBudgetGuard> BudgetGuard
         ) CreateService(IForensicsConfiguration? config = null)
         {
             var baselineRepo = new Mock<ICameraBitrateBaselineRepository>();
             var sessionService = new Mock<ILiveViewSessionService>();
-            var deviceRepo = new Mock<IDeviceRepository>();
+            var deviceRepo = new Mock<IDeviceWriteRepository>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
@@ -73,13 +74,13 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            sessionService.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            sessionService.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
         public async Task RunOneTickAsync_BucketNotForCurrentHour_SkipsDevice()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, _) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, _) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -92,13 +93,13 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            sessionService.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            sessionService.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
         public async Task RunOneTickAsync_UndersampledCurrentHourBucket_StartsCalibrationSession()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, _) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, _) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -111,29 +112,27 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 .ReturnsAsync([(device.Id, currentHour, isWeekend)]);
 
             _ = sessionService.Setup(s => s.GetActiveSessionAsync(device.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((LiveViewSession?)null);
+                .ReturnsAsync((LiveViewSessionDto?)null);
 
-            var sessionResult = new LiveViewSession
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = device.Id,
-                TriggerReason = LiveViewTriggerReason.Calibration,
-                State = LiveViewSessionState.Starting,
-                StartedAtUtc = DateTime.UtcNow,
-                LastExtendedAtUtc = DateTime.UtcNow
-            };
-            _ = sessionService.Setup(s => s.StartAsync(device.Id, LiveViewTriggerReason.Calibration, null, It.IsAny<CancellationToken>()))
+            var sessionResult = new LiveViewSessionDto(
+                Id: Guid.NewGuid(),
+                DeviceId: device.Id,
+                TriggerReason: "Calibration",
+                State: "Starting",
+                StartedAtUtc: DateTime.UtcNow,
+                LastExtendedAtUtc: DateTime.UtcNow);
+            _ = sessionService.Setup(s => s.StartAsync(device.Id, LiveViewTriggerReasonDto.Calibration, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(sessionResult);
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            sessionService.Verify(s => s.StartAsync(device.Id, LiveViewTriggerReason.Calibration, null, It.IsAny<CancellationToken>()), Times.Once);
+            sessionService.Verify(s => s.StartAsync(device.Id, LiveViewTriggerReasonDto.Calibration, null, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
         public async Task RunOneTickAsync_DeviceHasActiveSession_SkipsCalibration()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, _) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, _) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -145,27 +144,25 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 .ReturnsAsync([(device.Id, currentHour, isWeekend)]);
 
             // Device has an active session (manual or other reason)
-            var existingSession = new LiveViewSession
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = device.Id,
-                TriggerReason = LiveViewTriggerReason.Manual,
-                State = LiveViewSessionState.Active,
-                StartedAtUtc = DateTime.UtcNow,
-                LastExtendedAtUtc = DateTime.UtcNow
-            };
+            var existingSession = new LiveViewSessionDto(
+                Id: Guid.NewGuid(),
+                DeviceId: device.Id,
+                TriggerReason: "Manual",
+                State: "Active",
+                StartedAtUtc: DateTime.UtcNow,
+                LastExtendedAtUtc: DateTime.UtcNow);
             _ = sessionService.Setup(s => s.GetActiveSessionAsync(device.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingSession);
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            sessionService.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            sessionService.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
         public async Task RunOneTickAsync_BudgetExceeded_SkipsWithoutCallingProvider()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, Mock<IProviderApiBudgetGuard>? budgetGuard) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IProviderApiBudgetGuard>? budgetGuard) = CreateService();
 
             Device device = MakeDevice("ring-123");
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -177,7 +174,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 .ReturnsAsync([(device.Id, currentHour, isWeekend)]);
 
             _ = sessionService.Setup(s => s.GetActiveSessionAsync(device.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((LiveViewSession?)null);
+                .ReturnsAsync((LiveViewSessionDto?)null);
 
             // Budget exceeded
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -185,13 +182,13 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            sessionService.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            sessionService.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
         public async Task RunOneTickAsync_StartAsyncThrowsForOneDevice_ContinuesToNextDevice()
         {
-            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceRepository>? deviceRepo, _) = CreateService();
+            (CameraBitrateCalibrationService? service, Mock<ICameraBitrateBaselineRepository>? baselineRepo, Mock<ILiveViewSessionService>? sessionService, Mock<IDeviceWriteRepository>? deviceRepo, _) = CreateService();
 
             Device device1 = MakeDevice("ring-123");
             Device device2 = MakeDevice("ring-456");
@@ -204,30 +201,28 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 .ReturnsAsync([(device1.Id, currentHour, isWeekend), (device2.Id, currentHour, isWeekend)]);
 
             _ = sessionService.Setup(s => s.GetActiveSessionAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((LiveViewSession?)null);
+                .ReturnsAsync((LiveViewSessionDto?)null);
 
             // First device throws
-            _ = sessionService.Setup(s => s.StartAsync(device1.Id, LiveViewTriggerReason.Calibration, null, It.IsAny<CancellationToken>()))
+            _ = sessionService.Setup(s => s.StartAsync(device1.Id, LiveViewTriggerReasonDto.Calibration, null, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("provider unavailable"));
 
             // Second device succeeds
-            var sessionResult = new LiveViewSession
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = device2.Id,
-                TriggerReason = LiveViewTriggerReason.Calibration,
-                State = LiveViewSessionState.Starting,
-                StartedAtUtc = DateTime.UtcNow,
-                LastExtendedAtUtc = DateTime.UtcNow
-            };
-            _ = sessionService.Setup(s => s.StartAsync(device2.Id, LiveViewTriggerReason.Calibration, null, It.IsAny<CancellationToken>()))
+            var sessionResult = new LiveViewSessionDto(
+                Id: Guid.NewGuid(),
+                DeviceId: device2.Id,
+                TriggerReason: "Calibration",
+                State: "Starting",
+                StartedAtUtc: DateTime.UtcNow,
+                LastExtendedAtUtc: DateTime.UtcNow);
+            _ = sessionService.Setup(s => s.StartAsync(device2.Id, LiveViewTriggerReasonDto.Calibration, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(sessionResult);
 
             // Must not throw - one device's failure must not stop the whole tick
             await service.RunOneTickAsync(CancellationToken.None);
 
             // Verify second device's StartAsync was called despite first device's failure
-            sessionService.Verify(s => s.StartAsync(device2.Id, LiveViewTriggerReason.Calibration, null, It.IsAny<CancellationToken>()), Times.Once);
+            sessionService.Verify(s => s.StartAsync(device2.Id, LiveViewTriggerReasonDto.Calibration, null, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

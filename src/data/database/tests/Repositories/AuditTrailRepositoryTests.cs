@@ -15,9 +15,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
-            _eventRepository = new EventRepository(Fixture.Factory, CreateLogger<EventRepository>());
-            _locationRepository = new LocationRepository(Fixture.Factory, CreateLogger<LocationRepository>());
-            _repository = new AuditTrailRepository(Fixture.Factory, CreateLogger<AuditTrailRepository>());
+            _eventRepository = new EventRepository(new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<EventRepository>());
+            _locationRepository = new LocationRepository(new UnitOfWork(Fixture.Factory, new Repositories.TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>()), CreateLogger<LocationRepository>());
+            var unitOfWork = new UnitOfWork(Fixture.Factory, new TestServiceProvider(Fixture, LoggerFactory), CreateLogger<UnitOfWork>());
+            _repository = new AuditTrailRepository(unitOfWork, CreateLogger<AuditTrailRepository>());
         }
 
         [Fact]

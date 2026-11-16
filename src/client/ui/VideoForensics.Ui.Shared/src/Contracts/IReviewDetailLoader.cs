@@ -1,6 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services.Signal;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Contracts;
 
@@ -12,7 +11,7 @@ public interface IReviewDetailLoader
     /// </summary>
     /// <param name="eventIds">Events to load. Duplicates are ignored; an empty set returns an empty dictionary.</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<IReadOnlyDictionary<Guid, EventDetail>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct);
+    Task<IReadOnlyDictionary<Guid, EventDetailDto>> LoadEventDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct);
 
     /// <summary>
     /// Returns the suspected jamming incidents recorded by <paramref name="deviceIds"/> in the range, newest first.
@@ -21,7 +20,7 @@ public interface IReviewDetailLoader
     /// <param name="fromUtc">Start of the range (UTC).</param>
     /// <param name="toUtc">End of the range (UTC).</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<IReadOnlyList<JammingIncidentRecord>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+    Task<IReadOnlyList<JammingIncidentDto>> LoadJammingAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
     /// <summary>
     /// Returns the notable signal deviations (every level except normal) for <paramref name="deviceIds"/> in the range, newest first.
@@ -49,7 +48,7 @@ public interface IReviewDetailLoader
 /// <param name="EndUtc">End of the flagged window (UTC).</param>
 /// <param name="FlagType">Which bit-rate flag it is.</param>
 /// <param name="MediaItemId">The clip the flag is on, or null when it covers a window with no clip.</param>
-public sealed record ReviewBitRateFlag(Guid FlagId, Guid DeviceId, DateTime StartUtc, DateTime EndUtc, MediaFlagType FlagType, Guid? MediaItemId);
+public sealed record ReviewBitRateFlag(Guid FlagId, Guid DeviceId, DateTime StartUtc, DateTime EndUtc, string FlagType, Guid? MediaItemId);
 
 /// <summary>One notable signal deviation on a camera, spanning the hour it was flagged in.</summary>
 /// <param name="DeviceId">The camera.</param>

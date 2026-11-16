@@ -10,12 +10,12 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for derived still media items and their capture provenance.</summary>
     public class MediaStillRepository : IMediaStillRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<MediaStillRepository> _logger;
 
-        public MediaStillRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<MediaStillRepository> logger)
+        public MediaStillRepository(IUnitOfWork unitOfWork, ILogger<MediaStillRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -27,13 +27,17 @@ namespace VideoForensics.Data.Database.Repositories
                 throw new InvalidOperationException("capture.MediaItemId must match stillMediaItem.Id.");
             }
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
 
-            // Both rows are added to the same DbContext instance and saved in one SaveChangesAsync
-            // call, so they're written atomically (either both persist or neither does).
-            _ = db.MediaItems.Add(stillMediaItem);
-            _ = db.MediaStillCaptures.Add(capture);
-            _ = await db.SaveChangesAsync(ct);
+                // Both rows are added to the same DbContext instance and saved in one SaveChangesAsync
+                // call, so they're written atomically (either both persist or neither does).
+                _ = db.MediaItems.Add(stillMediaItem);
+                _ = db.MediaStillCaptures.Add(capture);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
 
             _logger.LogDebug(
                 "Derived still {MediaItemId} captured from source {SourceMediaItemId} at offset {FrameOffsetMs}ms",
@@ -45,17 +49,15 @@ namespace VideoForensics.Data.Database.Repositories
         /// <inheritdoc />
         public async Task<MediaStillCapture?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.MediaStillCaptures.FirstOrDefaultAsync(c => c.MediaItemId == mediaItemId, ct);
+            return await _unitOfWork.ReadAsync(context => context.Db().MediaStillCaptures.FirstOrDefaultAsync(c => c.MediaItemId == mediaItemId, ct), ct);
         }
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaStillCapture>> GetBySourceMediaItemIdAsync(Guid sourceMediaItemId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.MediaStillCaptures
+            return await _unitOfWork.ReadAsync(context => context.Db().MediaStillCaptures
                 .Where(c => c.SourceMediaItemId == sourceMediaItemId)
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
     }
 }

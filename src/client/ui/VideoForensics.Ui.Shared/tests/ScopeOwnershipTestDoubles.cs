@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
@@ -28,19 +30,19 @@ internal static class ScopeOwnershipTestDoubles
         var accountRepository = new Mock<IProviderAccountRepository>();
         _ = accountRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(accounts);
+            .ReturnsAsync(accounts.Select(a => a.ToDto()).ToList());
 
         var locationRepository = new Mock<ILocationRepository>();
         _ = locationRepository
             .Setup(r => r.ListByProviderAccountIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid accountId, CancellationToken _) =>
-                locationsByAccount.TryGetValue(accountId, out IReadOnlyList<Location>? locations) ? locations : Array.Empty<Location>());
+                locationsByAccount.TryGetValue(accountId, out IReadOnlyList<Location>? locations) ? (IReadOnlyList<LocationRecordDto>)locations.Select(l => l.ToDto()).ToList() : Array.Empty<LocationRecordDto>());
 
         // No user row: the rail falls back to the provider name for each account's label.
         var userRepository = new Mock<IUserRepository>();
         _ = userRepository
             .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+            .ReturnsAsync((UserDto?)null);
 
         _ = services.AddScoped(_ => accountRepository.Object);
         _ = services.AddScoped(_ => locationRepository.Object);

@@ -9,7 +9,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
     /// Guards placing and releasing legal holds, which the Evidence page makes in-process. Matches the legal-holds
     /// endpoints, which require Admin. Reading active holds stays open because every operator sees evidence status.
     /// </summary>
-    public sealed class GuardedLegalHoldRepository(ILegalHoldRepository inner, ICircuitOperatorGate gate) : ILegalHoldRepository
+    public sealed class GuardedLegalHoldRepository(ILegalHoldWriteRepository inner, ICircuitOperatorGate gate) : ILegalHoldWriteRepository
     {
         public Task<LegalHold> PlaceAsync(Guid mediaItemId, string reason, string createdBy, CancellationToken ct)
         {

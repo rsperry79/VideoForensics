@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Client.Ui.Shared.Components.Filters;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 
@@ -14,21 +14,9 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Filters;
 /// <summary>The reusable Provider, Account and Location selects: options, selected state and the values they raise.</summary>
 public class FilterSelects_Tests : BunitContext
 {
-    private static readonly ProviderAccount RingAccount = new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = Guid.NewGuid(),
-        ProviderName = "Ring",
-        LinkedUtc = DateTime.UtcNow,
-    };
+    private static readonly ProviderAccountDto RingAccount = new(Guid.NewGuid(), Guid.NewGuid(), "Ring", DateTime.UtcNow, null, true, null, null, null);
 
-    private static readonly ProviderAccount WyzeAccount = new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = Guid.NewGuid(),
-        ProviderName = "Wyze",
-        LinkedUtc = DateTime.UtcNow,
-    };
+    private static readonly ProviderAccountDto WyzeAccount = new(Guid.NewGuid(), Guid.NewGuid(), "Wyze", DateTime.UtcNow, null, true, null, null, null);
 
     private static readonly FilterLocation Porch = new(Guid.NewGuid(), "Porch");
     private static readonly FilterLocation Garage = new(Guid.NewGuid(), "Garage");

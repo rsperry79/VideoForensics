@@ -2,8 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
@@ -32,7 +31,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<ProviderAccount?> GetAsync(Guid accountId, CancellationToken ct)
+        public async Task<ProviderAccountDto?> GetAsync(Guid accountId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/provider-accounts/{accountId}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -41,21 +40,20 @@ namespace VideoForensics.Client.Hosting.Remote
             }
 
             _ = response.EnsureSuccessStatusCode();
-            ProviderAccountDto? dto = await response.Content.ReadFromJsonAsync<ProviderAccountDto>(JsonOptions, ct);
-            return dto?.ToDomain();
+            return await response.Content.ReadFromJsonAsync<ProviderAccountDto>(JsonOptions, ct);
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<ProviderAccount>> GetByUserIdAsync(Guid userId, CancellationToken ct)
+        public async Task<IReadOnlyList<ProviderAccountDto>> GetByUserIdAsync(Guid userId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/provider-accounts/by-user/{userId}", ct);
             _ = response.EnsureSuccessStatusCode();
             List<ProviderAccountDto>? dtos = await response.Content.ReadFromJsonAsync<List<ProviderAccountDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        public async Task<ProviderAccount?> GetByUserAndProviderAsync(Guid userId, string providerName, CancellationToken ct)
+        public async Task<ProviderAccountDto?> GetByUserAndProviderAsync(Guid userId, string providerName, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/provider-accounts/by-user-and-provider?userId={userId}&providerName={Uri.EscapeDataString(providerName)}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -64,35 +62,34 @@ namespace VideoForensics.Client.Hosting.Remote
             }
 
             _ = response.EnsureSuccessStatusCode();
-            ProviderAccountDto? dto = await response.Content.ReadFromJsonAsync<ProviderAccountDto>(JsonOptions, ct);
-            return dto?.ToDomain();
+            return await response.Content.ReadFromJsonAsync<ProviderAccountDto>(JsonOptions, ct);
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<ProviderAccount>> ListAsync(CancellationToken ct)
+        public async Task<IReadOnlyList<ProviderAccountDto>> ListAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/accounts/provider-accounts", ct);
             _ = response.EnsureSuccessStatusCode();
             List<ProviderAccountDto>? dtos = await response.Content.ReadFromJsonAsync<List<ProviderAccountDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct)
+        public async Task<IReadOnlyList<ProviderAccountDto>> ListActiveAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/accounts/provider-accounts/active", ct);
             _ = response.EnsureSuccessStatusCode();
             List<ProviderAccountDto>? dtos = await response.Content.ReadFromJsonAsync<List<ProviderAccountDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct)
+        public async Task<IReadOnlyList<ProviderAccountDto>> ListRemovedAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/accounts/provider-accounts/removed", ct);
             _ = response.EnsureSuccessStatusCode();
             List<ProviderAccountDto>? dtos = await response.Content.ReadFromJsonAsync<List<ProviderAccountDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
@@ -106,7 +103,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task AddAsync(ProviderAccount account, CancellationToken ct)
+        public async Task AddAsync(ProviderAccountDto account, CancellationToken ct)
         {
             var request = new
             {
@@ -119,7 +116,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task UpdateAsync(ProviderAccount account, CancellationToken ct)
+        public async Task UpdateAsync(ProviderAccountDto account, CancellationToken ct)
         {
             var request = new
             {

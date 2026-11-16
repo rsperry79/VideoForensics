@@ -24,7 +24,7 @@ namespace VideoForensics.Client.WebApp.Tests
         {
             _ = _tier.Setup(t => t.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
             _ = _export
-                .Setup(e => e.ExportEvidenceAsync(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+                .Setup(e => e.ExportEvidenceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
                 .ReturnsAsync(new ExportResult { Success = true, ArchivePath = "a.zip", ItemsIncluded = 2 });
         }
 
@@ -36,10 +36,10 @@ namespace VideoForensics.Client.WebApp.Tests
         [Fact]
         public async Task Export_MissingCaseId_ReturnsBadRequestAndDoesNotExport()
         {
-            IResult result = await Call(new ExportEvidenceRequest(Guid.Empty, null, null));
+            IResult result = await Call(new ExportEvidenceRequest(Guid.Empty));
 
             _ = Assert.IsType<BadRequest<string>>(result);
-            _export.Verify(e => e.ExportEvidenceAsync(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+            _export.Verify(e => e.ExportEvidenceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
             _audit.Verify(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -48,10 +48,10 @@ namespace VideoForensics.Client.WebApp.Tests
         {
             var caseId = Guid.NewGuid();
 
-            IResult result = await Call(new ExportEvidenceRequest(caseId, "recipient", "pass"));
+            IResult result = await Call(new ExportEvidenceRequest(caseId));
 
             _ = Assert.IsType<Ok<ExportResultDto>>(result);
-            _export.Verify(e => e.ExportEvidenceAsync(caseId, "recipient", "pass", It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
+            _export.Verify(e => e.ExportEvidenceAsync(caseId, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
         }
 
         [Fact]
@@ -59,7 +59,7 @@ namespace VideoForensics.Client.WebApp.Tests
         {
             var caseId = Guid.NewGuid();
 
-            _ = await Call(new ExportEvidenceRequest(caseId, null, null));
+            _ = await Call(new ExportEvidenceRequest(caseId));
 
             _audit.Verify(a => a.LogAsync(SecurityAuditEventTypes.EvidenceExported, It.IsAny<Guid?>(), null, "127.0.0.1", It.Is<string?>(d => d != null && d.Contains(caseId.ToString())), true, It.IsAny<CancellationToken>()), Times.Once);
         }

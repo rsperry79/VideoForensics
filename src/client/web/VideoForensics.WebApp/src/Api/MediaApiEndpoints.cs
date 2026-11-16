@@ -40,7 +40,7 @@ namespace VideoForensics.Client.WebApp.Api
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1");
 
-            _ = group.MapGet("/devices", async (IDeviceRepository devices, CancellationToken ct) =>
+            _ = group.MapGet("/devices", async (IDeviceWriteRepository devices, CancellationToken ct) =>
                 Results.Ok((await devices.ListAsync(ct)).Select(x => x.ToDto())))
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
@@ -168,15 +168,15 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
-            IOperatorRepository operators,
+            IMediaItemWriteRepository mediaItems,
+            IOperatorWriteRepository operators,
             IMediaStorageProvider storage,
             IAccessAuditLogRepository auditLog,
             INetworkTierResolver tierResolver,
             ILogger<Program> logger,
             INotificationDispatcher dispatcher,
-            INoticeRepository notices,
-            IDeviceRepository devices,
+            INoticeWriteRepository notices,
+            IDeviceWriteRepository devices,
             IEvidenceValidationJobs validationJobs,
             HttpContext context,
             CancellationToken ct)
@@ -256,8 +256,8 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task RaiseMissingClipAlertAsync(
             MediaItem item,
             INotificationDispatcher dispatcher,
-            INoticeRepository notices,
-            IDeviceRepository devices,
+            INoticeWriteRepository notices,
+            IDeviceWriteRepository devices,
             IEvidenceValidationJobs validationJobs,
             ILogger<Program> logger,
             CancellationToken ct)
@@ -325,8 +325,8 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
-            IOperatorRepository operators,
+            IMediaItemWriteRepository mediaItems,
+            IOperatorWriteRepository operators,
             IMediaStorageProvider storage,
             ILogger<Program> logger,
             HttpContext context,
@@ -364,8 +364,8 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
-            IOperatorRepository operators,
+            IMediaItemWriteRepository mediaItems,
+            IOperatorWriteRepository operators,
             IMediaStorageProvider storage,
             IMediaThumbnailService thumbnails,
             HttpContext context,
@@ -413,7 +413,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             HttpContext context,
             CancellationToken ct)
         {
@@ -468,7 +468,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid? deviceId,
             DateTime? from,
             DateTime? to,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             // Validate: from/to require deviceId
@@ -514,7 +514,7 @@ namespace VideoForensics.Client.WebApp.Api
             int? skip,
             int? take,
             bool? videoOnly,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             const int MaxDevices = 64;
@@ -550,7 +550,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         public static async Task<IResult> GetMediaItemAsync(
             Guid id,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             MediaItem? item = await mediaItems.GetAsync(id, ct);
@@ -568,7 +568,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             DateTime? from,
             DateTime? to,
-            IDeviceHealthRepository deviceHealth,
+            IDeviceHealthWriteRepository deviceHealth,
             CancellationToken ct)
         {
             if (!from.HasValue || !to.HasValue)

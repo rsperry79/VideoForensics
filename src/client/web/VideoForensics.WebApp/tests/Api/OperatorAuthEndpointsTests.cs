@@ -161,7 +161,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         /// <summary>An operator whose next wrong password locks the account (MaxFailedAttempts = 1) and whose password is TestPassword.</summary>
-        private static Operator CreateLockableOperator(Mock<IOperatorRepository> operators, string username)
+        private static Operator CreateLockableOperator(Mock<IOperatorWriteRepository> operators, string username)
         {
             Operator op = CreateOperator(username: username);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
@@ -178,7 +178,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             string username,
             string password,
             HttpContext context,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IBannedIpMatchService bannedIpService,
             IFailedLoginIpTracker failedLoginIpTracker,
             ISessionTokenService sessionTokens)
@@ -223,7 +223,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
 
@@ -275,7 +275,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 
             Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
@@ -317,7 +317,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
             _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _ = operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -365,7 +365,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
             _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _ = operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -406,7 +406,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 
             Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
@@ -453,7 +453,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 
             Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
@@ -496,7 +496,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
             var bannedIp = IPAddress.Parse("203.0.113.50");
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
 
@@ -548,7 +548,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()))
@@ -610,7 +610,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()))
@@ -659,7 +659,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()))
@@ -735,7 +735,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()))
@@ -799,7 +799,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
             _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _ = operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -899,7 +899,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         /// <summary>Runs the create-passkey password endpoint. It never asks for a second factor, so no 2FA settings are needed.</summary>
         private static async Task<IResult> RunCreatePasskeyLoginAsync(
             Operator op,
-            Mock<IOperatorRepository> operators,
+            Mock<IOperatorWriteRepository> operators,
             List<OperatorCredential> credentialList,
             string password,
             Mock<ISessionTokenService> sessionTokens)
@@ -946,7 +946,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = sessionTokens.Setup(s => s.IssuePasskeySetupOnly(op.Id, op.Role, op.SecurityStamp)).Returns("limited-token");
 
             // Act
-            IResult result = await RunCreatePasskeyLoginAsync(op, new Mock<IOperatorRepository>(), [passkey], TestPassword, sessionTokens);
+            IResult result = await RunCreatePasskeyLoginAsync(op, new Mock<IOperatorWriteRepository>(), [passkey], TestPassword, sessionTokens);
 
             // Assert
             Assert.Equal("limited-token", GetOkPayloadProperty(result, "sessionToken"));
@@ -964,7 +964,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             // Arrange
             Operator op = CreateOperator(role: OperatorRole.Admin);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var sessionTokens = new Mock<ISessionTokenService>();
 
             // Act
@@ -986,7 +986,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var sessionTokens = new Mock<ISessionTokenService>();
 
             // Act
-            IResult result = await RunCreatePasskeyLoginAsync(op, new Mock<IOperatorRepository>(), [], TestPassword, sessionTokens);
+            IResult result = await RunCreatePasskeyLoginAsync(op, new Mock<IOperatorWriteRepository>(), [], TestPassword, sessionTokens);
 
             // Assert
             Assert.Equal(StatusCodes.Status401Unauthorized, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
@@ -1000,7 +1000,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.IsEmptyAsync(It.IsAny<CancellationToken>()))
@@ -1050,7 +1050,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.IsEmptyAsync(It.IsAny<CancellationToken>()))
@@ -1098,7 +1098,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task RecoverPassword_NonLocalhost_ReturnsForbidden()
         {
             // Arrange
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             HttpContext context = CreateHttpContext(NetworkTier.Network);  // Non-localhost
 
@@ -1116,7 +1116,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task RecoverPassword_NoOperatorsExist_ReturnsNotFound()
         {
             // Arrange
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);  // Empty list
 
@@ -1140,7 +1140,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator primaryAdmin = CreateOperator(username: "admin", role: OperatorRole.SuperAdmin, isPrimarySuperAdmin: true);
             Operator otherOperator = CreateOperator(username: "user", role: OperatorRole.ReadOnly);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([primaryAdmin, otherOperator]);
             _ = operators.Setup(r => r.SetPasswordAsync(primaryAdmin.Id, It.IsAny<string>(), true, It.IsAny<CancellationToken>()))
@@ -1227,7 +1227,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             // Arrange
             var request = new RegisterRequest("newuser", "ValidPassword123!", "John", "Doe", "john@example.com");
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync("newuser", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
             _ = operators.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
@@ -1258,7 +1258,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator existingOp = CreateOperator(username: "newuser");
             var request = new RegisterRequest("newuser", "ValidPassword123!", "John", "Doe", "john@example.com");
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync("newuser", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingOp);
 
@@ -1284,7 +1284,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             // Arrange
             var request = new RegisterRequest("newuser", "Short1!", "John", "Doe", "john@example.com");
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
             var notificationDispatcher = new Mock<INotificationDispatcher>();
@@ -1312,7 +1312,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             var request = new ChangePasswordRequest(TestPassword, "NewPassword123!");
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.SetPasswordAsync(op.Id, It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
@@ -1348,7 +1348,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             var request = new ChangePasswordRequest("WrongPassword123!", "NewPassword123!");
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
 
@@ -1381,7 +1381,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             var request = new ChangePasswordRequest(TestPassword, "Short!");
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
 
@@ -1418,7 +1418,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             var request = new StepUpPasswordRequest(TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
 
@@ -1456,7 +1456,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             var request = new StepUpPasswordRequest("WrongPassword123!");
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
 
@@ -1489,7 +1489,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Mock<IBannedIpRangeRepository> repository = MockBannedIpRangeRepository(bannedRanges);
             FailedLoginIpTracker tracker = CreateFailedLoginIpTracker(repository);
             var bannedIpService = new BannedIpMatchService(repository.Object);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var sessionTokens = new Mock<ISessionTokenService>();
             _ = sessionTokens.Setup(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()))
                 .Returns("valid-session-token");
@@ -1521,7 +1521,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Mock<IBannedIpRangeRepository> repository = MockBannedIpRangeRepository(bannedRanges);
             FailedLoginIpTracker tracker = CreateFailedLoginIpTracker(repository);
             var bannedIpService = new BannedIpMatchService(repository.Object);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var sessionTokens = new Mock<ISessionTokenService>();
             HttpContext context = CreateHttpContextFromPeer("192.168.1.50");
             context.Request.Headers["X-Forwarded-For"] = "198.51.100.7";
@@ -1558,7 +1558,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 FirstLoginNotifiedAtUtc = DateTime.UtcNow
             };
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
@@ -1583,10 +1583,72 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             IResult result = await InvokeUsernameAssertionCompleteAsync(
                 request, operators.Object, credentials.Object, MockSessionTokenService().Object, ceremonyCache.Object,
                 twoFactorCache.Object, new Mock<ISecurityAuditLogger>().Object, MockNetworkTierResolver(NetworkTier.Network).Object,
-                CreateHttpContext(), fido2.Object);
+                CreateHttpContext(), fido2.Object, new Mock<ISecurityAuditService>().Object);
 
             Assert.False(GetOkPayloadBool(result, "mustChangePassword"));
             Assert.True(GetOkPayloadBool(result, "hasPasskey"));
+        }
+
+        [Fact]
+        public async Task UsernameAssertionComplete_UnknownUsernameUnknownPasskey_RecordsUnknownUserLogin()
+        {
+            // Passkey sign-in is username-first. A passkey that matches no operator, for a typed name that matches no
+            // operator, is recorded as an unknown-user login with that name.
+            var operators = new Mock<IOperatorWriteRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>())).ReturnsAsync((Operator?)null);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            _ = credentials.Setup(c => c.GetByWebAuthnCredentialIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((OperatorCredential?)null);
+
+            var ceremonyCache = new Mock<IWebAuthnCeremonyCache>();
+            _ = ceremonyCache.Setup(c => c.TryTake("nonce-1")).Returns(AssertionOptionsJson);
+
+            var auditService = new Mock<ISecurityAuditService>();
+            var request = new UsernameAssertionCompleteRequest(
+                "nonce-1",
+                System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(AssertionResponseJson),
+                null,
+                "zumba");
+
+            IResult result = await InvokeUsernameAssertionCompleteAsync(
+                request, operators.Object, credentials.Object, MockSessionTokenService().Object, ceremonyCache.Object,
+                new Mock<ITwoFactorPendingAuthCache>().Object, new Mock<ISecurityAuditLogger>().Object,
+                MockNetworkTierResolver(NetworkTier.Network).Object, CreateHttpContext(), new Mock<IFido2>().Object, auditService.Object);
+
+            Assert.NotNull(result);
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync("zumba", "127.0.0.1", "Unknown or revoked passkey", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task UsernameAssertionComplete_KnownOperatorRevokedPasskey_DoesNotRecordUnknownUserLogin()
+        {
+            // A revoked passkey for a real operator is a failed sign-in for that operator, not an unknown user.
+            Operator op = CreateOperator(username: "alice", role: OperatorRole.ReadOnly);
+
+            var operators = new Mock<IOperatorWriteRepository>();
+            _ = operators.Setup(r => r.GetByUsernameAsync("alice", It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            _ = credentials.Setup(c => c.GetByWebAuthnCredentialIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((OperatorCredential?)null);
+
+            var ceremonyCache = new Mock<IWebAuthnCeremonyCache>();
+            _ = ceremonyCache.Setup(c => c.TryTake("nonce-1")).Returns(AssertionOptionsJson);
+
+            var auditService = new Mock<ISecurityAuditService>();
+            var request = new UsernameAssertionCompleteRequest(
+                "nonce-1",
+                System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(AssertionResponseJson),
+                null,
+                "alice");
+
+            _ = await InvokeUsernameAssertionCompleteAsync(
+                request, operators.Object, credentials.Object, MockSessionTokenService().Object, ceremonyCache.Object,
+                new Mock<ITwoFactorPendingAuthCache>().Object, new Mock<ISecurityAuditLogger>().Object,
+                MockNetworkTierResolver(NetworkTier.Network).Object, CreateHttpContext(), new Mock<IFido2>().Object, auditService.Object);
+
+            auditService.Verify(s => s.RecordUnknownUserLoginAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         private const string AssertionOptionsJson =
@@ -1597,7 +1659,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         private static Task<IResult> InvokeUsernameAssertionCompleteAsync(
             UsernameAssertionCompleteRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             IWebAuthnCeremonyCache ceremonyCache,
@@ -1605,21 +1667,22 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
-            IFido2 fido2)
+            IFido2 fido2,
+            ISecurityAuditService auditService)
         {
             MethodInfo? method = typeof(OperatorAuthEndpoints).GetMethod(
                 "UsernameAssertionCompleteAsync",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                 null,
-                [typeof(ILogger<Program>), typeof(UsernameAssertionCompleteRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
+                [typeof(ILogger<Program>), typeof(UsernameAssertionCompleteRequest), typeof(IOperatorWriteRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
                  typeof(IWebAuthnCeremonyCache), typeof(ITwoFactorPendingAuthCache), typeof(ISecurityAuditLogger), typeof(INetworkTierResolver),
-                 typeof(INotificationDispatcher), typeof(HttpContext), typeof(IFido2), typeof(CancellationToken)],
+                 typeof(INotificationDispatcher), typeof(HttpContext), typeof(IFido2), typeof(ISecurityAuditService), typeof(CancellationToken)],
                 null);
             Assert.NotNull(method);
 
             return (Task<IResult>)method!.Invoke(null,
                 [Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, request, operators, credentials, sessionTokens, ceremonyCache, twoFactorPendingAuthCache, auditLog, tierResolver,
-                 null, context, fido2, CancellationToken.None])!;
+                 null, context, fido2, auditService, CancellationToken.None])!;
         }
 
         /// <summary>
@@ -1656,7 +1719,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 Email = $"{operatorId:N}@test.invalid",
                 SecurityStamp = securityStamp
             };
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
@@ -1794,7 +1857,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 Role = OperatorRole.Admin,
                 PasswordHash = "not-used-because-policy-refuses-first",
             };
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
             var roleRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             _ = roleRequirements.Setup(r => r.GetRequirementForRoleAsync(OperatorRole.Admin, It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -1833,7 +1896,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
     {
         public static async Task<IResult> LoginPasswordAsync(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
@@ -1857,7 +1920,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .GetMethod(endpointMethodName,
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(LoginPasswordRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
+                    [typeof(LoginPasswordRequest), typeof(IOperatorWriteRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
@@ -1880,7 +1943,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         public static async Task<IResult> LoginPasswordAsyncWithCustomAuthMethods(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
@@ -1903,7 +1966,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .GetMethod("LoginPasswordAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(LoginPasswordRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
+                    [typeof(LoginPasswordRequest), typeof(IOperatorWriteRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
@@ -1921,7 +1984,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         public static async Task<IResult> RecoverPasswordAsync(
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             HttpContext context,
             CancellationToken ct)
@@ -1930,7 +1993,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .GetMethod("RecoverPasswordAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(IOperatorRepository), typeof(ISecurityAuditLogger), typeof(HttpContext), typeof(CancellationToken)],
+                    [typeof(IOperatorWriteRepository), typeof(ISecurityAuditLogger), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 
             if (method == null)
@@ -1944,7 +2007,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         public static async Task<IResult> RegisterAsync(
             RegisterRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             INotificationDispatcher? notificationDispatcher,
@@ -1955,7 +2018,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .GetMethod("RegisterAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(RegisterRequest), typeof(IOperatorRepository), typeof(ISecurityAuditLogger),
+                    [typeof(RegisterRequest), typeof(IOperatorWriteRepository), typeof(ISecurityAuditLogger),
                      typeof(INetworkTierResolver), typeof(INotificationDispatcher), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 
@@ -1970,7 +2033,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         public static async Task<IResult> ChangePasswordAsync(
             ChangePasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -1981,7 +2044,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .GetMethod("ChangePasswordAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(ChangePasswordRequest), typeof(IOperatorRepository), typeof(ISessionTokenService),
+                    [typeof(ChangePasswordRequest), typeof(IOperatorWriteRepository), typeof(ISessionTokenService),
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 
@@ -1996,7 +2059,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         public static async Task<IResult> StepUpPasswordAsync(
             StepUpPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ITwoFactorRoleRequirementRepository roleRequirements,
             IStepUpAuthService stepUpAuth,
             ISecurityAuditLogger auditLog,
@@ -2008,7 +2071,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .GetMethod("StepUpPasswordAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(StepUpPasswordRequest), typeof(IOperatorRepository), typeof(ITwoFactorRoleRequirementRepository), typeof(IStepUpAuthService),
+                    [typeof(StepUpPasswordRequest), typeof(IOperatorWriteRepository), typeof(ITwoFactorRoleRequirementRepository), typeof(IStepUpAuthService),
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 

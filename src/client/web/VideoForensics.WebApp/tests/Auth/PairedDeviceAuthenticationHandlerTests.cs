@@ -28,13 +28,13 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         }
 
         private static PairedDeviceAuthenticationHandler CreateHandler(
-            Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<INetworkTierResolver> tierResolver, Mock<IOperatorRepository>? operatorRepository = null, Mock<IOperatorCredentialRepository>? credentialRepository = null, Mock<ISessionTierHeaderProtector>? headerProtector = null)
+            Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<INetworkTierResolver> tierResolver, Mock<IOperatorWriteRepository>? operatorRepository = null, Mock<IOperatorCredentialRepository>? credentialRepository = null, Mock<ISessionTierHeaderProtector>? headerProtector = null)
         {
             var options = new Mock<IOptionsMonitor<AuthenticationSchemeOptions>>();
             _ = options.Setup(o => o.Get(It.IsAny<string>())).Returns(new AuthenticationSchemeOptions());
             ILoggerFactory loggerFactory = LoggerFactory.Create(b => { });
             UrlEncoder encoder = UrlEncoder.Default;
-            operatorRepository ??= new Mock<IOperatorRepository>();
+            operatorRepository ??= new Mock<IOperatorWriteRepository>();
             credentialRepository ??= new Mock<IOperatorCredentialRepository>();
             headerProtector ??= new Mock<ISessionTierHeaderProtector>();
             return new PairedDeviceAuthenticationHandler(options.Object, loggerFactory, encoder, tokenService.Object, repo.Object, credentialRepository.Object, tierResolver.Object, operatorRepository.Object, headerProtector.Object);
@@ -49,14 +49,14 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         }
 
         /// <summary>Builds an Operator + session-token setup shared by the session-tier-header tests below.</summary>
-        private static (Guid operatorId, Guid pairedDeviceId, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) SetUpValidServiceDeviceSession(string token)
+        private static (Guid operatorId, Guid pairedDeviceId, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) SetUpValidServiceDeviceSession(string token)
         {
             var operatorId = Guid.NewGuid();
             var pairedDeviceId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
@@ -143,7 +143,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.Admin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
@@ -201,7 +201,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.Admin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
@@ -255,7 +255,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.Admin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
@@ -297,7 +297,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
 
             _ = tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
 
@@ -396,7 +396,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
@@ -475,7 +475,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "loopback-with-internet-header";
-            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
@@ -501,7 +501,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "loopback-with-local-header";
-            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
@@ -526,7 +526,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "loopback-with-expired-header";
-            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
@@ -553,7 +553,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "loopback-with-tampered-header";
-            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
@@ -578,7 +578,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "loopback-with-mismatched-operator-header";
-            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
@@ -607,7 +607,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             // isn't bound to ANY operator, so it must never be honored on an ALREADY-authenticated
             // request - same as one bound to a different operator.
             const string token = "loopback-with-preauth-header-on-authenticated-request";
-            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
@@ -634,7 +634,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             // connection itself is not loopback, so the header must be ignored entirely and the
             // tier resolved from the real connection, same as if no header were sent at all.
             const string token = "remote-with-local-header";
-            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Network);
 
@@ -662,7 +662,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             // this feature existed (local tools/MAUI on the same machine legitimately use loopback
             // with no such header).
             const string token = "loopback-no-header";
-            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorWriteRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
@@ -681,12 +681,12 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
 
         // --- Password Credential Kind Tests ---
 
-        private static (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) SetUpValidPasswordSession(string token)
+        private static (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) SetUpValidPasswordSession(string token)
         {
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
             var tokenService = new Mock<ISessionTokenService>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
 
             var principal = new SessionPrincipal(
@@ -718,7 +718,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "password-valid-token";
-            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
             var repo = new Mock<IPairedDeviceRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
 
@@ -743,7 +743,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "password-not-approved";
-            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
             var repo = new Mock<IPairedDeviceRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
 
@@ -778,7 +778,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "password-not-active";
-            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
             var repo = new Mock<IPairedDeviceRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
 
@@ -813,7 +813,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "password-stamp-mismatch";
-            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
             var repo = new Mock<IPairedDeviceRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
 
@@ -849,7 +849,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "password-must-change-on-valid-path";
-            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
             var repo = new Mock<IPairedDeviceRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
 
@@ -891,7 +891,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "password-must-change-on-stepup-path";
-            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
             var repo = new Mock<IPairedDeviceRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
 
@@ -934,7 +934,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "password-must-change-blocked";
-            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
             var repo = new Mock<IPairedDeviceRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
 
@@ -973,13 +973,13 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
 
         // --- OperatorPasskey Credential Kind Tests ---
 
-        private static (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) SetUpValidPasskeySession(string token)
+        private static (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) SetUpValidPasskeySession(string token)
         {
             var operatorId = Guid.NewGuid();
             var credentialId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
             var tokenService = new Mock<ISessionTokenService>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
 
@@ -1025,7 +1025,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "passkey-valid-token";
-            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
             var repo = new Mock<IPairedDeviceRepository>();
 
             PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
@@ -1049,7 +1049,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "passkey-not-found";
-            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
             var repo = new Mock<IPairedDeviceRepository>();
 
             _ = credentialRepository.Setup(c => c.GetAsync(credentialId, It.IsAny<CancellationToken>())).ReturnsAsync((OperatorCredential?)null);
@@ -1070,7 +1070,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "passkey-not-active";
-            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
             var repo = new Mock<IPairedDeviceRepository>();
 
             var credential = new OperatorCredential
@@ -1102,7 +1102,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "passkey-not-approved";
-            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
             var repo = new Mock<IPairedDeviceRepository>();
 
             var credential = new OperatorCredential
@@ -1134,7 +1134,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "passkey-stamp-mismatch";
-            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
             var repo = new Mock<IPairedDeviceRepository>();
 
             var credential = new OperatorCredential
@@ -1182,7 +1182,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "passkey-must-change-valid-path";
-            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
             var repo = new Mock<IPairedDeviceRepository>();
 
             var securityStamp = Guid.NewGuid();
@@ -1236,7 +1236,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
         {
             // Arrange
             const string token = "passkey-must-change-blocked";
-            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorWriteRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
             var repo = new Mock<IPairedDeviceRepository>();
 
             var securityStamp = Guid.NewGuid();
@@ -1292,7 +1292,7 @@ namespace VideoForensics.Client.WebApp.Tests.Auth
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
             var tokenService = new Mock<ISessionTokenService>();
-            var operatorRepository = new Mock<IOperatorRepository>();
+            var operatorRepository = new Mock<IOperatorWriteRepository>();
             var credentialRepository = new Mock<IOperatorCredentialRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
 

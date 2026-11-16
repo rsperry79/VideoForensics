@@ -46,6 +46,12 @@ namespace VideoForensics.Data.Database.Repositories
             return Gate.WaitAsync(ct);
         }
 
+        /// <summary>Waits for the gate for at most <paramref name="timeout"/>. Returns false when it timed out.</summary>
+        public static Task<bool> TryWaitAsync(TimeSpan timeout, CancellationToken ct)
+        {
+            return Gate.WaitAsync(timeout, ct);
+        }
+
         /// <summary>Releases the gate. Call exactly once for each successful <see cref="WaitAsync"/>.</summary>
         public static void Release()
         {

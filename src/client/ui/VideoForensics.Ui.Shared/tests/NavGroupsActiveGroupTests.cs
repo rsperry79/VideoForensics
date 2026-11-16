@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -10,7 +10,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// </summary>
 public class NavGroups_ActiveGroupFor_Tests
 {
-    private static readonly NavContext AdminCtx = new(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+    private static readonly NavContext AdminCtx = new(IsSignedIn: true, Role: OperatorRoleDto.Admin, AppLockSupported: false);
 
     [Theory]
     [InlineData("/analyze/chain-of-custody", "cases")]

@@ -3,8 +3,8 @@
 @using VideoForensics.Client.Common.Viewer
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services.Review
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @implements IDisposable
 @inject ICaseRepository CaseRepository
 @inject ReviewCaseMode CaseMode
@@ -16,7 +16,7 @@
     <ReviewSidebarSection Title="@SharedL["ScopeCase"]">
         <select class="form-select form-select-sm mb-1" data-testid="review-case-picker" aria-label="@SharedL["ScopeCase"]" @onchange="OnCasePicked">
             <option value="" selected="@(!CaseMode.Active)">@SharedL["ScopeNoCase"]</option>
-            @foreach (ForensicCase openCase in _openCases)
+            @foreach (ForensicCaseDto openCase in _openCases)
             {
                 <option value="@openCase.Id" selected="@(CaseMode.CaseId == openCase.Id)">@openCase.CaseNumber &middot; @openCase.Title</option>
             }
@@ -35,14 +35,14 @@
     [Parameter]
     public IReadOnlyList<Guid> Devices { get; set; } = [];
 
-    private IReadOnlyList<ForensicCase> _openCases = [];
+    private IReadOnlyList<ForensicCaseDto> _openCases = [];
 
     protected override async Task OnInitializedAsync()
     {
         CaseMode.OnChange += OnCaseModeChanged;
         try
         {
-            _openCases = (await CaseRepository.ListAsync(CaseStatus.Open, CancellationToken.None)).ToList();
+            _openCases = (await CaseRepository.ListAsync(CaseStatusDto.Open, CancellationToken.None)).ToList();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

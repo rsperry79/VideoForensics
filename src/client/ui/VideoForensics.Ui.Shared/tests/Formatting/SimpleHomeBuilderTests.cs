@@ -1,4 +1,7 @@
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 using System.Globalization;
 
@@ -42,9 +45,11 @@ public class SimpleHomeBuilderTests
                 ids.ToDictionary(i => i, i => "https://server/content/video"));
     }
 
-    private static Device Device(Guid id, string name)
+    private static Device Device(Guid id, string name) => MakeEntity(id, name).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(Guid id, string name)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = id,
             LocationId = Guid.NewGuid(),
@@ -54,16 +59,16 @@ public class SimpleHomeBuilderTests
         };
     }
 
-    private static Event Evt(string type, DateTime occurredUtc, Guid? deviceId = null)
+    private static EventDto Evt(string type, DateTime occurredUtc, Guid? deviceId = null)
     {
-        return new()
+        return new Event
         {
             Id = Guid.NewGuid(),
             DeviceId = deviceId ?? FrontId,
             ProviderEventId = "ring-evt-" + Guid.NewGuid(),
             EventType = type,
             OccurredAtUtc = occurredUtc
-        };
+        }.ToDto();
     }
 
     private static MediaItem Media(DateTime recordedUtc, string format = "video/mp4", bool purged = false, Guid? deviceId = null)
@@ -95,7 +100,7 @@ public class SimpleHomeBuilderTests
         };
     }
 
-    private void SetEvents(params Event[] items)
+    private void SetEvents(params EventDto[] items)
     {
         _ = _events.Setup(e => e.ListByDeviceAndDateRangeAsync(FrontId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(items.ToList());
@@ -104,13 +109,13 @@ public class SimpleHomeBuilderTests
     private void SetMedia(params MediaItem[] items)
     {
         _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(FrontId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(items.ToList());
+            .ReturnsAsync(items.Select(i => i.ToDto()).ToList());
     }
 
     private void SetJamming(params JammingIncidentRecord[] items)
     {
         _ = _jamming.Setup(j => j.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(items.ToList());
+            .ReturnsAsync(items.Select(i => i.ToDto()).ToList());
     }
 
     private Task<SimpleHomeModel> BuildAsync(TimeSpan? window = null, CancellationToken ct = default)
@@ -359,7 +364,7 @@ public class SimpleHomeBuilderTests
         _ = _devices.Setup(d => d.ListAsync(token)).ReturnsAsync([Device(FrontId, "front door camera")]);
         _ = _events.Setup(e => e.ListByDeviceAndDateRangeAsync(FrontId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), token)).ReturnsAsync([]);
         _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(FrontId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), token))
-            .ReturnsAsync([Media(new DateTime(2026, 10, 7, 19, 35, 0, DateTimeKind.Utc))]);
+            .ReturnsAsync([Media(new DateTime(2026, 10, 7, 19, 35, 0, DateTimeKind.Utc)).ToDto()]);
         _ = _jamming.Setup(j => j.ListIncidentsAsync(null, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), token)).ReturnsAsync([]);
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), token))
             .ReturnsAsync((IReadOnlyCollection<Guid> ids, CancellationToken _) => ids.ToDictionary(i => i, _ => "https://server/content/x"));

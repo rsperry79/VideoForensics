@@ -1,9 +1,12 @@
 @page "/settings/security-log"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Resources
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Core.Api.Contracts
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject ISelfApiHttpClientFactory ClientFactory
@@ -41,20 +44,20 @@ else if (_entries is null || _entries.Count == 0)
 }
 else
 {
-    <SfGrid TValue="SecurityAuditLogEntry" DataSource="@_filteredEntries" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
+    <SfGrid TValue="SecurityAuditLogEntryDto" DataSource="@_filteredEntries" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100">
+            <GridColumn Field="@nameof(SecurityAuditLogEntryDto.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100">
                 <Template>
-                    <LocalTimeText Value="@((context as SecurityAuditLogEntry)!.TimestampUtc)" />
+                    <LocalTimeText Value="@((context as SecurityAuditLogEntryDto)!.TimestampUtc)" />
                 </Template>
             </GridColumn>
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.EventType)" HeaderText="@L["ColEventType"]" MinWidth="100" />
+            <GridColumn Field="@nameof(SecurityAuditLogEntryDto.EventType)" HeaderText="@L["ColEventType"]" MinWidth="100" />
             <GridColumn HeaderText="@L["ColOperatorId"]" MinWidth="100">
                 <Template>
                     @{
-                        var entry = (SecurityAuditLogEntry)context;
+                        var entry = (SecurityAuditLogEntryDto)context;
                         var operatorName = entry.OperatorId.HasValue && _operatorLookup.TryGetValue(entry.OperatorId.Value, out var opName)
                             ? opName
                             : entry.OperatorId?.ToString("N")?[..8] ?? L["NotAvailable"].Value;
@@ -65,7 +68,7 @@ else
             <GridColumn HeaderText="@L["ColPairedDeviceId"]" MinWidth="100">
                 <Template>
                     @{
-                        var entry = (SecurityAuditLogEntry)context;
+                        var entry = (SecurityAuditLogEntryDto)context;
                         var deviceName = entry.PairedDeviceId.HasValue && _pairedDeviceLookup.TryGetValue(entry.PairedDeviceId.Value, out var devName)
                             ? devName
                             : entry.PairedDeviceId?.ToString("N")?[..8] ?? L["NotAvailable"].Value;
@@ -73,15 +76,15 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.SourceIp)" HeaderText="@L["ColSourceIp"]" MinWidth="100">
+            <GridColumn Field="@nameof(SecurityAuditLogEntryDto.SourceIp)" HeaderText="@L["ColSourceIp"]" MinWidth="100">
                 <Template>
-                    @SourceIpLabel.Format(((SecurityAuditLogEntry)context).SourceIp, SharedL["LocalHost"])
+                    @SourceIpLabel.Format(((SecurityAuditLogEntryDto)context).SourceIp, SharedL["LocalHost"])
                 </Template>
             </GridColumn>
             <GridColumn HeaderText="@L["ColDetails"]" MinWidth="100">
                 <Template>
                     @{
-                        var row = (SecurityAuditLogEntry)context;
+                        var row = (SecurityAuditLogEntryDto)context;
                         @(row.Details ?? L["NotAvailable"].Value)
                     }
                 </Template>
@@ -92,8 +95,8 @@ else
 
 @code {
     private bool _isLoading = true;
-    private List<SecurityAuditLogEntry>? _entries;
-    private IEnumerable<SecurityAuditLogEntry> _filteredEntries = new List<SecurityAuditLogEntry>();
+    private List<SecurityAuditLogEntryDto>? _entries;
+    private IEnumerable<SecurityAuditLogEntryDto> _filteredEntries = new List<SecurityAuditLogEntryDto>();
     private string? _authError;
     private string? _loadError;
     private string _operatorIdInput = string.Empty;
@@ -132,7 +135,7 @@ else
                 var operatorResponse = await client.GetAsync("api/devices-management/operators");
                 if (operatorResponse.IsSuccessStatusCode)
                 {
-                    var operators = await operatorResponse.Content.ReadFromJsonAsync<List<VideoForensics.Data.Common.Entities.Operator>>(JsonOptions);
+                    var operators = await operatorResponse.Content.ReadFromJsonAsync<List<OperatorDto>>(JsonOptions);
                     if (operators is not null)
                     {
                         _operatorLookup = operators.ToDictionary(o => o.Id, o => o.DisplayName);
@@ -147,7 +150,7 @@ else
                 var deviceResponse = await client.GetAsync("api/devices-management/paired-devices");
                 if (deviceResponse.IsSuccessStatusCode)
                 {
-                    var devices = await deviceResponse.Content.ReadFromJsonAsync<List<VideoForensics.Data.Common.Entities.PairedDevice>>(JsonOptions);
+                    var devices = await deviceResponse.Content.ReadFromJsonAsync<List<PairedDeviceDto>>(JsonOptions);
                     if (devices is not null)
                     {
                         _pairedDeviceLookup = devices.ToDictionary(d => d.Id, d => d.DeviceName);
@@ -171,8 +174,8 @@ else
             }
 
             response.EnsureSuccessStatusCode();
-            _entries = await response.Content.ReadFromJsonAsync<List<SecurityAuditLogEntry>>(JsonOptions);
-            _filteredEntries = _entries?.OrderByDescending(e => e.TimestampUtc).AsEnumerable() ?? new List<SecurityAuditLogEntry>();
+            _entries = await response.Content.ReadFromJsonAsync<List<SecurityAuditLogEntryDto>>(JsonOptions);
+            _filteredEntries = _entries?.OrderByDescending(e => e.TimestampUtc).AsEnumerable() ?? new List<SecurityAuditLogEntryDto>();
         }
         catch (Exception ex)
         {

@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Common.Contracts
 {
@@ -15,7 +15,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// </summary>
         /// <param name="session">The session in its newly persisted state.</param>
         /// <param name="ct">Cancellation token.</param>
-        Task PublishSessionChangedAsync(LiveViewSession session, CancellationToken ct);
+        Task PublishSessionChangedAsync(LiveViewSessionDto session, CancellationToken ct);
 
         /// <summary>
         /// Publishes one persisted live-view telemetry sample (RTCP receiver report plus merged bitrate and
@@ -25,7 +25,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// </summary>
         /// <param name="sample">The telemetry sample in its persisted state.</param>
         /// <param name="ct">Cancellation token.</param>
-        Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct)
+        Task PublishSampleAsync(LiveViewTelemetrySampleDto sample, CancellationToken ct)
         {
             return Task.CompletedTask;
         }

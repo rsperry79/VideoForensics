@@ -50,8 +50,8 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ICredentialStore _credentialStore;
         private readonly ICredentialRepository _credentialRepository;
         private readonly IRingAccountRepository? _ringAccountRepository;
-        private readonly IProviderAccountRepository? _providerAccountRepository;
-        private readonly IUserRepository? _userRepository;
+        private readonly IProviderAccountWriteRepository? _providerAccountRepository;
+        private readonly IUserWriteRepository? _userRepository;
         private readonly INotificationDispatcher? _notificationDispatcher;
         private readonly ApiResponseNormalizer? _normalizer;
         private readonly RingEndpointOptions? _endpoints;
@@ -62,8 +62,8 @@ namespace VideoForensics.Providers.Ring.Services
             ICredentialStore credentialStore,
             ICredentialRepository? credentialRepository = null,
             IRingAccountRepository? ringAccountRepository = null,
-            IProviderAccountRepository? providerAccountRepository = null,
-            IUserRepository? userRepository = null,
+            IProviderAccountWriteRepository? providerAccountRepository = null,
+            IUserWriteRepository? userRepository = null,
             INotificationDispatcher? notificationDispatcher = null,
             ApiResponseNormalizer? normalizer = null,
             RingEndpointOptions? endpoints = null)

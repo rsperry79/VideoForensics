@@ -68,8 +68,8 @@ namespace VideoForensics.Client.WebApp.Tests
         {
             public required WebApplication App { get; init; }
             public required HttpClient Client { get; init; }
-            public required Mock<IJammingRepository> Jamming { get; init; }
-            public required Mock<IDeviceRepository> Devices { get; init; }
+            public required Mock<IJammingWriteRepository> Jamming { get; init; }
+            public required Mock<IDeviceWriteRepository> Devices { get; init; }
             public required Mock<ISecurityAuditLogger> AuditLog { get; init; }
             public required List<JammingIncidentRecord> Upserted { get; init; }
 
@@ -86,8 +86,8 @@ namespace VideoForensics.Client.WebApp.Tests
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
 
-            var jamming = new Mock<IJammingRepository>();
-            var devices = new Mock<IDeviceRepository>();
+            var jamming = new Mock<IJammingWriteRepository>();
+            var devices = new Mock<IDeviceWriteRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             var upserted = new List<JammingIncidentRecord>();
 

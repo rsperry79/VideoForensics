@@ -3,26 +3,23 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Services.Scope;
 
 public class ScopeRailRulesTests
 {
-    private static ProviderAccount MakeAccount(string providerName, Guid? id = null)
+    private static ProviderAccountDto MakeAccount(string providerName, Guid? id = null)
     {
-        return new()
-        {
-            Id = id ?? Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            ProviderName = providerName,
-            LinkedUtc = DateTime.UtcNow,
-        };
+        return new(id ?? Guid.NewGuid(), Guid.NewGuid(), providerName, DateTime.UtcNow, null, true, null, null, null);
     }
 
-    private static Device MakeDevice(Guid? id = null)
+    private static Device MakeDevice(Guid? id = null) => MakeEntity(id).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(Guid? id = null)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = id ?? Guid.NewGuid(),
             LocationId = Guid.NewGuid(),
@@ -106,7 +103,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_WhitespaceValue_MeansAllProviders()
     {
-        ProviderAccount[] accounts = new[] { MakeAccount("Ring") };
+        ProviderAccountDto[] accounts = new[] { MakeAccount("Ring") };
 
         (string? provider, Guid? _) = ScopeRailRules.ApplyProviderPick(accounts, null, "   ");
 
@@ -116,7 +113,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_EmptyValue_MeansAllProviders()
     {
-        (string? provider, Guid? _) = ScopeRailRules.ApplyProviderPick(Array.Empty<ProviderAccount>(), null, string.Empty);
+        (string? provider, Guid? _) = ScopeRailRules.ApplyProviderPick(Array.Empty<ProviderAccountDto>(), null, string.Empty);
 
         Assert.Null(provider);
     }
@@ -124,7 +121,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_ProviderValue_IsReturnedAsIs()
     {
-        (string? provider, Guid? _) = ScopeRailRules.ApplyProviderPick(Array.Empty<ProviderAccount>(), null, "Ring");
+        (string? provider, Guid? _) = ScopeRailRules.ApplyProviderPick(Array.Empty<ProviderAccountDto>(), null, "Ring");
 
         Assert.Equal("Ring", provider);
     }
@@ -132,9 +129,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_SelectedAccountOutsideNewProvider_ClearsAccountFilter()
     {
-        ProviderAccount wyze = MakeAccount("Wyze");
-        ProviderAccount ring = MakeAccount("Ring");
-        ProviderAccount[] accounts = new[] { wyze, ring };
+        ProviderAccountDto wyze = MakeAccount("Wyze");
+        ProviderAccountDto ring = MakeAccount("Ring");
+        ProviderAccountDto[] accounts = new[] { wyze, ring };
 
         (string? provider, Guid? account) = ScopeRailRules.ApplyProviderPick(accounts, wyze.Id, "Ring");
 
@@ -145,8 +142,8 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_SelectedAccountInNewProvider_KeepsAccountFilter()
     {
-        ProviderAccount ring = MakeAccount("Ring");
-        ProviderAccount[] accounts = new[] { ring };
+        ProviderAccountDto ring = MakeAccount("Ring");
+        ProviderAccountDto[] accounts = new[] { ring };
 
         (string _, Guid? account) = ScopeRailRules.ApplyProviderPick(accounts, ring.Id, "Ring");
 
@@ -156,7 +153,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_AllProvidersWithAccountSelected_KeepsAccountFilter()
     {
-        ProviderAccount ring = MakeAccount("Ring");
+        ProviderAccountDto ring = MakeAccount("Ring");
 
         (string? provider, Guid? account) = ScopeRailRules.ApplyProviderPick(new[] { ring }, ring.Id, string.Empty);
 
@@ -515,13 +512,13 @@ public class ScopeRailRulesTests
     [Fact]
     public void ShowSaveScopeToCase_NoActiveCase_ReturnsFalse()
     {
-        Assert.False(ScopeRailRules.ShowSaveScopeToCase(false, true, OperatorRole.Admin, false));
+        Assert.False(ScopeRailRules.ShowSaveScopeToCase(false, true, OperatorRoleDto.Admin, false));
     }
 
     [Fact]
     public void ShowSaveScopeToCase_ScopeMatchesCase_ReturnsFalse()
     {
-        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, false, OperatorRole.Admin, false));
+        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, false, OperatorRoleDto.Admin, false));
     }
 
     [Fact]
@@ -533,20 +530,20 @@ public class ScopeRailRulesTests
     [Fact]
     public void ShowSaveScopeToCase_ReadOnlyRole_ReturnsFalse()
     {
-        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, true, OperatorRole.ReadOnly, false));
+        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, true, OperatorRoleDto.ReadOnly, false));
     }
 
     [Fact]
     public void ShowSaveScopeToCase_MatchesNoDevices_ReturnsFalse()
     {
-        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, true, OperatorRole.Admin, true));
+        Assert.False(ScopeRailRules.ShowSaveScopeToCase(true, true, OperatorRoleDto.Admin, true));
     }
 
     [Theory]
-    [InlineData(OperatorRole.Review)]
-    [InlineData(OperatorRole.Admin)]
-    [InlineData(OperatorRole.SuperAdmin)]
-    public void ShowSaveScopeToCase_ReviewOrHigherWithDifferingScope_ReturnsTrue(OperatorRole role)
+    [InlineData(OperatorRoleDto.Review)]
+    [InlineData(OperatorRoleDto.Admin)]
+    [InlineData(OperatorRoleDto.SuperAdmin)]
+    public void ShowSaveScopeToCase_ReviewOrHigherWithDifferingScope_ReturnsTrue(OperatorRoleDto role)
     {
         Assert.True(ScopeRailRules.ShowSaveScopeToCase(true, true, role, false));
     }

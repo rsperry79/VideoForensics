@@ -1,7 +1,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Services.Review
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @implements IDisposable
 @inject PendingEvidenceTags PendingTags
 @inject ReviewPopupState Popups
@@ -119,9 +119,9 @@
         _dismissedAttach = PendingTags.LastAttach;
     }
 
-    private string KindLabel(CaseItemKind kind)
+    private string KindLabel(CaseItemKindDto kind)
     {
-        return kind == CaseItemKind.Event ? L["PendingTagKindEvent"].Value : L["PendingTagKindMedia"].Value;
+        return kind == CaseItemKindDto.Event ? L["PendingTagKindEvent"].Value : L["PendingTagKindMedia"].Value;
     }
 
     private string? CameraName(Guid deviceId)

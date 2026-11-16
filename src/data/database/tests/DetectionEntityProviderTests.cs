@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -56,7 +57,7 @@ namespace VideoForensics.Data.Database.Tests
                     PersonDetected = true
                 };
 
-                await context.DetectionEntities.AddMediaItemDetectionAsync(detection, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddMediaItemDetectionAsync(detection, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -81,7 +82,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddMediaItemDetectionAsync(null!, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddMediaItemDetectionAsync(null!, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -118,7 +119,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddDetectedPersonsAsync(persons, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddDetectedPersonsAsync(persons, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -138,7 +139,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddDetectedPersonsAsync([], CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddDetectedPersonsAsync([], CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -153,7 +154,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddDetectedPersonsAsync(null!, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddDetectedPersonsAsync(null!, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -186,7 +187,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddDetectionTypeOccurrencesAsync(occurrences, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddDetectionTypeOccurrencesAsync(occurrences, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -216,7 +217,7 @@ namespace VideoForensics.Data.Database.Tests
                     FullDescription = "Motion detected"
                 };
 
-                await context.DetectionEntities.AddEventDetectionAsync(detection, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventDetectionAsync(detection, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -237,7 +238,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddEventDetectionAsync(null!, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventDetectionAsync(null!, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -272,7 +273,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddEventDetectionZonesAsync(zones, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventDetectionZonesAsync(zones, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -310,7 +311,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddEventSecurityAlertsAsync(alerts, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventSecurityAlertsAsync(alerts, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -350,7 +351,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddEventDetectedPersonsAsync(persons, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventDetectedPersonsAsync(persons, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -388,7 +389,7 @@ namespace VideoForensics.Data.Database.Tests
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddEventDetectionTypeOccurrencesAsync(occurrences, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventDetectionTypeOccurrencesAsync(occurrences, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -427,8 +428,8 @@ namespace VideoForensics.Data.Database.Tests
                     FullDescription = "Motion detected"
                 };
 
-                await context.DetectionEntities.AddMediaItemDetectionAsync(mediaDetection, CancellationToken.None);
-                await context.DetectionEntities.AddEventDetectionAsync(eventDetection, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddMediaItemDetectionAsync(mediaDetection, CancellationToken.None);
+                await new DetectionEntityRepository(_unitOfWork, NullLogger<DetectionEntityRepository>.Instance).AddEventDetectionAsync(eventDetection, CancellationToken.None);
 
                 return null;
             }, CancellationToken.None);

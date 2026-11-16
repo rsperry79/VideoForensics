@@ -10,7 +10,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
     /// scope and item changes need Review; close and reopen need Admin. Reads stay open. The jamming-detection path
     /// runs from the server's own detector, not from an operator action, so it passes through.
     /// </summary>
-    public sealed class GuardedCaseRepository(ICaseRepository inner, ICircuitOperatorGate gate) : ICaseRepository
+    public sealed class GuardedCaseRepository(ICaseWriteRepository inner, ICircuitOperatorGate gate) : ICaseWriteRepository
     {
         public Task<ForensicCase> CreateAsync(
             string? caseNumber,

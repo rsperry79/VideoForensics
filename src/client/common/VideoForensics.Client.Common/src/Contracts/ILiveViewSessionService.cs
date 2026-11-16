@@ -1,5 +1,5 @@
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Common.Contracts
 {
@@ -21,7 +21,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// <returns>The persisted LiveViewSession, in Starting or Active state.</returns>
         /// <exception cref="InvalidOperationException">If live view is disabled in configuration.</exception>
         /// <exception cref="NotSupportedException">If the device's provider has no live-view capability.</exception>
-        Task<LiveViewSession> StartAsync(Guid deviceId, LiveViewTriggerReason reason, Guid? operatorId, CancellationToken ct);
+        Task<LiveViewSessionDto> StartAsync(Guid deviceId, LiveViewTriggerReasonDto reason, Guid? operatorId, CancellationToken ct);
 
         /// <summary>
         /// Extends the idle timeout of an active session by updating its LastExtendedAtUtc timestamp.
@@ -40,7 +40,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="ct">Cancellation token.</param>
         /// <returns>The promoted session.</returns>
         /// <exception cref="KeyNotFoundException">If the session does not exist.</exception>
-        Task<LiveViewSession> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct);
+        Task<LiveViewSessionDto> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct);
 
         /// <summary>
         /// Demotes a session from sustained mode back to active. Sets IsSustained=false, SustainedSinceUtc=null,
@@ -50,7 +50,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="ct">Cancellation token.</param>
         /// <returns>The demoted session.</returns>
         /// <exception cref="KeyNotFoundException">If the session does not exist.</exception>
-        Task<LiveViewSession> DemoteFromSustainedAsync(Guid sessionId, CancellationToken ct);
+        Task<LiveViewSessionDto> DemoteFromSustainedAsync(Guid sessionId, CancellationToken ct);
 
         /// <summary>
         /// Stops an active session: closes the underlying provider connection, stops all telemetry collection,
@@ -67,7 +67,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="deviceId">The device to check.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>The active session, or null.</returns>
-        Task<LiveViewSession?> GetActiveSessionAsync(Guid deviceId, CancellationToken ct);
+        Task<LiveViewSessionDto?> GetActiveSessionAsync(Guid deviceId, CancellationToken ct);
 
         /// <summary>
         /// Gets the live provider connection for an active session without re-establishing it.

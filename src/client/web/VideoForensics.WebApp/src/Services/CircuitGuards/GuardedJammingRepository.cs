@@ -10,7 +10,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
     /// PUT /api/v1/jamming/incidents and POST /api/v1/jamming/stats/{id}/recompute, both Admin. Reads stay open.
     /// Recording an incident can also create a case; that happens inside this Admin-gated call.
     /// </summary>
-    public sealed class GuardedJammingRepository(IJammingRepository inner, ICircuitOperatorGate gate) : IJammingRepository
+    public sealed class GuardedJammingRepository(IJammingWriteRepository inner, ICircuitOperatorGate gate) : IJammingWriteRepository
     {
         public Task<JammingIncidentRecord> UpsertIncidentAsync(JammingIncidentRecord incident, CancellationToken ct)
         {

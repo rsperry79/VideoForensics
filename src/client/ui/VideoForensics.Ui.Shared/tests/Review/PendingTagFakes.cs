@@ -3,8 +3,8 @@ using Moq;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Utils.Testing;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Review;
@@ -19,17 +19,23 @@ internal static class PendingTagFakes
     public const string Reason = "Tagged during review";
 
     /// <summary>Creates an open case with a fresh id.</summary>
-    public static ForensicCase CreateOpenCase()
+    public static ForensicCaseDto CreateOpenCase()
     {
-        return new ForensicCase
-        {
-            Id = Guid.NewGuid(),
-            CaseNumber = "CASE-100",
-            Title = "Open case",
-            Status = CaseStatus.Open,
-            CreatedBy = "test",
-            CreatedAtUtc = NowUtc,
-        };
+        return new ForensicCaseDto(
+            Id: Guid.NewGuid(),
+            CaseNumber: "CASE-100",
+            Title: "Open case",
+            Description: null,
+            Status: CaseStatusDto.Open.ToString(),
+            LeadOperatorId: null,
+            CreatedBy: "test",
+            CreatedAtUtc: NowUtc,
+            UpdatedAtUtc: NowUtc,
+            ClosedBy: null,
+            ClosedAtUtc: null,
+            ScopeFromUtc: null,
+            ScopeToUtc: null,
+            DeviceIds: []);
     }
 
     /// <summary>
@@ -37,8 +43,8 @@ internal static class PendingTagFakes
     /// A target in <paramref name="failingTargets"/> throws on pin. <paramref name="existingItems"/> is what the case already holds.
     /// </summary>
     public static Mock<ICaseRepository> CreateRepository(
-        ForensicCase activeCase,
-        IReadOnlyList<CaseItem>? existingItems = null,
+        ForensicCaseDto activeCase,
+        IReadOnlyList<CaseItemDto>? existingItems = null,
         ISet<Guid>? failingTargets = null,
         List<Guid>? pinnedTargets = null)
     {
@@ -55,27 +61,28 @@ internal static class PendingTagFakes
         _ = repository
             .Setup(r => r.AddItemAsync(
                 activeCase.Id,
-                It.IsAny<CaseItemKind>(),
+                It.IsAny<CaseItemKindDto>(),
                 It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
-            .Returns((Guid caseId, CaseItemKind kind, Guid targetId, string reason, string actor, CancellationToken _) =>
+            .Returns((Guid caseId, CaseItemKindDto kind, Guid targetId, string reason, string actor, CancellationToken _) =>
             {
                 pinnedTargets?.Add(targetId);
                 return failingTargets is not null && failingTargets.Contains(targetId)
-                    ? Task.FromException<CaseItem>(new InvalidOperationException("Pin refused by the test double."))
-                    : Task.FromResult(new CaseItem
-                    {
-                        Id = Guid.NewGuid(),
-                        CaseId = caseId,
-                        Kind = kind,
-                        EventId = kind == CaseItemKind.Event ? targetId : null,
-                        MediaItemId = kind == CaseItemKind.Media ? targetId : null,
-                        Reason = reason,
-                        AddedBy = actor,
-                        AddedAtUtc = NowUtc,
-                    });
+                    ? Task.FromException<CaseItemDto>(new InvalidOperationException("Pin refused by the test double."))
+                    : Task.FromResult(new CaseItemDto(
+                        Id: Guid.NewGuid(),
+                        CaseId: caseId,
+                        Kind: kind.ToString(),
+                        TargetId: targetId,
+                        Reason: reason,
+                        AddedBy: actor,
+                        AddedAtUtc: NowUtc,
+                        MediaSha256AtAdd: null,
+                        RemovedBy: null,
+                        RemovedAtUtc: null,
+                        RemovalReason: null));
             });
         return repository;
     }
@@ -83,7 +90,7 @@ internal static class PendingTagFakes
     /// <summary>Creates a case state over <paramref name="repository"/> and activates <paramref name="activeCase"/> on it.</summary>
     public static async Task<CaseState> ActivateAsync(
         Mock<ICaseRepository> repository,
-        ForensicCase activeCase,
+        ForensicCaseDto activeCase,
         PendingEvidenceTags? pendingTags = null)
     {
         var caseState = new CaseState(repository.Object, new ScopeState(new FakeTimeProvider(NowUtc)), pendingTags);

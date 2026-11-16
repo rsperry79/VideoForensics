@@ -157,7 +157,7 @@ static async Task<int> SetNetworkTierAsync(IDbContextFactory<VideoForensicsDbCon
 static async Task<int> CreateAdminIfEmptyAsync(IServiceProvider provider, string username, string password, CancellationToken ct)
 {
     using IServiceScope scope = provider.CreateScope();
-    IOperatorRepository operators = scope.ServiceProvider.GetRequiredService<IOperatorRepository>();
+    IOperatorWriteRepository operators = scope.ServiceProvider.GetRequiredService<IOperatorWriteRepository>();
 
     if (!await operators.IsEmptyAsync(ct))
     {

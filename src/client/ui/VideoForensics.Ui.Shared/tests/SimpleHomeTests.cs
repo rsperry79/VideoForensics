@@ -3,6 +3,9 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 using System.Text.RegularExpressions;
 
@@ -32,7 +35,7 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
     private readonly Mock<IJammingRepository> _jamming = new();
     private readonly Mock<IMediaContentUrlProvider> _urls = new();
 
-    private List<Event> _eventData = [];
+    private List<EventDto> _eventData = [];
     private List<MediaItem> _mediaData = [];
     private List<JammingIncidentRecord> _jammingData = [];
 
@@ -42,9 +45,9 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
         _ = _events.Setup(e => e.ListByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => _eventData);
         _ = _media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => _mediaData);
+            .ReturnsAsync(() => _mediaData.Select(m => m.ToDto()).ToList());
         _ = _jamming.Setup(j => j.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => _jammingData);
+            .ReturnsAsync(() => _jammingData.Select(i => i.ToDto()).ToList());
         _ = _urls.Setup(u => u.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyCollection<Guid> ids, CancellationToken _) =>
                 ids.ToDictionary(i => i, i => "https://server/content/video"));
@@ -56,9 +59,11 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
         _ = Services.AddScoped(_ => new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, TestLocalizer.Create(), Zone));
     }
 
-    private static Device Device(Guid id, string name)
+    private static Device Device(Guid id, string name) => MakeEntity(id, name).ToDto();
+
+    private static VideoForensics.Data.Common.Entities.Device MakeEntity(Guid id, string name)
     {
-        return new()
+        return new VideoForensics.Data.Common.Entities.Device()
         {
             Id = id,
             LocationId = Guid.NewGuid(),
@@ -68,16 +73,16 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
         };
     }
 
-    private static Event Evt(string type, DateTime occurredUtc)
+    private static EventDto Evt(string type, DateTime occurredUtc)
     {
-        return new()
+        return new Event
         {
             Id = Guid.NewGuid(),
             DeviceId = FrontId,
             ProviderEventId = "ring-evt-" + Guid.NewGuid(),
             EventType = type,
             OccurredAtUtc = occurredUtc
-        };
+        }.ToDto();
     }
 
     private static MediaItem Media(DateTime recordedUtc, string format = "video/mp4", bool purged = false)

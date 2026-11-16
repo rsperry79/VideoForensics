@@ -16,7 +16,7 @@ public class MediaThumbnailServiceTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "vf-thumb-" + Guid.NewGuid());
     private readonly Mock<IMediaFrameExtractor> _frames = new();
-    private readonly Mock<IMediaItemRepository> _items = new();
+    private readonly Mock<IMediaItemWriteRepository> _items = new();
     private readonly Mock<IMediaThumbnailNotifier> _notifier = new();
 
     public MediaThumbnailServiceTests()

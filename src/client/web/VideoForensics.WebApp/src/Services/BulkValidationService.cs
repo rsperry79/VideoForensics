@@ -1,4 +1,5 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -12,12 +13,12 @@ namespace VideoForensics.Client.WebApp.Services
     {
         private readonly ILogger<BulkValidationService> _logger;
         private readonly IEvidenceValidationService _validationService;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
 
         public BulkValidationService(
             ILogger<BulkValidationService> logger,
             IEvidenceValidationService validationService,
-            IDeviceRepository deviceRepository)
+            IDeviceWriteRepository deviceRepository)
         {
             _logger = logger;
             _validationService = validationService;
@@ -115,7 +116,7 @@ namespace VideoForensics.Client.WebApp.Services
                         {
                             try
                             {
-                                IReadOnlyList<ReconciliationDiscrepancy> discrepancies =
+                                IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies =
                                     await _validationService.ReconcileWithProviderAsync(
                                         device.Id,
                                         device.ProviderDeviceId,

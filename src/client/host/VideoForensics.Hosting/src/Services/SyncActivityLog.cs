@@ -34,6 +34,18 @@ namespace VideoForensics.Client.Hosting.Services
         public void Append(string line)
         {
             _logger.LogInformation("Sync: {SyncLine}", line);
+            Add(line);
+        }
+
+        /// <inheritdoc />
+        public void AppendError(string line)
+        {
+            _logger.LogError("Sync: {SyncLine}", line);
+            Add(line);
+        }
+
+        private void Add(string line)
+        {
             _pending.Enqueue(line);
             while (_pending.Count > MaxPendingLines && _pending.TryDequeue(out _))
             {

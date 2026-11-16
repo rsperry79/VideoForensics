@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-using VideoForensics.Core.Logging.Services;
+using SperryDev.Logger.Services;
 
 namespace VideoForensics.Core.Api.Contracts
 {

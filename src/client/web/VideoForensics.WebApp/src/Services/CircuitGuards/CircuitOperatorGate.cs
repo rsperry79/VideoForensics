@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using Microsoft.Extensions.Localization;
 
 using VideoForensics.Client.Hosting;
@@ -92,7 +93,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 
             var context = new NavContext(
                 IsSignedIn: true,
-                Role: principal.Role,
+                Role: principal.Role.ToDto(),
                 AppLockSupported: false,
                 IsLocalTier: network.Tier == NetworkTier.Local,
                 IsPasskeySession: principal.Kind == CredentialKind.OperatorPasskey);

@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Contracts
 {
@@ -19,14 +19,14 @@ namespace VideoForensics.Client.Ui.Shared.Contracts
         /// Session state pushes for every session this client has subscribed to. Subscribers must dispose
         /// their subscription.
         /// </summary>
-        IObservable<LiveViewSession> SessionChanged { get; }
+        IObservable<LiveViewSessionDto> SessionChanged { get; }
 
         /// <summary>
         /// Telemetry sample pushes for sessions this client has subscribed to. Each sample carries its
         /// <see cref="LiveViewTelemetrySample.SessionId"/>, so subscribers filter to the session they show.
         /// Hosts with no live push channel emit nothing.
         /// </summary>
-        IObservable<LiveViewTelemetrySample> Telemetry { get; }
+        IObservable<LiveViewTelemetrySampleDto> Telemetry { get; }
 
         /// <summary>
         /// True when the push channel is up. When false, <see cref="SubscribeAsync"/> cannot deliver pushes

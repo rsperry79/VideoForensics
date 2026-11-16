@@ -9,13 +9,13 @@ namespace VideoForensics.Data.Core.Services
     /// <inheritdoc />
     public sealed class MediaPreviewBackfill : IMediaPreviewBackfill
     {
-        private readonly IMediaItemRepository _items;
+        private readonly IMediaItemWriteRepository _items;
         private readonly IMediaPreviewService _previews;
         private readonly ILogger<MediaPreviewBackfill> _logger;
 
         /// <summary>Creates the backfill.</summary>
         public MediaPreviewBackfill(
-            IMediaItemRepository items,
+            IMediaItemWriteRepository items,
             IMediaPreviewService previews,
             ILogger<MediaPreviewBackfill> logger)
         {

@@ -46,7 +46,7 @@ namespace VideoForensics.Client.WebApp.Tests
             var operatorId = Guid.NewGuid();
             var adminId = Guid.NewGuid();
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.UnlockAsync(operatorId, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -74,7 +74,7 @@ namespace VideoForensics.Client.WebApp.Tests
             var operatorId = Guid.NewGuid();
             var adminId = Guid.NewGuid();
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.UnlockAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -107,7 +107,7 @@ namespace VideoForensics.Client.WebApp.Tests
             var operatorId = Guid.NewGuid();
             var adminId = Guid.NewGuid();
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.UnlockAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -137,7 +137,7 @@ namespace VideoForensics.Client.WebApp.Tests
     {
         public static async Task<object> UnlockAsync(
             Guid operatorId,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
@@ -147,7 +147,7 @@ namespace VideoForensics.Client.WebApp.Tests
                 .GetMethod("UnlockAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(Guid), typeof(IOperatorRepository), typeof(ISecurityAuditLogger),
+                    [typeof(Guid), typeof(IOperatorWriteRepository), typeof(ISecurityAuditLogger),
                      typeof(INetworkTierResolver), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 

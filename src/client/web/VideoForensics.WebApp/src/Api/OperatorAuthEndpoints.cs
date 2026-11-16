@@ -122,7 +122,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> GetSessionKindAsync(
             ClaimsPrincipal user,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ITwoFactorRoleRequirementRepository roleRequirements,
             CancellationToken ct)
         {
@@ -174,13 +174,19 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> UsernameAssertionOptionsAsync(
             UsernameAssertionOptionsRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             IWebAuthnCeremonyCache ceremonyCache,
             ILogger<Program> logger,
             IFido2 fido2,
             CancellationToken ct)
         {
+            // Passkey sign-in is username-first: the name is required, so a failed attempt can be recorded against it.
+            if (string.IsNullOrWhiteSpace(request.Username))
+            {
+                return Results.BadRequest(new { error = "Enter your username first." });
+            }
+
             // Look up operator - but don't reveal whether they exist (anti-enumeration)
             Operator? op = await operators.GetByUsernameAsync(request.Username, ct);
 
@@ -224,7 +230,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> UsernameAssertionCompleteAsync(
             ILogger<Program> logger,
             UsernameAssertionCompleteRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             IWebAuthnCeremonyCache ceremonyCache,
@@ -234,6 +240,7 @@ namespace VideoForensics.Client.WebApp.Api
             INotificationDispatcher? notificationDispatcher,
             HttpContext context,
             IFido2 fido2,
+            ISecurityAuditService auditService,
             CancellationToken ct)
         {
             string? cachedOptionsJson = ceremonyCache.TryTake(request.Nonce);
@@ -261,6 +268,14 @@ namespace VideoForensics.Client.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     tierResolver.ResolveClientIp(context), "Unknown or revoked passkey", isUrgent: true, ct);
+
+                // The passkey matched no operator. If the typed name matches no operator either, record it as an unknown
+                // user so the security events page can show it. A known operator's revoked passkey is not an unknown user.
+                if (!string.IsNullOrWhiteSpace(request.Username) && await operators.GetByUsernameAsync(request.Username, ct) is null)
+                {
+                    await auditService.RecordUnknownUserLoginAsync(request.Username, tierResolver.ResolveClientIp(context), "Unknown or revoked passkey", ct);
+                }
+
                 logger.LogWarning("Passkey sign-in rejected: the passkey returned is not an approved, active passkey of any operator");
                 return Results.Unauthorized();
             }
@@ -379,7 +394,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> CredentialRegisterOptionsAsync(
             CredentialRegisterOptionsRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IWebAuthnCeremonyCache ceremonyCache,
             HttpContext context,
             IFido2 fido2,
@@ -424,7 +439,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> CredentialRegisterCompleteAsync(
             CredentialRegisterCompleteRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             IWebAuthnCeremonyCache ceremonyCache,
             ISecurityAuditLogger auditLog,
@@ -541,7 +556,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> RegisterAsync(
             RegisterRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             INotificationDispatcher? notificationDispatcher,
@@ -631,7 +646,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         private static async Task<PasswordCheck> VerifyPasswordAsync(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -849,7 +864,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> LoginPasswordAsync(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
@@ -967,7 +982,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         private static async Task<IResult> LoginPasswordCreatePasskeyAsync(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
@@ -1017,7 +1032,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Sends the one-time "approved operator logged in for the first time" admin notice. A failure here never fails the sign-in.</summary>
         private static async Task NotifyFirstLoginAfterApprovalAsync(
             Operator op,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             INotificationDispatcher? notificationDispatcher,
             string sourceIpString,
             CancellationToken ct)
@@ -1051,7 +1066,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> ChangePasswordAsync(
             ChangePasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -1124,7 +1139,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> StepUpPasswordAsync(
             StepUpPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ITwoFactorRoleRequirementRepository roleRequirements,
             IStepUpAuthService stepUpAuth,
             ISecurityAuditLogger auditLog,
@@ -1175,7 +1190,7 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         private static async Task<IResult> RecoverPasswordAsync(
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             HttpContext context,
             CancellationToken ct)
@@ -1236,7 +1251,8 @@ namespace VideoForensics.Client.WebApp.Api
     /// <param name="Username">The operator signing in.</param>
     /// <param name="AllCredentials">False offers only the most recently used passkey; true offers every approved passkey (the fallback).</param>
     public record UsernameAssertionOptionsRequest(string Username, bool AllCredentials = false);
-    public record UsernameAssertionCompleteRequest(string Nonce, JsonElement AssertionResponse, string? TwoFactorCorrelationId = null);
+    /// <param name="Username">The name the operator typed before the passkey prompt. Used only to record a failed attempt against that name when no operator matches.</param>
+    public record UsernameAssertionCompleteRequest(string Nonce, JsonElement AssertionResponse, string? TwoFactorCorrelationId = null, string? Username = null);
     public record CredentialRegisterOptionsRequest(string Label);
     public record CredentialRegisterCompleteRequest(string Nonce, JsonElement AttestationResponse, string Label);
     public record RegisterRequest(string Username, string Password, string FirstName, string LastName, string Email, string? Phone = null, string? DisplayName = null);

@@ -7,6 +7,8 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Core.Api.Contracts;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -19,16 +21,16 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 public class ExportEvidencePageTests : CasesPagesTestBase
 {
     private readonly Mock<IEvidenceExportService> _exportMock = new();
-    private readonly ForensicCase _caseA = CreateTestCase(caseNumber: "CASE-A", title: "Alpha");
-    private readonly ForensicCase _caseB = CreateTestCase(caseNumber: "CASE-B", title: "Bravo");
+    private readonly ForensicCaseDto _caseA = CreateTestCase(caseNumber: "CASE-A", title: "Alpha");
+    private readonly ForensicCaseDto _caseB = CreateTestCase(caseNumber: "CASE-B", title: "Bravo");
 
     public ExportEvidencePageTests()
     {
         _ = CaseRepositoryMock
-            .Setup(r => r.ListAsync(It.IsAny<CaseStatus?>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(It.IsAny<CaseStatusDto?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([_caseA, _caseB]);
         _ = _exportMock
-            .Setup(e => e.ExportEvidenceAsync(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .Setup(e => e.ExportEvidenceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(new ExportResult { Success = true, ArchivePath = "a.zip", ItemsIncluded = 1 });
         _ = Services.AddScoped(_ => _exportMock.Object);
 
@@ -94,13 +96,22 @@ public class ExportEvidencePageTests : CasesPagesTestBase
     }
 
     [Fact]
+    public async Task Page_RendersNoPassphraseOrRecipientInputs()
+    {
+        IRenderedComponent<ExportEvidence> cut = await RenderPageAsync(_caseA.Id);
+
+        Assert.Empty(cut.FindAll("input[type='password']"));
+        Assert.Empty(cut.FindAll(".e-textbox"));
+    }
+
+    [Fact]
     public async Task Page_Export_SendsSelectedCaseId()
     {
         IRenderedComponent<ExportEvidence> cut = await RenderPageAsync(_caseA.Id);
 
         await cut.Find("[data-testid='export-button']").ClickAsync();
 
-        _exportMock.Verify(e => e.ExportEvidenceAsync(_caseA.Id, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), "step-token"), Times.Once);
+        _exportMock.Verify(e => e.ExportEvidenceAsync(_caseA.Id, It.IsAny<CancellationToken>(), "step-token"), Times.Once);
     }
 
     [Fact]
@@ -111,7 +122,7 @@ public class ExportEvidencePageTests : CasesPagesTestBase
 
         await cut.Find("[data-testid='export-button']").ClickAsync();
 
-        _exportMock.Verify(e => e.ExportEvidenceAsync(_caseB.Id, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
-        _exportMock.Verify(e => e.ExportEvidenceAsync(_caseA.Id, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+        _exportMock.Verify(e => e.ExportEvidenceAsync(_caseB.Id, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
+        _exportMock.Verify(e => e.ExportEvidenceAsync(_caseA.Id, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 }

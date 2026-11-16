@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -35,7 +36,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _ = await db.Database.EnsureCreatedAsync();
 
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            _repository = new ActionLogRepository(_factory, loggerFactory.CreateLogger<ActionLogRepository>());
+            _repository = new ActionLogRepository(new UnitOfWork(_factory, new ServiceCollection().AddLogging().BuildServiceProvider(), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<ActionLogRepository>());
             _unitOfWork = new UnitOfWork(_factory, new ServiceCollection().AddLogging().BuildServiceProvider(), loggerFactory.CreateLogger<UnitOfWork>());
         }
 
@@ -78,7 +79,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Task unit = _unitOfWork.ExecuteAsync(async context =>
             {
                 _ = await _repository.AppendAsync("Inner", ActorType.System, "InnerAction", "Ent", null, null, CancellationToken.None);
-                _ = await context.ActionLog.AppendAsync("Outer", ActorType.System, "OuterAction", "Ent", null, null, CancellationToken.None);
+                _ = await new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance).AppendAsync("Outer", ActorType.System, "OuterAction", "Ent", null, null, CancellationToken.None);
                 return true;
             }, CancellationToken.None);
 
@@ -102,8 +103,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 int n = i;
                 writes.Add(_unitOfWork.ExecuteAsync(async context =>
                 {
-                    _ = await context.ActionLog.AppendAsync("Unit", ActorType.System, $"U{n}a", "Ent", null, null, CancellationToken.None);
-                    _ = await context.ActionLog.AppendAsync("Unit", ActorType.System, $"U{n}b", "Ent", null, null, CancellationToken.None);
+                    _ = await new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance).AppendAsync("Unit", ActorType.System, $"U{n}a", "Ent", null, null, CancellationToken.None);
+                    _ = await new ActionLogRepository(_unitOfWork, NullLogger<ActionLogRepository>.Instance).AppendAsync("Unit", ActorType.System, $"U{n}b", "Ent", null, null, CancellationToken.None);
                     return true;
                 }, CancellationToken.None));
                 writes.Add(_repository.AppendAsync("Standalone", ActorType.Human, $"S{n}", "Ent", null, null, CancellationToken.None));

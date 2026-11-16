@@ -9,11 +9,11 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
-    /// HTTP-backed <see cref="ISnapshotCaptureRepository"/> that calls the server's <c>/api/v1/snapshot-captures</c> route
+    /// HTTP-backed <see cref="ISnapshotCaptureWriteRepository"/> that calls the server's <c>/api/v1/snapshot-captures</c> route
     /// (see VideoForensics.WebApp/Api/SnapshotCaptureEndpoints.cs), so a MAUI client lists snapshots in a flag window without a local database.
     /// <see cref="AddAsync"/> is server-only: captures are taken by the server's snapshot service.
     /// </summary>
-    public sealed class RemoteSnapshotCaptureRepository : ISnapshotCaptureRepository
+    public sealed class RemoteSnapshotCaptureRepository : ISnapshotCaptureWriteRepository
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 

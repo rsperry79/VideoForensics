@@ -33,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()))
@@ -79,7 +79,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
             _ = operators.Setup(r => r.IncrementFailedLoginAttemptAsync(op.Id, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -117,7 +117,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task LoginPasswordAsync_UnknownUsername_RecordsUnknownUserLoginEvent()
         {
             // Arrange - no operator matches the typed username
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
@@ -154,7 +154,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task LoginPasswordAsync_BannedIpUnknownUsername_RecordsUnknownUserLoginEvent()
         {
             // Arrange - source IP is banned before the password check, and no operator matches the typed username
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
@@ -190,7 +190,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task LoginPasswordAsync_ThreatIntelBlockUnknownUsername_RecordsUnknownUserLoginEvent()
         {
             // Arrange - threat intelligence blocks the source IP, and no operator matches the typed username
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
@@ -226,7 +226,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task LoginPasswordAsync_BlockedCountryUnknownUsername_RecordsUnknownUserLoginEvent()
         {
             // Arrange - the source IP resolves to a blocked country, and no operator matches the typed username
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
@@ -262,7 +262,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task LoginPasswordAsync_GeoLookupFailsClosedUnknownUsername_RecordsUnknownUserLoginEvent()
         {
             // Arrange - a country block is configured, the GeoIP lookup fails, and the policy fails closed
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
@@ -296,7 +296,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task LoginPasswordAsync_PasswordSignInDisabledUnknownUsername_RecordsUnknownUserLoginEvent()
         {
             // Arrange - password sign-in is switched off, and no operator matches the typed username
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync("zumba", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
@@ -334,7 +334,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Operator op = CreateOperator(failedLoginAttemptCount: 4);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
 
@@ -489,7 +489,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
     {
         public static async Task<IResult> LoginPasswordAsync(
             LoginPasswordRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
@@ -512,7 +512,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 .GetMethod("LoginPasswordAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(LoginPasswordRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
+                    [typeof(LoginPasswordRequest), typeof(IOperatorWriteRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),

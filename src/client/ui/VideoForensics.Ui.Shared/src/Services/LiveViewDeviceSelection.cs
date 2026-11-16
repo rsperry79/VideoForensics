@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Services;
 
@@ -9,7 +9,7 @@ public static class LiveViewDeviceSelection
     /// The picker value for <paramref name="requested"/> (the camera the review page was showing), or null when nothing was
     /// requested or the camera is not among <paramref name="devices"/>.
     /// </summary>
-    public static string? Initial(IEnumerable<Device> devices, Guid? requested)
+    public static string? Initial(IEnumerable<DeviceDto> devices, Guid? requested)
     {
         return requested is Guid id && devices.Any(device => device.Id == id) ? id.ToString() : null;
     }

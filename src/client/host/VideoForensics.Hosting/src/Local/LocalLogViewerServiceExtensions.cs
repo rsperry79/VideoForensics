@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Logging.DependencyInjection;
+using SperryDev.Logger.DependencyInjection;
 
 namespace VideoForensics.Client.Hosting.Local
 {

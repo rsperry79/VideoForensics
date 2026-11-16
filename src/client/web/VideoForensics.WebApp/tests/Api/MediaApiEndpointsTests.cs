@@ -23,14 +23,14 @@ namespace VideoForensics.Client.WebApp.Tests.Api
     {
         private static (
             Mock<IMediaAccessTicketService> TicketService,
-            Mock<IOperatorRepository> Operators,
+            Mock<IOperatorWriteRepository> Operators,
             Mock<IAccessAuditLogRepository> AuditLog,
             Mock<INetworkTierResolver> TierResolver,
             Mock<ILogger<Program>> Logger
         ) CreateMocks()
         {
             var ticketService = new Mock<IMediaAccessTicketService>();
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var auditLog = new Mock<IAccessAuditLogRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
             var logger = new Mock<ILogger<Program>>();
@@ -221,14 +221,14 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((MediaItem?)null);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, null!,
-                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<NotFound>(result);
         }
@@ -239,17 +239,17 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             (Mock<IMediaAccessTicketService>? ticketService, _, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var context = new DefaultHttpContext();
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
 
             _ = ticketService.Setup(t => t.Validate(null, mediaItemId)).Returns((Guid?)null);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, null!,
-                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -260,17 +260,17 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             (Mock<IMediaAccessTicketService>? ticketService, _, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var context = new DefaultHttpContext();
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
 
             _ = ticketService.Setup(t => t.Validate("invalid_ticket", mediaItemId)).Returns((Guid?)null);
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "invalid_ticket", ticketService.Object, mediaItems.Object, operators.Object, null!,
-                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                null!, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -278,12 +278,12 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_ValidTicketButOperatorInactive_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -311,7 +311,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -319,12 +319,12 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_ValidTicketButOperatorNotApproved_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -352,7 +352,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -360,12 +360,12 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_ValidTicketButOperatorMissing_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -381,7 +381,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -389,12 +389,12 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_ValidTicket_ServeContentAndAudit()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -435,7 +435,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             // Should be a stream result
             _ = Assert.IsType<FileStreamHttpResult>(result);
@@ -453,12 +453,12 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_AuthenticatedUserWithoutTicket_ServeContentAndAudit()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -497,7 +497,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<FileStreamHttpResult>(result);
 
@@ -514,7 +514,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_RangeHeaderBytes1000_ServeButNotAudit()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext
@@ -523,7 +523,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             };
             context.Request.Headers.Append("Range", "bytes=1000-2000");
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -553,7 +553,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<FileStreamHttpResult>(result);
 
@@ -570,7 +570,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_RangeHeaderBytes0_Audit()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext
@@ -579,7 +579,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             };
             context.Request.Headers.Append("Range", "bytes=0-");
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -618,7 +618,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<FileStreamHttpResult>(result);
 
@@ -635,12 +635,12 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_AuditThrows_Returns500()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -679,7 +679,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             ProblemHttpResult problemResult = Assert.IsType<ProblemHttpResult>(result);
             Assert.Equal(StatusCodes.Status500InternalServerError, problemResult.StatusCode);
@@ -692,7 +692,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var mediaItemId = Guid.NewGuid();
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(Guid.NewGuid()) };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             item.FilePath = "/nonexistent/file";
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
@@ -706,7 +706,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, null!, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<NotFound>(result);
 
@@ -723,13 +723,13 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_TicketNoIdentity_InactiveOperator_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             // context.User is new ClaimsPrincipal() - no identity at all
             var context = new DefaultHttpContext { User = new ClaimsPrincipal() };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -757,7 +757,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -765,7 +765,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_AuthenticatedNoClaim_TicketForInactiveOperator_ReturnsUnauthorized()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, _, Mock<INetworkTierResolver>? tierResolver, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             // Authenticated principal but NO OperatorId claim
@@ -777,7 +777,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }, "test"))
             };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -805,7 +805,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
@@ -813,7 +813,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [Fact]
         public async Task GetContentAsync_AuthenticatedNoClaim_TicketForActiveApprovedOperator_ServeContent()
         {
-            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
+            (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
             // Authenticated principal but NO OperatorId claim
@@ -825,7 +825,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }, "test"))
             };
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             MediaItem item = CreateMediaItem(mediaItemId);
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -866,7 +866,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IResult result = await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, "ticket", ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
 
             // Should serve content even though authenticated user has no OperatorId claim (falls back to ticket)
             _ = Assert.IsType<FileStreamHttpResult>(result);
@@ -906,7 +906,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }
             };
 
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(items);
@@ -943,7 +943,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }
             };
 
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(items);
@@ -976,7 +976,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }
             };
 
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(items);
@@ -996,7 +996,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task ListMediaItemsAsync_FromWithoutDeviceId_ReturnsBadRequest()
         {
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
                 null, fromUtc, null, mediaItemsRepo.Object, CancellationToken.None);
@@ -1008,7 +1008,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task ListMediaItemsAsync_ToWithoutDeviceId_ReturnsBadRequest()
         {
             var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
                 null, null, toUtc, mediaItemsRepo.Object, CancellationToken.None);
@@ -1022,7 +1022,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var deviceId = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
 
             IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
                 deviceId, fromUtc, toUtc, mediaItemsRepo.Object, CancellationToken.None);
@@ -1050,7 +1050,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 DownloadedAtUtc = DateTime.UtcNow
             };
 
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
@@ -1068,7 +1068,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task GetMediaItemAsync_MediaItemNotFound_ReturnsNotFound()
         {
             var mediaItemId = Guid.NewGuid();
-            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
             _ = mediaItemsRepo
                 .Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((MediaItem?)null);
@@ -1088,7 +1088,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var deviceId = Guid.NewGuid();
             var toUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
-            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            var deviceHealth = new Mock<IDeviceHealthWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
                 deviceId, null, toUtc, deviceHealth.Object, CancellationToken.None);
@@ -1101,7 +1101,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         {
             var deviceId = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            var deviceHealth = new Mock<IDeviceHealthWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
                 deviceId, fromUtc, null, deviceHealth.Object, CancellationToken.None);
@@ -1115,7 +1115,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             var deviceId = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            var deviceHealth = new Mock<IDeviceHealthWriteRepository>();
 
             IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
                 deviceId, fromUtc, toUtc, deviceHealth.Object, CancellationToken.None);
@@ -1140,7 +1140,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 }
             };
 
-            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            var deviceHealth = new Mock<IDeviceHealthWriteRepository>();
             _ = deviceHealth
                 .Setup(d => d.GetHistoryAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(history);

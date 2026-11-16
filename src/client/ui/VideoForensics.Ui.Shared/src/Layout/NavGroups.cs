@@ -1,6 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
 {
@@ -35,12 +34,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     public sealed record NavSection(string? Title, IReadOnlyList<NavItem> Items);
 
     /// <summary>Role/session state needed to evaluate nav and page access.</summary>
-    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false, RestrictedSettings OpenToAdmin = RestrictedSettings.None)
+    public sealed record NavContext(bool IsSignedIn, OperatorRoleDto? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false, RestrictedSettings OpenToAdmin = RestrictedSettings.None)
     {
         /// <summary>Builds the access context for the current circuit's session, using the server-reported tier.</summary>
         public static NavContext FromSession(PairedSessionState session, bool appLockSupported)
         {
-            OperatorRole? role = session.Role is not null && Enum.TryParse<OperatorRole>(session.Role, out OperatorRole parsed)
+            OperatorRoleDto? role = session.Role is not null && Enum.TryParse<OperatorRoleDto>(session.Role, out OperatorRoleDto parsed)
                 ? parsed
                 : null;
 
@@ -54,7 +53,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         }
 
         /// <summary>True when signed in with a role at or above <paramref name="minimum"/>.</summary>
-        public bool HasRole(OperatorRole minimum)
+        public bool HasRole(OperatorRoleDto minimum)
         {
             return IsSignedIn && Role is not null && Role >= minimum;
         }
@@ -101,6 +100,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             [
                 new("General", "/settings", Section: "General"),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported, Section: "General"),
+                new("My Notifications", "/settings/my-notifications", Section: "General"),
 
                 new("Provider Accounts", "/accounts", Section: "Sources"),
                 new("Manual Sync", "/accounts/manual-sync", Section: "Sources"),
@@ -118,7 +118,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("LLM API", "/settings/llm", Section: "Integrations"),
                 new("Email", "/settings/integrations/email", Section: "Integrations"),
 
-                new("Pending Approvals", "/admin/pending-credentials", Section: "Security"),
                 new("Operators", "/settings/operators", Section: "Security"),
                 new("Login Methods", "/settings/auth-methods", Section: "Security"),
                 new("Permissions", "/settings/permissions", Section: "Security"),
