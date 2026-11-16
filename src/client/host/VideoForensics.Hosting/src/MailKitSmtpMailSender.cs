@@ -36,7 +36,8 @@ namespace VideoForensics.Client.Hosting
 
             try
             {
-                _ = await client.SendAsync(message, ct);
+                // MailKit 5 sends a SendRequest; the envelope sender and recipients come from the message headers, as before.
+                _ = await client.SendAsync(new MailKit.SendRequest(message), ct);
             }
             finally
             {
