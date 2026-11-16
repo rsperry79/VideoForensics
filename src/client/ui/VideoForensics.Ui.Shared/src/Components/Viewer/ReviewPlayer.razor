@@ -53,6 +53,23 @@
     /// Seeks the video to an absolute UTC time. Does nothing when the time falls outside the selected clip, so a tile
     /// in a gap keeps playing where it is.
     /// </summary>
+    /// <summary>Plays or pauses the video. Does nothing when no video is rendered (a gap).</summary>
+    public Task TogglePlayAsync() =>
+        _player is null ? Task.CompletedTask : _player.TogglePlayAsync();
+
+    /// <summary>
+    /// Moves the playback position by <paramref name="seconds"/>, forward or back. Does nothing when no video is rendered or the
+    /// position cannot be read.
+    /// </summary>
+    public async Task NudgeAsync(double seconds)
+    {
+        double? now = await ReadPlaybackUtcSecondsAsync();
+        if (now is double value)
+        {
+            await SeekToUtcAsync(DateTime.UnixEpoch.AddSeconds(value + seconds));
+        }
+    }
+
     public Task SeekToUtcAsync(DateTime utc) =>
         _player is null ? Task.CompletedTask : _player.SeekToUtcAsync(utc);
 

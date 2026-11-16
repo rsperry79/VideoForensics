@@ -57,7 +57,7 @@
         }
         else if (State.CameraIds.Count == 1)
         {
-            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" OnPlaybackUtc="OnPlaybackPosition" />
+            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" OnPlaybackUtc="OnPlaybackPosition" OnGrabStill="StillCommand.GrabAsync" />
             @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
             {
                 <div class="review-grab-still-bar" role="status" aria-live="polite">

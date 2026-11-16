@@ -1220,4 +1220,7 @@
   <data name="ShowLessAlerts" xml:space="preserve">
     <value>Show less</value>
   </data>
+  <data name="SingleCameraKeysLabel" xml:space="preserve">
+    <value>Player. Space plays or pauses, the arrow keys move five seconds, and S grabs a still.</value>
+  </data>
 </root>
