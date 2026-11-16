@@ -28,7 +28,7 @@ else
                     <button type="button" class="camera-tile-preview" data-testid="camera-tile-preview" data-camera-index="@index" aria-label="@tile.Label" @onclick="() => OnSelect.InvokeAsync(index)">
                         @if (preview.Clip is null || preview.Url is null)
                         {
-                            <div class="camera-tile-placeholder" data-testid="camera-tile-placeholder">@L["ReviewPlayerGap"]</div>
+                            <span class="camera-tile-placeholder" data-testid="camera-tile-placeholder">@L["ReviewPlayerGap"]</span>
                         }
                         else
                         {

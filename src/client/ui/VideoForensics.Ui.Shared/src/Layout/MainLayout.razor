@@ -41,7 +41,7 @@
             }
             else
             {
-                <SfButton Content="☰" CssClass="left-nav-toggle e-flat" OnClick="@ToggleLeftNavAsync" title="@L["ToggleNavigation"]" />
+                <SfButton Content="☰" CssClass="left-nav-toggle e-flat" OnClick="@ToggleLeftNavAsync" title="@L["ToggleNavigation"]" aria-label="@L["ToggleNavigation"]" />
 
                 <div class="top-tabs">
                     @foreach (var group in VisibleGroups)
@@ -52,13 +52,13 @@
                 </div>
 
                 <div style="position: relative;">
-                    <SfButton Content="🔔" CssClass="notices-toggle e-flat" OnClick="@ToggleNoticesAsync" title="@L["Notices"]" />
+                    <SfButton Content="🔔" CssClass="notices-toggle e-flat" OnClick="@ToggleNoticesAsync" title="@L["Notices"]" aria-label="@L["Notices"]" />
                     @if (_undismissedCount > 0)
                     {
                         <span class="notices-badge">@_undismissedCount</span>
                     }
                 </div>
-                <SfButton Content="⚙" CssClass="right-panel-toggle e-flat" OnClick="@ToggleRightPanelAsync" title="@L["ToggleSettingsPanel"]" />
+                <SfButton Content="⚙" CssClass="right-panel-toggle e-flat" OnClick="@ToggleRightPanelAsync" title="@L["ToggleSettingsPanel"]" aria-label="@L["ToggleSettingsPanel"]" />
                 <UserMenuButton />
             }
         </div>

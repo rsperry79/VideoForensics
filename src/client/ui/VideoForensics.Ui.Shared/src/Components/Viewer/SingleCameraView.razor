@@ -21,7 +21,7 @@
             <button type="button" class="single-camera-preview" data-testid="single-camera-preview" data-camera-index="@index" title="@camera.Label" @onclick="() => OnSelect.InvokeAsync(index)">
                 @if (previewUrl is null)
                 {
-                    <div class="single-camera-placeholder" data-testid="single-camera-placeholder">@L["ReviewPlayerGap"]</div>
+                    <span class="single-camera-placeholder" data-testid="single-camera-placeholder">@L["ReviewPlayerGap"]</span>
                 }
                 else
                 {

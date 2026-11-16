@@ -338,7 +338,7 @@ public class ReviewFilterPanel_Tests : ReviewTestContext
         // Assert - the panel sits in the right sidebar, not in a floating card
         IElement panel = cut.Find("[data-testid='review-filter-panel']");
         Assert.DoesNotContain("review-popup", panel.ClassName);
-        Assert.Null(panel.GetAttribute("role"));
+        Assert.Equal("group", panel.GetAttribute("role"));
         Assert.DoesNotContain("min-width", panel.GetAttribute("style") ?? string.Empty);
         Assert.DoesNotContain("position", panel.GetAttribute("style") ?? string.Empty);
         Assert.Contains(L["FilterTitle"].Value, cut.FindAll("[data-testid='review-filter-panel'] .fw-semibold").Select(e => e.TextContent));
