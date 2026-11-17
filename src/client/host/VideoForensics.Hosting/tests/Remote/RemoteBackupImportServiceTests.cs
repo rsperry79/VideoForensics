@@ -85,7 +85,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Equal(1024 * 1024, puts[1].Length);
             Assert.Equal(512 * 1024, puts[2].Length);
 
-            var complete = Assert.Single(calls.Where(c => c.Path == $"/api/v1/backup/imports/{UploadId}/complete"));
+            var complete = Assert.Single(calls, c => c.Path == $"/api/v1/backup/imports/{UploadId}/complete");
             Assert.Equal("POST", complete.Method);
             using JsonDocument doc = JsonDocument.Parse(complete.Body);
             Assert.Equal(3, doc.RootElement.GetProperty("chunkCount").GetInt32());

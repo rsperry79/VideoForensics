@@ -4,7 +4,6 @@ using VideoForensics.Core.Api.Contracts;
 
 
 
-using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Events;
 
 /// <summary>
