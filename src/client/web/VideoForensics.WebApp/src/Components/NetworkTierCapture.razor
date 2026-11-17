@@ -45,6 +45,13 @@
             // Interactive circuit: HttpContext is gone - recover what the prerender pass above
             // resolved and persisted into the page for exactly this purpose.
             NetworkContext.SetTier(persistedTier);
+
+            // Persist it again so it survives a further circuit restart where the circuit handler has not run yet.
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson(PersistenceKey, NetworkContext.Tier);
+                return Task.CompletedTask;
+            });
         }
         // Else: no HttpContext and nothing persisted (e.g. a render mode with no prerender at all)
         // - SessionNetworkContext's own Internet default stands, which is the correct fail-safe.

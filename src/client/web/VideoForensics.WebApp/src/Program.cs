@@ -736,6 +736,8 @@ builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvide
 // initial connection - see Components/NetworkTierCapture.razor and SessionNetworkContext's own doc
 // comment for why this can't simply be re-resolved later from a self-HTTP call's own connection.
 builder.Services.AddScoped<SessionNetworkContext>();
+// Re-captures the tier whenever a circuit's connection comes up, including a resume with no prerender.
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, SessionNetworkTierCircuitHandler>();
 
 // Security Events page + SuperAdmin operator picker (plan §5.5): the WebApp's own Blazor UI reuses
 // the same HTTP-backed RemoteSecurityEventsService/RemoteAdminOperatorService that a MAUI client
