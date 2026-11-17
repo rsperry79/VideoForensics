@@ -151,3 +151,8 @@ nav a:hover {
     height: 12px;
     vertical-align: middle;
 }
+
+/* The left-nav pane and its separator while the pane is hidden (see layout-prefs.js setLeftNavHidden). */
+.vf-left-nav-hidden {
+    display: none !important;
+}

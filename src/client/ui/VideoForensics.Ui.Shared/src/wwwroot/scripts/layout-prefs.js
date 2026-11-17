@@ -25,10 +25,11 @@ window.vfLayoutPrefs = {
         if (!pane) {
             return false;
         }
-        pane.style.display = hidden ? 'none' : '';
+        // A class, not an inline style: Syncfusion rewrites the pane's style attribute on its own renders.
+        pane.classList.toggle('vf-left-nav-hidden', hidden);
         const separator = pane.nextElementSibling;
         if (separator && separator.classList.contains('e-splitter-separator')) {
-            separator.style.display = hidden ? 'none' : '';
+            separator.classList.toggle('vf-left-nav-hidden', hidden);
         }
         return true;
     }
