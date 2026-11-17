@@ -102,7 +102,7 @@ public class ReviewTimelinePanel_Tests : ReviewTestContext
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='timeline-cursor']")));
-        Assert.Contains("top:300px", cut.Find("[data-testid='timeline-cursor']").GetAttribute("style"), StringComparison.Ordinal);
+        Assert.Contains("top:50%",cut.Find("[data-testid='timeline-cursor']").GetAttribute("style"), StringComparison.Ordinal);
     }
 
     [Fact]
