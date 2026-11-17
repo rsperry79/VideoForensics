@@ -1,6 +1,7 @@
 using System;
 using System.IO.Abstractions;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 using VideoForensics.Providers.Ring.Models;
@@ -26,16 +27,8 @@ namespace VideoForensics.Providers.Ring
             string snapshotUrl,
             VideoMetadata videoMetadata,
             string videoFilePath,
-            string outputDirectory)
-        {
-            return await Task.FromResult(ExtractAndSaveThumbnail(snapshotUrl, videoMetadata, videoFilePath, outputDirectory));
-        }
-
-        public VideoThumbnail? ExtractAndSaveThumbnail(
-            string snapshotUrl,
-            VideoMetadata videoMetadata,
-            string videoFilePath,
-            string outputDirectory)
+            string outputDirectory,
+            CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(snapshotUrl) || videoMetadata == null)
             {
@@ -58,7 +51,7 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 // Download snapshot from Ring
-                using (HttpResponseMessage response = _httpClient.GetAsync(snapshotUrl).Result)
+                using (HttpResponseMessage response = await _httpClient.GetAsync(snapshotUrl, ct))
                 {
                     if (!response.IsSuccessStatusCode)
                     {
@@ -74,7 +67,7 @@ namespace VideoForensics.Providers.Ring
                         };
                     }
 
-                    byte[] content = response.Content.ReadAsByteArrayAsync().Result;
+                    byte[] content = await response.Content.ReadAsByteArrayAsync(ct);
 
                     // Write thumbnail file
                     _fileSystem.File.WriteAllBytes(thumbnailPath, content);
@@ -111,6 +104,11 @@ namespace VideoForensics.Providers.Ring
                 };
 
                 return thumbnail;
+            }
+            catch (OperationCanceledException)
+            {
+                // Cancellation is not a processing failure: let the caller see it.
+                throw;
             }
             catch (Exception ex)
             {

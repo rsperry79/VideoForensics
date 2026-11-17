@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 using VideoForensics.Providers.Ring.Models;
@@ -24,15 +25,8 @@ namespace VideoForensics.Providers.Ring
         Task<ProcessedSnapshot?> DownloadAndTagSnapshotAsync(
             string snapshotUrl,
             SnapshotMetadata metadata,
-            string outputDirectory);
-
-        /// <summary>
-        /// Synchronous version of DownloadAndTagSnapshotAsync.
-        /// </summary>
-        ProcessedSnapshot? DownloadAndTagSnapshot(
-            string snapshotUrl,
-            SnapshotMetadata metadata,
-            string outputDirectory);
+            string outputDirectory,
+            CancellationToken ct);
 
         /// <summary>
         /// Generates an evidence summary document for a snapshot.

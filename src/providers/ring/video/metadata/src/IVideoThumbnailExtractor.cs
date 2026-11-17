@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 using VideoForensics.Providers.Ring.Models;
@@ -24,16 +25,8 @@ namespace VideoForensics.Providers.Ring
             string snapshotUrl,
             VideoMetadata videoMetadata,
             string videoFilePath,
-            string outputDirectory);
-
-        /// <summary>
-        /// Synchronous version of ExtractAndSaveThumbnailAsync.
-        /// </summary>
-        VideoThumbnail? ExtractAndSaveThumbnail(
-            string snapshotUrl,
-            VideoMetadata videoMetadata,
-            string videoFilePath,
-            string outputDirectory);
+            string outputDirectory,
+            CancellationToken ct);
     }
 
     /// <summary>
