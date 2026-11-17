@@ -31,6 +31,32 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         }
 
         [Fact]
+        public void Restart_ArgumentWithQuotes_IsEscapedSoTheRelaunchKeepsItsValue()
+        {
+            // A quote inside an argument must not end the quoted token early.
+            var launched = new List<string>();
+            var restarter = new AppRestarter(_lifetime.Object, (pid, command) => launched.Add(command), () => false, name => true, @"C:\VideoForensics\WebApp.exe", ["--name", @"say ""hi"""]);
+
+            restarter.Restart();
+
+            _ = Assert.Single(launched);
+            Assert.Contains(@"""say \""hi\""""", launched[0]);
+        }
+
+        [Fact]
+        public void Restart_ArgumentEndingInBackslash_KeepsTheClosingQuote()
+        {
+            // An odd run of trailing backslashes would otherwise escape the closing quote.
+            var launched = new List<string>();
+            var restarter = new AppRestarter(_lifetime.Object, (pid, command) => launched.Add(command), () => false, name => true, @"C:\VideoForensics\WebApp.exe", [@"C:\data\"]);
+
+            restarter.Restart();
+
+            _ = Assert.Single(launched);
+            Assert.Contains(@"""C:\data\\""", launched[0]);
+        }
+
+        [Fact]
         public void Restart_AsAWindowsService_SchedulesTheServiceStartAndDoesNotLaunchACopy()
         {
             var launched = new List<string>();
