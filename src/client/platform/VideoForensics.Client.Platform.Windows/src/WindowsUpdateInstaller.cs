@@ -1,5 +1,3 @@
-using CliWrap;
-
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
@@ -7,8 +5,7 @@ using VideoForensics.Client.Common.Contracts;
 namespace VideoForensics.Client.Platform.Windows
 {
     /// <summary>
-    /// Windows update installer. Downloads the release .exe to the temp folder and launches it with the /passive flag
-    /// for a non-interactive install. The launch is fire-and-forget so the update does not block the running app.
+    /// Windows update installer. Currently refuses every install: the release .exe is not verified (no hash or signature).
     /// </summary>
     public class WindowsUpdateInstaller : IUpdateInstaller
     {
@@ -22,32 +19,16 @@ namespace VideoForensics.Client.Platform.Windows
         /// <inheritdoc />
         public string PackageExtension => ".exe";
 
+        /// <summary>
+        /// Refuses to run an unverified installer. The release .exe has no hash or signature check, so downloading
+        /// and launching it would execute unverified code with the user's rights. Throws before any network access
+        /// or file write. Auto-install stays off until a verified install path exists (see the update-package signature work).
+        /// </summary>
         /// <inheritdoc />
-        public async Task DownloadAndInvokeAsync(GitHubReleaseAsset asset, CancellationToken ct)
+        public Task DownloadAndInvokeAsync(GitHubReleaseAsset asset, CancellationToken ct)
         {
-            try
-            {
-                string tempPath = Path.Combine(Path.GetTempPath(), asset.Name);
-
-                using (var client = new HttpClient())
-                {
-                    await using Stream response = await client.GetStreamAsync(asset.BrowserDownloadUrl, ct).ConfigureAwait(true);
-                    await using FileStream fileStream = File.Create(tempPath);
-                    await response.CopyToAsync(fileStream, ct).ConfigureAwait(true);
-                }
-
-                // Fire-and-forget: CliWrap owns the process lifecycle, and awaiting it would block the update.
-                _ = Cli.Wrap(tempPath)
-                    .WithArguments("/passive")
-                    .ExecuteAsync(ct);
-
-                _logger.LogInformation("Launched installer '{AssetName}' with /passive", asset.Name);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Failed to download/invoke installer for asset '{AssetName}': {Message} ({ErrorType})", asset.Name, ex.Message, ex.GetType().Name);
-                throw;
-            }
+            _logger.LogWarning("Refused unverified installer '{AssetName}': no hash or signature check is available", asset.Name);
+            throw new InvalidOperationException("Unverified installers are refused; auto-install is disabled until a verified install path exists.");
         }
     }
 }
