@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Repositories
 {
@@ -10,7 +11,6 @@ namespace VideoForensics.Data.Database.Repositories
     {
         // Our own time-lapse events are excluded from gap boundaries, so the planner never plans around its own output.
         private const string TimelapseEventType = "timelapse";
-        private const string LoopMarker = "\"type\":\"snapshot-rollup\"";
 
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<TimelapseGapQueries> _logger;
@@ -74,7 +74,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<DateTime?> GetLatestTimelapseEndUtcAsync(Guid deviceId, CancellationToken ct)
         {
             var latest = await _unitOfWork.ReadAsync(context => context.Db().MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.MetadataJson != null && m.MetadataJson.Contains(LoopMarker))
+                .Where(m => m.DeviceId == deviceId && m.MediaKind == MediaKinds.Timelapse)
                 .OrderByDescending(m => m.RecordedAtUtc)
                 .Select(m => new { m.RecordedAtUtc, m.DurationSeconds })
                 .FirstOrDefaultAsync(ct), ct);
