@@ -25,8 +25,6 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
     public MainLayoutAutoCollapseTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        // The splitter is ready in these tests, so the hide is applied on the first call.
-        JSInterop.Setup<bool>(SetHiddenIdentifier, _ => true).SetResult(true);
     }
 
     [Theory]

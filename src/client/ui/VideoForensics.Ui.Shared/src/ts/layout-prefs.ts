@@ -23,13 +23,6 @@ window.vfLayoutPrefs = {
             return false;
         }
 
-        // Hiding before Syncfusion has initialised the splitter makes it measure the pane at 0, and it keeps the
-        // 48px minimum for good. Report "not applied" so the caller retries on a later render.
-        const splitter = pane.closest<HTMLElement & { ej2_instances?: unknown[] }>('.e-splitter');
-        if (hidden && !splitter?.ej2_instances?.length) {
-            return false;
-        }
-
         // A class, not an inline style: Syncfusion rewrites the pane's style attribute on its own renders.
         pane.classList.toggle('vf-left-nav-hidden', hidden);
         const separator = pane.nextElementSibling;

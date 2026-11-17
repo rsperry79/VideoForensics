@@ -124,7 +124,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             try
             {
-                _leftNavRestorePending = !await SetLeftNavPaneCollapsedAsync(true);
+                await SetLeftNavPaneCollapsedAsync(true);
+                _leftNavRestorePending = false;
             }
             catch (Exception ex) when (IsSplitterNotReady(ex))
             {
@@ -164,8 +165,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 || (!IsExpandedLeftNavPath(_currentPath) && LayoutPrefs.LeftNavCollapsed);
             try
             {
-                bool applied = wantCollapsed == _leftNavPaneCollapsed || await SetLeftNavPaneCollapsedAsync(wantCollapsed);
-                _leftNavSyncPending = !applied;
+                if (wantCollapsed != _leftNavPaneCollapsed)
+                {
+                    await SetLeftNavPaneCollapsedAsync(wantCollapsed);
+                }
+
+                _leftNavSyncPending = false;
             }
             catch (Exception ex) when (IsSplitterNotReady(ex))
             {
@@ -177,16 +182,10 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// Hides or shows the left-nav pane through the DOM, not the splitter's Collapse/Expand: those reset the pane to its
         /// minimum width when it is shown again, which lost the saved width on every visit to /media.
         /// </summary>
-        /// <returns>False when the pane could not be hidden yet (the splitter has not initialised); the caller keeps its sync pending.</returns>
-        private async Task<bool> SetLeftNavPaneCollapsedAsync(bool collapsed)
+        private async Task SetLeftNavPaneCollapsedAsync(bool collapsed)
         {
-            bool applied = await JS.InvokeAsync<bool>("vfLayoutPrefs.setLeftNavHidden", collapsed);
-            if (applied)
-            {
-                _leftNavPaneCollapsed = collapsed;
-            }
-
-            return applied;
+            await JS.InvokeVoidAsync("vfLayoutPrefs.setLeftNavHidden", collapsed);
+            _leftNavPaneCollapsed = collapsed;
         }
 
         /// <summary>

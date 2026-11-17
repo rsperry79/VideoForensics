@@ -29,23 +29,6 @@ describe("layout-prefs", () => {
         vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
         expect(() => window.vfLayoutPrefs.set("k", "v")).not.toThrow();
     });
-
-    it("does not hide the left-nav pane before Syncfusion has initialised it", () => {
-        // Hiding first makes the splitter measure the pane at 0 and keep its 48px minimum.
-        document.body.innerHTML = '<div class="e-splitter"><div class="splitter-left-nav"></div></div>';
-        const pane = document.querySelector<HTMLElement>(".splitter-left-nav")!;
-        expect(window.vfLayoutPrefs.setLeftNavHidden(true)).toBe(false);
-        expect(pane.classList.contains("vf-left-nav-hidden")).toBe(false);
-    });
-
-    it("hides the left-nav pane once Syncfusion has initialised it", () => {
-        document.body.innerHTML = '<div class="e-splitter"><div class="splitter-left-nav"></div></div>';
-        const splitter = document.querySelector<HTMLElement & { ej2_instances?: unknown[] }>(".e-splitter")!;
-        splitter.ej2_instances = [{}];
-        const pane = document.querySelector<HTMLElement>(".splitter-left-nav")!;
-        expect(window.vfLayoutPrefs.setLeftNavHidden(true)).toBe(true);
-        expect(pane.classList.contains("vf-left-nav-hidden")).toBe(true);
-    });
 });
 
 describe("device-label", () => {
