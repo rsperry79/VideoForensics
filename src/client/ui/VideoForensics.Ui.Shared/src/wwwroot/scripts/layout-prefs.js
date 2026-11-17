@@ -17,5 +17,19 @@ window.vfLayoutPrefs = {
         catch {
             // Best-effort - private browsing / storage disabled just means the default is used.
         }
+    },
+    // Hides or shows the left-nav pane (the first splitter pane) and the separator after it. The pane keeps its width, so
+    // showing it again brings back the saved width. Collapsing the splitter pane instead resets that width.
+    setLeftNavHidden: function (hidden) {
+        const pane = document.querySelector('.splitter-left-nav');
+        if (!pane) {
+            return false;
+        }
+        pane.style.display = hidden ? 'none' : '';
+        const separator = pane.nextElementSibling;
+        if (separator && separator.classList.contains('e-splitter-separator')) {
+            separator.style.display = hidden ? 'none' : '';
+        }
+        return true;
     }
 };

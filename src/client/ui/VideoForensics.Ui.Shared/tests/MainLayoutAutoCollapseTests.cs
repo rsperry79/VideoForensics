@@ -17,9 +17,8 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// </summary>
 public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
 {
-    // Syncfusion's Splitter JS identifiers for CollapseAsync / ExpandAsync.
-    private const string CollapseIdentifier = "sfBlazor.Splitter.collapse";
-    private const string ExpandIdentifier = "sfBlazor.Splitter.expand";
+    // The left pane is hidden or shown through vfLayoutPrefs.setLeftNavHidden(hidden).
+    private const string SetHiddenIdentifier = "vfLayoutPrefs.setLeftNavHidden";
     private const string LeftNavKey = "vf.layout.leftNavCollapsed";
     private const string SetPrefIdentifier = "vfLayoutPrefs.set";
 
@@ -41,7 +40,7 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         _ = Render<MainLayout>();
 
         // Assert
-        Assert.Equal(1, CountInvocations(CollapseIdentifier));
+        Assert.Equal(1, CountHidden(true));
     }
 
     [Theory]
@@ -57,7 +56,7 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         _ = Render<MainLayout>();
 
         // Assert
-        Assert.Equal(1, CountInvocations(CollapseIdentifier));
+        Assert.Equal(1, CountHidden(true));
     }
 
     [Fact]
@@ -71,7 +70,7 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         _ = Render<MainLayout>();
 
         // Assert
-        Assert.Equal(0, CountInvocations(CollapseIdentifier));
+        Assert.Equal(0, CountHidden(true));
     }
 
     [Fact]
@@ -87,8 +86,8 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         await component.InvokeAsync(() => Task.CompletedTask);
 
         // Assert: /media collapsed the pane; leaving it brings the saved (expanded) preference back
-        Assert.Equal(1, CountInvocations(CollapseIdentifier));
-        Assert.Equal(1, CountInvocations(ExpandIdentifier));
+        Assert.Equal(1, CountHidden(true));
+        Assert.Equal(1, CountHidden(false));
     }
 
     [Fact]
@@ -104,7 +103,7 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         await component.InvokeAsync(() => Task.CompletedTask);
 
         // Assert
-        Assert.Equal(0, CountInvocations(ExpandIdentifier));
+        Assert.Equal(0, CountHidden(false));
     }
 
     [Fact]
@@ -120,8 +119,8 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         await component.InvokeAsync(() => Task.CompletedTask);
 
         // Assert - the pane collapses for this visit only; the saved preference is untouched
-        Assert.Equal(1, CountInvocations(CollapseIdentifier));
-        Assert.Equal(0, CountInvocations(SetPrefIdentifier));
+        Assert.Equal(1, CountHidden(true));
+        Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == SetPrefIdentifier));
     }
 
     private void NavigateTo(string uri)
@@ -129,8 +128,8 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         Services.GetRequiredService<NavigationManager>().NavigateTo(uri);
     }
 
-    private int CountInvocations(string identifier)
+    private int CountHidden(bool hidden)
     {
-        return JSInterop.Invocations.Count(i => i.Identifier == identifier);
+        return JSInterop.Invocations.Count(i => i.Identifier == SetHiddenIdentifier && i.Arguments.Count == 1 && i.Arguments[0] is bool value && value == hidden);
     }
 }

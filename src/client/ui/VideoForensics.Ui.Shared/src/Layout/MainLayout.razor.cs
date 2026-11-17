@@ -18,9 +18,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         private string _currentQuery = string.Empty;
         private SfSplitter? _outerSplitter;
         private double _leftNavWidth = 220;
-
-        // The pane's size as a bound value. Expanding after a collapse re-applies it, so the saved width comes back.
-        private string _leftNavPaneSize = "220px";
         private double _rightPanelWidth = 280;
         private bool _rightPanelHandleAttached;
         // Mirrors SessionState.PasskeySetupOnly (limited create-passkey session): hides all navigation and the settings panel.
@@ -85,7 +82,6 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 if (LayoutPrefs.LeftNavWidth > 0)
                 {
                     _leftNavWidth = LayoutPrefs.LeftNavWidth;
-                    _leftNavPaneSize = $"{_leftNavWidth}px";
                 }
 
                 if (LayoutPrefs.RightPanelWidth > 0)
@@ -128,7 +124,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             try
             {
-                await SetLeftNavPaneCollapsedAsync(splitter, true);
+                await SetLeftNavPaneCollapsedAsync(true);
                 _leftNavRestorePending = false;
             }
             catch (Exception ex) when (IsSplitterNotReady(ex))
@@ -171,7 +167,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             {
                 if (wantCollapsed != _leftNavPaneCollapsed)
                 {
-                    await SetLeftNavPaneCollapsedAsync(splitter, wantCollapsed);
+                    await SetLeftNavPaneCollapsedAsync(wantCollapsed);
                 }
 
                 _leftNavSyncPending = false;
@@ -182,18 +178,13 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             }
         }
 
-        private async Task SetLeftNavPaneCollapsedAsync(SfSplitter splitter, bool collapsed)
+        /// <summary>
+        /// Hides or shows the left-nav pane through the DOM, not the splitter's Collapse/Expand: those reset the pane to its
+        /// minimum width when it is shown again, which lost the saved width on every visit to /media.
+        /// </summary>
+        private async Task SetLeftNavPaneCollapsedAsync(bool collapsed)
         {
-            if (collapsed)
-            {
-                await splitter.CollapseAsync(LeftPaneIndex);
-            }
-            else
-            {
-                _leftNavPaneSize = $"{_leftNavWidth}px";
-                await splitter.ExpandAsync(LeftPaneIndex);
-            }
-
+            await JS.InvokeVoidAsync("vfLayoutPrefs.setLeftNavHidden", collapsed);
             _leftNavPaneCollapsed = collapsed;
         }
 
@@ -281,7 +272,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             {
                 if (_outerSplitter is not null)
                 {
-                    await SetLeftNavPaneCollapsedAsync(_outerSplitter, !_leftNavPaneCollapsed);
+                    await SetLeftNavPaneCollapsedAsync(!_leftNavPaneCollapsed);
                 }
 
                 return;
@@ -295,7 +286,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 return;
             }
 
-            await SetLeftNavPaneCollapsedAsync(_outerSplitter, collapsed);
+            await SetLeftNavPaneCollapsedAsync(collapsed);
         }
 
         private async Task ToggleRightPanelAsync()
