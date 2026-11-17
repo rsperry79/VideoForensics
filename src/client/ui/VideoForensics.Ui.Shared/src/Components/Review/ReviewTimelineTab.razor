@@ -71,7 +71,7 @@
         }
         else
         {
-            <CameraGrid Tiles="_tiles" Cursor="State.Cursor" />
+            <CameraGrid Tiles="_tiles" Cursor="State.Cursor" OnSelect="OnGridSelect" />
         }
     }
 </div>
@@ -400,6 +400,17 @@
     /// Publishes the Grab still reason and handler to the sidebar button. Grab still needs the single-camera player, so
     /// a grid of several cameras reports that instead of the capture reasons.
     /// </summary>
+    /// <summary>A click on a grid preview opens that camera as the single view, the same as selecting only it in the filter.</summary>
+    private void OnGridSelect(int index)
+    {
+        if (index < 0 || index >= _tileDeviceIds.Count)
+        {
+            return;
+        }
+
+        State.SetCameras([_tileDeviceIds[index]]);
+    }
+
     private void PublishGrabStill()
     {
         if (_disposed)

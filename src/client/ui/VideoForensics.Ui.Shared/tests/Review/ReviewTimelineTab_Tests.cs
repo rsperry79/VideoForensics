@@ -113,6 +113,24 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewTimelineTab_GridPreviewClicked_OpensThatCameraAsTheSingleView()
+    {
+        // Arrange
+        AddDevices(2);
+        ReviewState.SetCameras(Devices.Select(d => d.Id));
+        ServeOneClipPerCamera();
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindAll("[data-testid='camera-tile-preview']")));
+
+        // Act
+        cut.Find("[data-testid='camera-tile-preview']").Click();
+
+        // Assert
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<SingleCameraView>()));
+        Assert.Equal([Devices[1].Id], ReviewState.CameraIds);
+    }
+
+    [Fact]
     public void ReviewTimelineTab_NoCamerasSelected_ShowsTheEmptyStateAndDoesNotLoad()
     {
         // Arrange
