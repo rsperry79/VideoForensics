@@ -33,6 +33,25 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
+        public async Task Authenticate_TokenResponse_IsNotWrittenToTheRawLog()
+        {
+            // The OAuth response carries access and refresh tokens. The raw log is written to disk, so it must not hold them.
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
+            mockHandler.SetupResponse("https://oauth.ring.com/oauth/token", System.Net.HttpStatusCode.OK,
+                "{\"access_token\":\"secret-access-123\",\"refresh_token\":\"secret-refresh-456\",\"expires_in\":3600}");
+
+            _ = await _mockSession.Authenticate();
+
+            lock (_captured)
+            {
+                RawApiCall? call = _captured.Find(c => c.Url.Contains("oauth.ring.com"));
+                Assert.NotNull(call);
+                Assert.DoesNotContain("secret-access-123", call.Body);
+                Assert.DoesNotContain("secret-refresh-456", call.Body);
+            }
+        }
+
+        [Fact]
         public async Task SetLight_RaisesApiRawLoggerEvent()
         {
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();

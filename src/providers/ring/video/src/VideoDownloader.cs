@@ -47,8 +47,33 @@ namespace VideoForensics.Providers.Ring
             using HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             _ = response.EnsureSuccessStatusCode();
 
-            await using FileStream fileStream = File.Create(saveAsPath);
-            await response.Content.CopyToAsync(fileStream);
+            // Why: write to a part file and move it into place only when the full body arrived. A dropped connection
+            // must not leave a truncated clip that later passes as complete evidence.
+            long? expectedLength = response.Content.Headers.ContentLength;
+            string partPath = saveAsPath + ".part";
+            try
+            {
+                long written;
+                await using (FileStream fileStream = File.Create(partPath))
+                {
+                    await response.Content.CopyToAsync(fileStream);
+                    written = fileStream.Length;
+                }
+
+                if (expectedLength.HasValue && written != expectedLength.Value)
+                {
+                    throw new IOException($"Download incomplete: received {written} of {expectedLength.Value} bytes.");
+                }
+
+                File.Move(partPath, saveAsPath, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(partPath))
+                {
+                    File.Delete(partPath);
+                }
+            }
         }
 
         private async Task<byte[]> DownloadBytesAsync(string url)

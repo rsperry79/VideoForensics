@@ -105,6 +105,31 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         }
 
         [Fact]
+        public void SanitizeClearTextPassword_UnreadableStoredRefreshToken_KeepsClearTextAndTheToken()
+        {
+            // A stored token that cannot be decrypted must not be overwritten with null; the clear text stays until it can be migrated.
+            string settingsPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-settings-{Guid.NewGuid()}.json");
+            string authPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
+            var store = new CredentialStore();
+            try
+            {
+                File.WriteAllText(settingsPath, "{\"Password\":\"clear-text-secret\"}");
+                File.WriteAllText(authPath, "{\"UserName\":\"u\",\"Password\":\"x\",\"RefreshToken\":\"not-a-valid-ciphertext\"}");
+
+                bool migrated = store.SanitizeClearTextPassword(settingsPath, authPath);
+
+                Assert.False(migrated);
+                Assert.Contains("clear-text-secret", File.ReadAllText(settingsPath));
+                Assert.Contains("not-a-valid-ciphertext", File.ReadAllText(authPath));
+            }
+            finally
+            {
+                if (File.Exists(settingsPath)) { File.Delete(settingsPath); }
+                if (File.Exists(authPath)) { File.Delete(authPath); }
+            }
+        }
+
+        [Fact]
         public void SanitizeClearTextPassword_MigratesAndRemovesClearTextField()
         {
             string settingsPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-settings-{Guid.NewGuid()}.json");

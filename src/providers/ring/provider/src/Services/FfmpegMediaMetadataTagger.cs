@@ -54,8 +54,8 @@ namespace VideoForensics.Providers.Ring.Services
                     return false;
                 }
 
-                File.Delete(mediaFilePath);
-                File.Move(tmpPath, mediaFilePath);
+                // Why: one overwrite move. Deleting the original first lost the evidence file when the move then failed.
+                File.Move(tmpPath, mediaFilePath, overwrite: true);
                 return true;
             }
             catch (Exception ex)
