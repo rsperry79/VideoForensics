@@ -58,7 +58,9 @@ namespace VideoForensics.Client.Hosting
         {
             IPAddress? remoteIp = context.Connection.RemoteIpAddress;
 
-            if (remoteIp != null && IsCloudflareEdgeIp(remoteIp) &&
+            // Trusted peers: Cloudflare's edge, and loopback, where cloudflared delivers tunnel traffic.
+            // Any other peer's header is ignored, since it can be forged.
+            if (remoteIp != null && (IsCloudflareEdgeIp(remoteIp) || IPAddress.IsLoopback(remoteIp)) &&
                 context.Request.Headers.TryGetValue("CF-Connecting-IP", out StringValues headerValue) &&
                 IPAddress.TryParse(headerValue.ToString(), out IPAddress? realClientIp))
             {

@@ -41,6 +41,26 @@ namespace VideoForensics.Client.Hosting.Tests
         }
 
         [Fact]
+        public void ResolveClientIp_LoopbackTunnelRequest_ReturnsCfConnectingIp()
+        {
+            // Audit rows and IP bans must name the visitor, not cloudflared's loopback address.
+            var resolver = new NetworkTierResolver();
+            HttpContext context = CreateContext("127.0.0.1", cfConnectingIp: "203.0.113.7");
+
+            Assert.Equal("203.0.113.7", resolver.ResolveClientIp(context));
+        }
+
+        [Fact]
+        public void ResolveClientIp_LanPeerWithCfConnectingIp_IgnoresHeader()
+        {
+            // A LAN peer is not cloudflared, so its CF-Connecting-IP header is spoofable and must be ignored.
+            var resolver = new NetworkTierResolver();
+            HttpContext context = CreateContext("192.168.1.20", cfConnectingIp: "203.0.113.7");
+
+            Assert.Equal("192.168.1.20", resolver.ResolveClientIp(context));
+        }
+
+        [Fact]
         public void ResolveTier_LoopbackWithoutCfConnectingIp_ReturnsLocal()
         {
             var resolver = new NetworkTierResolver();
