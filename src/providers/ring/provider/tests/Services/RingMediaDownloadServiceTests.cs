@@ -379,7 +379,8 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             }
         }
 
-        private const string VideoEventCreatedAt = "2026-10-17T12:00:00Z";
+        // Relative to now: the download window is the last 30 days, so a fixed date ages out and the event is never considered.
+        private static readonly string VideoEventCreatedAt = DateTime.UtcNow.AddDays(-1).ToString("O", System.Globalization.CultureInfo.InvariantCulture);
 
         private sealed class StubVideoHistoryHandler : HttpMessageHandler
         {
