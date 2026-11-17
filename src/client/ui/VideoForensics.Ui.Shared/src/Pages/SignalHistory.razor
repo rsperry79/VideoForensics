@@ -336,6 +336,11 @@
     </div>
 }
 
+@if (_loadFailed)
+{
+    <div class="alert alert-danger" role="alert">@L["LoadFailed"]</div>
+}
+
 @if (!ScopeState.Current.MatchesNoDevices)
 {
     <h4 class="mt-4 mb-2" data-testid="signal-flags-heading">@L["SignalFlagsHeading"]</h4>
@@ -413,14 +418,31 @@
         }
     }
 
-    private async void OnScopeChanged()
+    // Event handlers cannot be awaited. A failed reload is shown on the page instead of escaping unobserved.
+    private bool _loadFailed;
+
+    private void OnScopeChanged() => _ = ReloadForScopeAsync();
+
+    private async Task ReloadForScopeAsync()
     {
-        await InvokeAsync(async () =>
+        try
         {
-            _menuDeviceId = null;
-            await LoadAsync();
-            StateHasChanged();
-        });
+            await InvokeAsync(async () =>
+            {
+                _menuDeviceId = null;
+                await LoadAsync();
+                _loadFailed = false;
+                StateHasChanged();
+            });
+        }
+        catch (Exception)
+        {
+            await InvokeAsync(() =>
+            {
+                _loadFailed = true;
+                StateHasChanged();
+            });
+        }
     }
 
     /// <summary>

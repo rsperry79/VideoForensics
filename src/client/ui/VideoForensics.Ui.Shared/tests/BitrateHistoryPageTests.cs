@@ -29,6 +29,40 @@ public class BitrateHistory_Tests : ScopeRailTestContext
 
     private IStringLocalizer<BitrateHistory> Localizer => Services.GetRequiredService<IStringLocalizer<BitrateHistory>>();
 
+    [Fact]
+    public void ScopeChange_WhenLoadFails_ShowsLocalizedErrorInsteadOfThrowing()
+    {
+        // Before the fix the scope-change handler was async void, so this exception escaped unobserved.
+        _ = RegisterDeviceRepository(_device);
+        int calls = 0;
+        var service = new Mock<IBitrateAnalysisService>();
+        _ = service
+            .Setup(s => s.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                calls++;
+                if (calls > 1)
+                {
+                    throw new HttpRequestException("server unreachable");
+                }
+
+                return Task.FromResult(new BitrateAnalysis(Array.Empty<BitrateDeviceAnalysis>()));
+            });
+        _ = Services.AddScoped(_ => service.Object);
+        _ = Services.AddScoped<SignalDrillTrail>();
+        var flags = new Mock<IMediaFlagRepository>();
+        _ = flags
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0).ToDto());
+        _ = Services.AddScoped(_ => flags.Object);
+
+        IRenderedComponent<BitrateHistory> cut = Render<BitrateHistory>();
+        ScopeState scope = Services.GetRequiredService<ScopeState>();
+        scope.Set(scope.Current with { MatchesNoDevices = true });
+
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["LoadFailed"], cut.Markup));
+    }
+
     private static BitrateDeviceAnalysis Analysis(Device device, IReadOnlyList<BitrateSample> readings)
     {
         DateTime from = DateTime.UtcNow.AddDays(-30);
