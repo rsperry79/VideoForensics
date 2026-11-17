@@ -34,6 +34,14 @@ jobs:
       # Pinned to workload set 10.0.401: set 10.0.401.1 moved the iOS pack to 27.0.10722, which requires
       # Xcode 27, but macos-latest still ships Xcode 26.6 (build-ios fails with "requires Xcode 27.0").
       # 10.0.401 is the set the last passing run (2026-09-28) used. Unpin once macos-latest has Xcode 27.
+      # macos-latest also ships a .NET 11 SDK whose workload manifests (microsoft.net.workload.emscripten.net10 under
+      # sdk-manifests/11.0.100) conflict with the .NET 10 set, so the install fails. Clean the stray workload state first.
+      - name: Clean stray workload manifests
+        run: |
+          dotnet --list-sdks
+          dotnet workload list
+          dotnet workload clean
+
       - name: Install MAUI iOS workload
         run: dotnet workload install maui-ios --version 10.0.401
 
