@@ -194,7 +194,7 @@ if (OperatingSystem.IsWindows() && updatesActiveAsService)
     }
 
     var startupApplier = new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
-        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()),
         new VideoForensics.Client.Hosting.Updates.UpdateApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>.Instance),
         Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>.Instance);
     string runningVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0";
@@ -526,7 +526,7 @@ if (inPlaceUpdatesEnabled)
     // Stage the release zip; StartupUpdateApplier applies it on the next service start. No installer is launched.
     _ = builder.Services.AddHttpClient();
     _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdatePackageVerifier>(
-        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier());
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()));
     _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateStager>(sp =>
         new VideoForensics.Client.Hosting.Updates.UpdateStager(
             updatesRoot,
@@ -568,10 +568,10 @@ if (updatesActiveAsService)
     builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.MaintenanceUpdateDrain>();
     _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
         updatesRoot,
-        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()),
         sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateDrain>(),
         new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
-            new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+            new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()),
             new VideoForensics.Client.Hosting.Updates.UpdateApplier(sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>>()),
             sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>>()),
         AppContext.BaseDirectory,
