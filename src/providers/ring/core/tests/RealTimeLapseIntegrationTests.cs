@@ -151,6 +151,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                         DownloadedAtUtc = DateTime.UtcNow,
                         Sha256Hash = Convert.ToHexString(SHA256.HashData(result.Bytes)).ToLowerInvariant(),
                         IntegrityVerified = false,
+                        MediaKind = MediaKinds.Snapshot,
                         MetadataJson = CaptureSnapshotMetadata,
                     }, ct);
                 }
