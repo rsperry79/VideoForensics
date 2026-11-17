@@ -38,6 +38,19 @@ namespace VideoForensics.Client.Core.Services
             _dingIdLinks = dingIdLinks;
         }
 
+        /// <summary>True when <paramref name="relativePath"/> is a relative path that resolves to a file under <paramref name="root"/>.</summary>
+        private static bool IsWithinRoot(string root, string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath) || Path.IsPathRooted(relativePath))
+            {
+                return false;
+            }
+
+            string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            string fullPath = Path.GetFullPath(Path.Combine(fullRoot, relativePath));
+            return fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase);
+        }
+
         public async Task<BackupImportResult> ImportBackupAsync(string backupZipPath, string mediaRootPath, CancellationToken ct)
         {
             string tempDir = Path.Combine(Path.GetTempPath(), "VideoForensicsImport_" + Guid.NewGuid());
@@ -55,7 +68,13 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        string outPath = Path.Combine(tempDir, entry.Name);
+                        // Why: an entry name such as "../x" or a rooted path would write outside the import folder (zip-slip).
+                        string outPath = Path.GetFullPath(Path.Combine(tempDir, entry.Name));
+                        if (!outPath.StartsWith(Path.GetFullPath(tempDir) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidDataException($"Backup entry '{entry.Name}' is outside the import folder.");
+                        }
+
                         using System.IO.Stream zipStream = zipFile.GetInputStream(entry);
                         using FileStream outStream = File.Create(outPath);
                         await zipStream.CopyToAsync(outStream, ct);
@@ -230,6 +249,14 @@ namespace VideoForensics.Client.Core.Services
 
                     foreach (ExportedMediaItem exported in mediaItems)
                     {
+                        // Why: a media path outside the media folder would make the import hash, and later serve, an arbitrary file.
+                        if (!IsWithinRoot(mediaRootPath, exported.RelativeMediaPath))
+                        {
+                            importResult.MediaItems.SkippedOrphaned++;
+                            importResult.Details.Add($"Skipped MediaItem {exported.Id}: its file path is outside the media folder");
+                            continue;
+                        }
+
                         var mediaItem = exported.ToMediaItem(mediaRootPath);
 
                         if (await ctx.MediaItems.GetAsync(mediaItem.Id, ct) != null)
