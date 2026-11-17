@@ -79,3 +79,8 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 - Fix: re-applied the multi-line edits with the Edit tool; verified with git diff.
 - Rule: check the diff after any scripted replace; use Edit for multi-line changes on CRLF working copies.
 - Also: Evidence cleanup removed 11 source files and 11 test files in one batch, built clean; only the known FolderPicker_Cancel flake failed (passes alone).
+
+## 2026-11-17 Known flaky tests (not yet fixed)
+- HistogramTimeline_Playback PlaybackTimeline_MarkerClick: failed in a full Ui.Shared run, passes alone.
+- FolderPicker_Tests.FolderPicker_Cancel_InvokesOnClosedWithNull: failed once in a full Ui.Shared run (Actual unset), passes alone and in the next full run. Earlier FolderPicker and WriteGateTests failures were also seen.
+- Rule: when one of these fails, rerun it alone before treating it as a regression, and record the run.
