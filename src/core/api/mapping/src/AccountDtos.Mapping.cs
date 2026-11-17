@@ -116,12 +116,12 @@ namespace VideoForensics.Core.Api.Contracts
                 Id: entity.Id,
                 ProviderAccountId: entity.ProviderAccountId,
                 EventPollIntervalMinutes: entity.EventPollIntervalMinutes,
-                SnapshotRssiIntervalSeconds: entity.SnapshotRssiIntervalSeconds,
+                SnapshotRssiIntervalMinutes: entity.SnapshotRssiIntervalMinutes,
                 IsEnabled: entity.IsEnabled,
                 UseAdvancedJammingSchedule: entity.UseAdvancedJammingSchedule,
                 EventNextRunUtc: entity.EventNextRunUtc,
                 EventLastRunUtc: entity.EventLastRunUtc,
-                SnapshotIntervalSeconds: entity.SnapshotIntervalSeconds,
+                SnapshotIntervalMinutes: entity.SnapshotIntervalMinutes,
                 BackfillCursorUtc: entity.BackfillCursorUtc,
                 JammingWindows: entity.JammingWindows.Select(w => w.ToDto()).ToList()
             );
@@ -137,12 +137,12 @@ namespace VideoForensics.Core.Api.Contracts
                 Id = dto.Id,
                 ProviderAccountId = dto.ProviderAccountId,
                 EventPollIntervalMinutes = dto.EventPollIntervalMinutes,
-                SnapshotRssiIntervalSeconds = dto.SnapshotRssiIntervalSeconds,
+                SnapshotRssiIntervalMinutes = dto.SnapshotRssiIntervalMinutes,
                 IsEnabled = dto.IsEnabled,
                 UseAdvancedJammingSchedule = dto.UseAdvancedJammingSchedule,
                 EventNextRunUtc = dto.EventNextRunUtc,
                 EventLastRunUtc = dto.EventLastRunUtc,
-                SnapshotIntervalSeconds = dto.SnapshotIntervalSeconds,
+                SnapshotIntervalMinutes = dto.SnapshotIntervalMinutes,
                 BackfillCursorUtc = dto.BackfillCursorUtc,
                 JammingWindows = (dto.JammingWindows ?? []).Select(w => w.ToDomain(dto.Id)).ToList()
             };

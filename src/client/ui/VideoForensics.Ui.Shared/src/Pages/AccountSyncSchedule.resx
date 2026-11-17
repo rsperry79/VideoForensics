@@ -45,7 +45,7 @@
     <value>Configure Sync Settings</value>
   </data>
   <data name="SnapshotRssiIntervalLabel" xml:space="preserve">
-    <value>Snapshot/RSSI Interval:</value>
+    <value>Snapshot/RSSI Interval (minutes):</value>
   </data>
   <data name="EventPollIntervalLabel" xml:space="preserve">
     <value>Event Poll Interval (minutes):</value>
@@ -159,7 +159,7 @@
     <value>minutes</value>
   </data>
   <data name="IntervalMinimum" xml:space="preserve">
-    <value>Interval must be at least {0} seconds.</value>
+    <value>Interval must be at least {0} minute(s).</value>
   </data>
   <data name="ScheduleSaved" xml:space="preserve">
     <value>Schedule saved successfully.</value>

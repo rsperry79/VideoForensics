@@ -7,7 +7,7 @@ namespace VideoForensics.Core.Api.Contracts
     {
         /// <summary>Converts a JammingScheduleWindow entity to its DTO.</summary>
         public static JammingScheduleWindowDto ToDto(this JammingScheduleWindow entity) =>
-            new(entity.Id, entity.DayOfWeek, entity.StartMinuteOfDay, entity.EndMinuteOfDay, entity.SnapshotRssiIntervalSeconds);
+            new(entity.Id, entity.DayOfWeek, entity.StartMinuteOfDay, entity.EndMinuteOfDay, entity.SnapshotRssiIntervalMinutes);
 
         /// <summary>Converts a JammingScheduleWindowDto to an entity owned by the given sync schedule.</summary>
         public static JammingScheduleWindow ToDomain(this JammingScheduleWindowDto dto, Guid syncScheduleId) => new()
@@ -17,7 +17,7 @@ namespace VideoForensics.Core.Api.Contracts
             DayOfWeek = dto.DayOfWeek,
             StartMinuteOfDay = dto.StartMinuteOfDay,
             EndMinuteOfDay = dto.EndMinuteOfDay,
-            SnapshotRssiIntervalSeconds = dto.SnapshotRssiIntervalSeconds,
+            SnapshotRssiIntervalMinutes = dto.SnapshotRssiIntervalMinutes,
         };
     }
 }

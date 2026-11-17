@@ -42,10 +42,10 @@ namespace VideoForensics.Data.Database.Repositories
                     nameof(schedule));
             }
 
-            if (schedule.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
+            if (schedule.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumSnapshotIntervalMinutes)
             {
                 throw new ArgumentException(
-                    $"SnapshotRssiIntervalSeconds ({schedule.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                    $"SnapshotRssiIntervalMinutes ({schedule.SnapshotRssiIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotIntervalMinutes}",
                     nameof(schedule));
             }
 
@@ -82,10 +82,10 @@ namespace VideoForensics.Data.Database.Repositories
                             nameof(schedule));
                     }
 
-                    if (window.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
+                    if (window.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumSnapshotIntervalMinutes)
                     {
                         throw new ArgumentException(
-                            $"Window SnapshotRssiIntervalSeconds ({window.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                            $"Window SnapshotRssiIntervalMinutes ({window.SnapshotRssiIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotIntervalMinutes}",
                             nameof(schedule));
                     }
                 }
@@ -103,7 +103,7 @@ namespace VideoForensics.Data.Database.Repositories
                     if (existing != null)
                     {
                         existing.EventPollIntervalMinutes = schedule.EventPollIntervalMinutes;
-                        existing.SnapshotRssiIntervalSeconds = schedule.SnapshotRssiIntervalSeconds;
+                        existing.SnapshotRssiIntervalMinutes = schedule.SnapshotRssiIntervalMinutes;
                         existing.IsEnabled = schedule.IsEnabled;
                         existing.UseAdvancedJammingSchedule = schedule.UseAdvancedJammingSchedule;
                         existing.EventNextRunUtc = schedule.EventNextRunUtc;
@@ -212,12 +212,12 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
 
-        /// <summary>Updates only SnapshotIntervalSeconds; a vanished row is a no-op.</summary>
-        public async Task SetSnapshotIntervalSecondsAsync(Guid providerAccountId, int seconds, CancellationToken ct)
+        /// <summary>Updates only SnapshotIntervalMinutes; a vanished row is a no-op.</summary>
+        public async Task SetSnapshotIntervalMinutesAsync(Guid providerAccountId, int minutes, CancellationToken ct)
         {
-            if (seconds < 1)
+            if (minutes < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(seconds), seconds, "SnapshotIntervalSeconds must be at least 1.");
+                throw new ArgumentOutOfRangeException(nameof(minutes), minutes, "SnapshotIntervalMinutes must be at least 1.");
             }
 
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
@@ -226,7 +226,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = await db.SyncSchedules
                     .Where(ss => ss.ProviderAccountId == providerAccountId)
                     .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(ss => ss.SnapshotIntervalSeconds, seconds), ct);
+                        .SetProperty(ss => ss.SnapshotIntervalMinutes, minutes), ct);
                 return null;
             }, ct);
         }

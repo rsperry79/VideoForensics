@@ -2408,7 +2408,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int>("EndMinuteOfDay")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("SnapshotRssiIntervalSeconds")
+                    b.Property<int>("SnapshotRssiIntervalMinutes")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("StartMinuteOfDay")
@@ -7705,10 +7705,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<Guid>("ProviderAccountId")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("SnapshotIntervalSeconds")
+                    b.Property<int?>("SnapshotIntervalMinutes")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("SnapshotRssiIntervalSeconds")
+                    b.Property<int>("SnapshotRssiIntervalMinutes")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("UseAdvancedJammingSchedule")

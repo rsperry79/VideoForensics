@@ -120,7 +120,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="Id">Unique identifier for the sync schedule.</param>
     /// <param name="ProviderAccountId">The provider account this schedule applies to.</param>
     /// <param name="EventPollIntervalMinutes">Interval in minutes for pulling events (rule violations, motion, person detection).</param>
-    /// <param name="SnapshotRssiIntervalSeconds">Interval in seconds for pulling snapshots and RSSI data (default when no jamming window applies).</param>
+    /// <param name="SnapshotRssiIntervalMinutes">Interval in minutes for pulling snapshots and RSSI data (default when no jamming window applies).</param>
     /// <param name="IsEnabled">Indicates whether syncing is enabled for this account.</param>
     /// <param name="UseAdvancedJammingSchedule">Indicates whether the advanced jamming detection schedule is active.</param>
     /// <param name="EventNextRunUtc">The UTC timestamp when the next event poll is scheduled to run; null if no future poll is scheduled.</param>
@@ -129,12 +129,12 @@ namespace VideoForensics.Core.Api.Contracts
         Guid Id,
         Guid ProviderAccountId,
         int EventPollIntervalMinutes,
-        int SnapshotRssiIntervalSeconds,
+        int SnapshotRssiIntervalMinutes,
         bool IsEnabled,
         bool UseAdvancedJammingSchedule,
         DateTime? EventNextRunUtc,
         DateTime? EventLastRunUtc,
-        int? SnapshotIntervalSeconds = null,
+        int? SnapshotIntervalMinutes = null,
         DateTime? BackfillCursorUtc = null,
         IReadOnlyList<JammingScheduleWindowDto>? JammingWindows = null
     );

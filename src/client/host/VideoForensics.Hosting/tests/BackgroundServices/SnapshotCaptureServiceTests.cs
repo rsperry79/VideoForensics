@@ -497,8 +497,25 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_DefaultInterval_CapturesOncePerSixtySeconds()
+        public async Task RunOneTickAsync_DefaultInterval_CapturesOncePerTwoMinutes()
         {
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(61);
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(121);
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+        [Fact]
+        public async Task RunOneTickAsync_ScheduleSnapshotInterval_SetsCaptureSpacing()
+        {
+            _ = _schedules.Setup(r => r.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SyncSchedule { ProviderAccountId = _accountId, SnapshotRssiIntervalMinutes = 1 });
             _ = AddDevice("12345");
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
@@ -511,29 +528,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
-        [Fact]
-        public async Task RunOneTickAsync_ScheduleSnapshotInterval_SetsCaptureSpacing()
-        {
-            _ = _schedules.Setup(r => r.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SyncSchedule { ProviderAccountId = _accountId, SnapshotRssiIntervalSeconds = 30 });
-            _ = AddDevice("12345");
-            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
-
-            await RunTickAsync();
-            _time.Now = T0.AddSeconds(20);
-            await RunTickAsync();
-            _time.Now = T0.AddSeconds(31);
-            await RunTickAsync();
-
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
-        }
 
         [Fact]
-        public async Task RunOneTickAsync_StoredIntervalSeconds_UsesStoredInterval()
+        public async Task RunOneTickAsync_StoredIntervalMinutes_UsesStoredInterval()
         {
             _ = _schedules.Setup(r => r.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SyncSchedule { ProviderAccountId = _accountId, SnapshotIntervalSeconds = 120 });
+                .ReturnsAsync(new SyncSchedule { ProviderAccountId = _accountId, SnapshotIntervalMinutes = 2 });
             _ = AddDevice("12345");
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
@@ -639,7 +639,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             await RunTickAsync();
             _time.Now = T0.AddSeconds(30);
             await RunTickAsync();
-            _time.Now = T0.AddSeconds(61);
+            _time.Now = T0.AddSeconds(121);
             await RunTickAsync();
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));

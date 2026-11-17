@@ -35,8 +35,8 @@ namespace VideoForensics.Client.Hosting.Services
     {
         internal const string RingProviderName = "Ring";
 
-        /// <summary>Capture interval for an account with no stored SnapshotIntervalSeconds.</summary>
-        internal const int DefaultIntervalSeconds = 60;
+        /// <summary>Capture interval, in seconds, for an account with no stored schedule. Matches SyncSchedule.DefaultSnapshotIntervalMinutes.</summary>
+        internal const int DefaultIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalMinutes * 60;
 
         /// <summary>Metadata on a capture's Media row. The "snapshot" type is what the Devices tab and the roll-up look for.</summary>
         internal const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\",\"source\":\"capture\"}";
@@ -121,7 +121,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             SyncSchedule? schedule = await sp.GetRequiredService<ISyncScheduleWriteRepository>().GetByProviderAccountIdAsync(accountId, ct);
-            // The schedule's snapshot interval (with any jamming window) sets the spacing. A stored SnapshotIntervalSeconds raised by
+            // The schedule's snapshot interval (with any jamming window) sets the spacing. A stored SnapshotIntervalMinutes raised by
             // a Ring rate-limit incident is a floor on top of it, so the adaptive back-off is never undone by the form.
             int seconds = schedule is null
                 ? DefaultIntervalSeconds

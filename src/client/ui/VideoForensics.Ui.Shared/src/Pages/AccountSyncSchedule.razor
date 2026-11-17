@@ -43,7 +43,7 @@ else
             <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
                 <div class="mb-3">
                     <label for="snapshot-rssi-interval">@L["SnapshotRssiIntervalLabel"]</label>
-                    <IntervalSecondsInput Id="snapshot-rssi-interval" Value="_snapshotRssiIntervalSeconds" ValueChanged="v => { _snapshotRssiIntervalSeconds = v; QueueAutoSave(); }" />
+                    <SfNumericTextBox ID="snapshot-rssi-interval" @bind-Value="_snapshotRssiIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="@SyncScheduleLimits.MinimumSnapshotIntervalMinutes" Step="1" />
                 </div>
                 <div class="mb-3">
                     <label for="event-poll-interval">@L["EventPollIntervalLabel"]</label>
@@ -137,7 +137,7 @@ else
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <IntervalSecondsInput Value="window.SnapshotRssiIntervalSeconds" ValueChanged="v => { window.SnapshotRssiIntervalSeconds = v; QueueAutoSave(); }" />
+                                                        <SfNumericTextBox @bind-Value="window.SnapshotRssiIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="@SyncScheduleLimits.MinimumSnapshotIntervalMinutes" Step="1" />
                                                     </td>
                                                     <td>
                                                         <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="@L["Remove"]" />
@@ -185,7 +185,7 @@ else
             DayOfWeek = window.DayOfWeek;
             StartMinuteOfDay = window.StartMinuteOfDay;
             EndMinuteOfDay = window.EndMinuteOfDay;
-            SnapshotRssiIntervalSeconds = window.SnapshotRssiIntervalSeconds;
+            SnapshotRssiIntervalMinutes = window.SnapshotRssiIntervalMinutes;
         }
 
         public Guid Id { get; init; }
@@ -196,14 +196,14 @@ else
 
         public int EndMinuteOfDay { get; set; }
 
-        public int SnapshotRssiIntervalSeconds { get; set; }
+        public int SnapshotRssiIntervalMinutes { get; set; }
 
         public JammingScheduleWindowDto ToDto() =>
-            new(Id, DayOfWeek, StartMinuteOfDay, EndMinuteOfDay, SnapshotRssiIntervalSeconds);
+            new(Id, DayOfWeek, StartMinuteOfDay, EndMinuteOfDay, SnapshotRssiIntervalMinutes);
     }
 
     private SyncScheduleDto? _schedule;
-    private int _snapshotRssiIntervalSeconds = SyncScheduleLimits.DefaultSnapshotIntervalSeconds;
+    private int _snapshotRssiIntervalMinutes = SyncScheduleLimits.DefaultSnapshotIntervalMinutes;
     private int _eventPollIntervalMinutes = 60;
     private bool _isEnabled = true;
     private bool _useAdvancedJammingSchedule;
@@ -409,7 +409,7 @@ else
             _schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(Id, CancellationToken.None);
             if (_schedule != null)
             {
-                _snapshotRssiIntervalSeconds = _schedule.SnapshotRssiIntervalSeconds;
+                _snapshotRssiIntervalMinutes = _schedule.SnapshotRssiIntervalMinutes;
                 _eventPollIntervalMinutes = _schedule.EventPollIntervalMinutes;
                 _isEnabled = _schedule.IsEnabled;
                 _useAdvancedJammingSchedule = _schedule.UseAdvancedJammingSchedule;
@@ -449,7 +449,7 @@ else
             DayOfWeek = 1, // Monday
             StartMinuteOfDay = 0, // 00:00
             EndMinuteOfDay = 15, // 00:15
-            SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds
+            SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes
         };
 
         _jammingWindows.Add(newWindow);
@@ -509,9 +509,9 @@ else
             }
 
             // Validate interval meets minimum
-            if (window.SnapshotRssiIntervalSeconds < SyncScheduleLimits.MinimumSnapshotIntervalSeconds)
+            if (window.SnapshotRssiIntervalMinutes < SyncScheduleLimits.MinimumSnapshotIntervalMinutes)
             {
-                _statusMessage = L["IntervalMinimum", SyncScheduleLimits.MinimumSnapshotIntervalSeconds];
+                _statusMessage = L["IntervalMinimum", SyncScheduleLimits.MinimumSnapshotIntervalMinutes];
                 _statusIsError = true;
                 return false;
             }
@@ -585,12 +585,12 @@ else
                 Id: _schedule?.Id ?? Guid.NewGuid(),
                 ProviderAccountId: Id,
                 EventPollIntervalMinutes: _eventPollIntervalMinutes,
-                SnapshotRssiIntervalSeconds: _snapshotRssiIntervalSeconds,
+                SnapshotRssiIntervalMinutes: _snapshotRssiIntervalMinutes,
                 IsEnabled: _isEnabled,
                 UseAdvancedJammingSchedule: _useAdvancedJammingSchedule,
                 EventNextRunUtc: _schedule?.EventNextRunUtc,
                 EventLastRunUtc: _schedule?.EventLastRunUtc,
-                SnapshotIntervalSeconds: _schedule?.SnapshotIntervalSeconds,
+                SnapshotIntervalMinutes: _schedule?.SnapshotIntervalMinutes,
                 BackfillCursorUtc: _schedule?.BackfillCursorUtc,
                 JammingWindows: windows);
 
