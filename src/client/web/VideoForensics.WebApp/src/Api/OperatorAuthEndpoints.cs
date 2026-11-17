@@ -1188,63 +1188,6 @@ namespace VideoForensics.Client.WebApp.Api
 
             return Results.Ok(new { stepUpToken });
         }
-
-        private static async Task<IResult> RecoverPasswordAsync(
-            IOperatorWriteRepository operators,
-            ISecurityAuditLogger auditLog,
-            HttpContext context,
-            CancellationToken ct)
-        {
-            // Check if request is from localhost only
-            if (context.Connection.RemoteIpAddress != IPAddress.Loopback && context.Connection.RemoteIpAddress != IPAddress.IPv6Loopback)
-            {
-                return Results.StatusCode(StatusCodes.Status403Forbidden);
-            }
-
-            // Check if any operators exist
-            IReadOnlyList<Operator> allOps = await operators.ListAsync(ct);
-            if (allOps.Count == 0)
-            {
-                return Results.StatusCode(StatusCodes.Status404NotFound);
-            }
-
-            // Get the primary SuperAdmin operator
-            Operator? primaryAdmin = allOps.FirstOrDefault(o => o.IsPrimarySuperAdmin);
-            // Fallback to any SuperAdmin if primary doesn't exist
-            primaryAdmin ??= allOps.FirstOrDefault(o => o.Role == OperatorRole.SuperAdmin);
-
-            if (primaryAdmin == null)
-            {
-                // No SuperAdmin found at all
-                return Results.StatusCode(StatusCodes.Status404NotFound);
-            }
-
-            // Generate temporary password (16-char alphanumeric) using cryptographically secure RNG
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            byte[] randomBytes = new byte[16];
-            System.Security.Cryptography.RandomNumberGenerator.Fill(randomBytes);
-            string temporaryPassword = string.Concat(randomBytes.Select(b => chars[b % chars.Length]));
-
-            // Hash the password
-            var passwordHasher = new PasswordHasher<Operator>();
-            string passwordHash = passwordHasher.HashPassword(primaryAdmin, temporaryPassword);
-
-            // Update operator with new password and set MustChangePassword flag
-            await operators.SetPasswordAsync(primaryAdmin.Id, passwordHash, mustChangePassword: true, ct);
-
-            // Log the recovery event
-            await auditLog.LogAsync(
-                SecurityAuditEventTypes.PasswordReset,
-                primaryAdmin.Id,
-                null,
-                "127.0.0.1",
-                "Localhost password recovery requested",
-                isUrgent: true,
-                ct);
-
-            // Return temporary password (only time it's shown in plaintext)
-            return Results.Ok(new { temporaryPassword });
-        }
     }
 
     // Request/response DTOs

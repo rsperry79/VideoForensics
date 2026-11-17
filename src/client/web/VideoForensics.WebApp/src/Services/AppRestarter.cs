@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 using VideoForensics.Client.Platform.Windows;
 
@@ -73,9 +74,37 @@ namespace VideoForensics.Client.WebApp.Services
             _ = Process.Start(info);
         }
 
+        /// <summary>
+        /// Wraps one argument in quotes using the Windows command-line rules (CommandLineToArgvW): an embedded quote is
+        /// escaped, and backslashes that precede a quote are doubled, so the value reaches the new process unchanged.
+        /// </summary>
         private static string Quote(string value)
         {
-            return "\"" + value + "\"";
+            var sb = new StringBuilder("\"");
+            int backslashes = 0;
+            foreach (char c in value)
+            {
+                if (c == '\\')
+                {
+                    backslashes++;
+                    continue;
+                }
+
+                if (c == '"')
+                {
+                    sb.Append('\\', (backslashes * 2) + 1);
+                }
+                else
+                {
+                    sb.Append('\\', backslashes);
+                }
+
+                sb.Append(c);
+                backslashes = 0;
+            }
+
+            sb.Append('\\', backslashes * 2);
+            return sb.Append('"').ToString();
         }
     }
 }

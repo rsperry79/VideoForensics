@@ -915,6 +915,15 @@ VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
         call.StatusCode,
         call.Body?.Length ?? 0);
 
+// Registered first among the request middleware, so exceptions from the middleware below are also handled here.
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    _ = app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    _ = app.UseHsts();
+}
+
 app.UseMiddleware<LocalTransportMiddleware>();
 
 // The saved Internet address can change after startup. Add the browser origin to Fido2's allow-list and
@@ -946,14 +955,6 @@ app.Use(async (context, next) =>
     context.Response.Headers.RetryAfter = "5";
     await context.Response.WriteAsync("Starting up. Try again in a moment.");
 });
-
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    _ = app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    _ = app.UseHsts();
-}
 
 app.UseAuthentication();
 app.UseAuthorization();

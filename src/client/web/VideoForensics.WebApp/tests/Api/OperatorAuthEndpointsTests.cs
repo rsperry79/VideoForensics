@@ -1095,98 +1095,6 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
-        public async Task RecoverPassword_NonLocalhost_ReturnsForbidden()
-        {
-            // Arrange
-            var operators = new Mock<IOperatorWriteRepository>();
-            var auditLog = new Mock<ISecurityAuditLogger>();
-            HttpContext context = CreateHttpContext(NetworkTier.Network);  // Non-localhost
-
-            // Act
-            IResult result = await OperatorAuthEndpointsInvoker.RecoverPasswordAsync(
-                operators.Object, auditLog.Object, context, CancellationToken.None);
-
-            // Assert
-            Assert.NotNull(result);
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
-            Assert.Equal(StatusCodes.Status403Forbidden, statusResult.StatusCode);
-        }
-
-        [Fact]
-        public async Task RecoverPassword_NoOperatorsExist_ReturnsNotFound()
-        {
-            // Arrange
-            var operators = new Mock<IOperatorWriteRepository>();
-            _ = operators.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);  // Empty list
-
-            var auditLog = new Mock<ISecurityAuditLogger>();
-            HttpContext context = CreateHttpContext(NetworkTier.Local);  // Localhost
-
-            // Act
-            IResult result = await OperatorAuthEndpointsInvoker.RecoverPasswordAsync(
-                operators.Object, auditLog.Object, context, CancellationToken.None);
-
-            // Assert
-            Assert.NotNull(result);
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
-            Assert.Equal(StatusCodes.Status404NotFound, statusResult.StatusCode);
-        }
-
-        [Fact]
-        public async Task RecoverPassword_LocalhostWithOperators_GeneratesNewPassword()
-        {
-            // Arrange
-            Operator primaryAdmin = CreateOperator(username: "admin", role: OperatorRole.SuperAdmin, isPrimarySuperAdmin: true);
-            Operator otherOperator = CreateOperator(username: "user", role: OperatorRole.ReadOnly);
-
-            var operators = new Mock<IOperatorWriteRepository>();
-            _ = operators.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([primaryAdmin, otherOperator]);
-            _ = operators.Setup(r => r.SetPasswordAsync(primaryAdmin.Id, It.IsAny<string>(), true, It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-
-            var auditLog = new Mock<ISecurityAuditLogger>();
-            _ = auditLog.Setup(a => a.LogAsync(
-                SecurityAuditEventTypes.PasswordReset,
-                primaryAdmin.Id,
-                null,
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                true,
-                It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-
-            HttpContext context = CreateHttpContext(NetworkTier.Local);  // Localhost
-
-            // Act
-            IResult result = await OperatorAuthEndpointsInvoker.RecoverPasswordAsync(
-                operators.Object, auditLog.Object, context, CancellationToken.None);
-
-            // Assert
-            Assert.NotNull(result);
-            IStatusCodeHttpResult okResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
-            Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
-
-            // Verify SetPasswordAsync was called once with MustChangePassword=true
-            operators.Verify(
-                r => r.SetPasswordAsync(primaryAdmin.Id, It.IsAny<string>(), true, It.IsAny<CancellationToken>()),
-                Times.Once);
-
-            // Verify audit log was written
-            auditLog.Verify(
-                a => a.LogAsync(
-                    SecurityAuditEventTypes.PasswordReset,
-                    primaryAdmin.Id,
-                    null,
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    true,
-                    It.IsAny<CancellationToken>()),
-                Times.Once);
-        }
-
-        [Fact]
         public void GenerateSecureTemporaryPassword_GeneratesCryptoSecurePassword()
         {
             // This test verifies that temporary password generation uses a cryptographically secure RNG
@@ -1980,28 +1888,6 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             IFailedLoginIpTracker tracker = new Mock<IFailedLoginIpTracker>().Object;
             object? result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings, tracker, context, logger, ct]);
-            return await (Task<IResult>)result!;
-        }
-
-        public static async Task<IResult> RecoverPasswordAsync(
-            IOperatorWriteRepository operators,
-            ISecurityAuditLogger auditLog,
-            HttpContext context,
-            CancellationToken ct)
-        {
-            MethodInfo? method = typeof(OperatorAuthEndpoints)
-                .GetMethod("RecoverPasswordAsync",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
-                    null,
-                    [typeof(IOperatorWriteRepository), typeof(ISecurityAuditLogger), typeof(HttpContext), typeof(CancellationToken)],
-                    null);
-
-            if (method == null)
-            {
-                throw new InvalidOperationException("Could not find RecoverPasswordAsync method");
-            }
-
-            object? result = method.Invoke(null, [operators, auditLog, context, ct]);
             return await (Task<IResult>)result!;
         }
 

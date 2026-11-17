@@ -79,6 +79,13 @@ namespace VideoForensics.Client.WebApp.Api
                 // Hash it with SHA-256 for storage
                 string apiKeyHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(rawApiKey)));
 
+                // Claim the session first. TryApprove is the atomic gate: a second approval, or one that lost a race,
+                // must not create another service account and device.
+                if (!deviceCodePairing.TryApprove(userCode, rawApiKey))
+                {
+                    return Results.NotFound(new { error = "Pairing code expired or invalid." });
+                }
+
                 // Create the operator
                 var operatorId = Guid.NewGuid();
                 Operator op = await operators.AddAsync(new Operator
@@ -105,9 +112,6 @@ namespace VideoForensics.Client.WebApp.Api
                     FallbackApiKeyHash = apiKeyHash,
                     PairedAtUtc = DateTime.UtcNow
                 }, ct);
-
-                // Approve the session and attach the raw key (single-use, consumed on next poll)
-                _ = deviceCodePairing.TryApprove(userCode, rawApiKey);
 
                 // Audit log the approval
                 await auditLog.LogAsync(SecurityAuditEventTypes.DeviceCodeApproved, op.Id, pairedDevice.Id,
