@@ -2,6 +2,8 @@
 
 Status (audited 2026-10-28): Parts 1, 2, and 3 are implemented and merged to `wip`. Remaining: verify WebView2 range playback on the MAUI Windows head (no test or note exists in code), and the Frigate-style review page that uses these components (see `media-page-rework.md`, Step 2). The viewer components are built and tested but no page uses them yet. Targets: Windows desktop (MAUI) and the web server (WebApp). iOS and Android are TODO.
 
+Update (2026-11-16): the grid preview tiles and drag seek are in `media-review-implementation.md` (U7, U9, built). WebView2 range playback is still unverified.
+
 ## Status (2026-10-25)
 
 Reviewed by a read-only Sonnet pass against wip. Findings are recorded per item below.
