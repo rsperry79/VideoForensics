@@ -48,9 +48,10 @@ public class TimelineStripU7_Tests : BunitContext
 
     private static double TopPx(string style)
     {
-        Match match = Regex.Match(style, @"top:\s*(-?[\d.]+)px");
-        Assert.True(match.Success, $"Style '{style}' has no top in px.");
-        return double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+        // Positions are percent of the strip; the strip under test is 600px long.
+        Match match = Regex.Match(style, @"top:\s*(-?[\d.]+)%");
+        Assert.True(match.Success, $"Style '{style}' has no top in percent.");
+        return double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) * 6;
     }
 
     [Fact]

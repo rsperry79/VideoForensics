@@ -72,3 +72,10 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 - Cause: (1) fixtures evaluated ToDto() once at construction, so later entity edits were not seen; (2) JammingToolsOrchestrator uses the entity write interface, so tests mocked the wrong repository; (3) Moq callback typed to the entity while the setup returns DTOs.
 - Fix: lazy ReturnsAsync factories; mocks moved to the write mock; callbacks retyped to DTOs.
 - Rule: when a DTO interface changes, grep the callers' constructor parameter types before mocking.
+
+## 2026-11-16 Media review layout: edit and cleanup slips
+- Symptom: a scripted multi-line replace on TimelineStrip.razor matched nothing and only the single-line replaces applied; CRLF working copy vs LF patterns.
+- Cause: pattern used LF; the worktree copy is CRLF (autocrlf).
+- Fix: re-applied the multi-line edits with the Edit tool; verified with git diff.
+- Rule: check the diff after any scripted replace; use Edit for multi-line changes on CRLF working copies.
+- Also: Evidence cleanup removed 11 source files and 11 test files in one batch, built clean; only the known FolderPicker_Cancel flake failed (passes alone).
