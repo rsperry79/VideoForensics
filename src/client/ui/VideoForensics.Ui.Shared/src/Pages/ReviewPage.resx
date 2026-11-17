@@ -578,15 +578,6 @@
   <data name="ReviewTabsLabel" xml:space="preserve">
     <value>Review views</value>
   </data>
-  <data name="TabTimeline" xml:space="preserve">
-    <value>Timeline</value>
-  </data>
-  <data name="TabEvents" xml:space="preserve">
-    <value>Events</value>
-  </data>
-  <data name="TabDetail" xml:space="preserve">
-    <value>Detail</value>
-  </data>
   <data name="FiltersButton" xml:space="preserve">
     <value>Filters</value>
   </data>

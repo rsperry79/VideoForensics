@@ -18,7 +18,6 @@ using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Utils.Testing;

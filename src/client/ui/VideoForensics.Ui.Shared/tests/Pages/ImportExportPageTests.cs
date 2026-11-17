@@ -11,7 +11,7 @@ using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Pages;
 
-public class ImportExportPage_Tests : Bunit.TestContext
+public class ImportExportPage_Tests : Bunit.BunitContext
 {
     private readonly Mock<IBackupExportService> _export = new();
     private readonly Mock<IFileDialogService> _dialog = new();

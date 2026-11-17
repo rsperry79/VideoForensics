@@ -3,9 +3,13 @@ namespace VideoForensics.Core.Api.Contracts
     /// <summary>Confidence level of a jamming incident, as sent on the wire.</summary>
     public enum JammingConfidenceLevelDto
     {
+        /// <summary>Low confidence.</summary>
         Low,
+        /// <summary>Medium confidence.</summary>
         Medium,
+        /// <summary>High confidence.</summary>
         High,
+        /// <summary>Definite confidence.</summary>
         Definite,
     }
 

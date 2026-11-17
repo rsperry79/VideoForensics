@@ -15,6 +15,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="ApiSourceHash">Hash of the source API response for change detection; null if not applicable.</param>
     /// <param name="EventIntegrityHash">Hash value for event integrity verification; null if not set.</param>
     /// <param name="DownloadFailedAtUtc">Timestamp of the last failed download attempt, in UTC. Null if no failure is recorded.</param>
+    /// <param name="DownloadStatus">Current download status of the event's media.</param>
     public record EventDto(
         Guid Id,
         Guid DeviceId,

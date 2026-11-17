@@ -1,7 +1,6 @@
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 
 

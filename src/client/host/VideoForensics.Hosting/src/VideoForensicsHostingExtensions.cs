@@ -22,7 +22,6 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Telemetry.Configuration;
 using VideoForensics.Core.Telemetry.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
 using VideoForensics.Data.Database.DbContext;

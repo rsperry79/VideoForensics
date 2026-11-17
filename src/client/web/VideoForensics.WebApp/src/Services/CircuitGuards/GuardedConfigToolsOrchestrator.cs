@@ -1,5 +1,4 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Layout;
 using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Core.Api.Contracts;

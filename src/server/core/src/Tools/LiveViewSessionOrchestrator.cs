@@ -6,7 +6,6 @@ using System.Threading.Channels;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
