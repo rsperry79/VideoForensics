@@ -76,6 +76,24 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
+        public async Task MediaContent_RangeNotFromZero_RecordsAccessAuditRow()
+        {
+            // A non-zero range must still be audited: otherwise a client can read a whole clip
+            // in ranges with no audit trail.
+            string path = CreateTempFileWithKnownBytes();
+            DefaultHttpContext context = CreateAuthenticatedContext();
+            context.Request.Headers["Range"] = "bytes=10-19";
+            var auditLog = new Mock<IAccessAuditLogRepository>();
+
+            IResult result = await InvokeGetContentAsync(context, path, auditLog);
+            _ = await ExecuteResultAsync(result, context);
+
+            auditLog.Verify(a => a.RecordAccessAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), "View", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task MediaContent_NoRangeHeader_Returns200WithWholeFile()
         {
             string path = CreateTempFileWithKnownBytes();
@@ -116,7 +134,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             return context;
         }
 
-        private static async Task<IResult> InvokeGetContentAsync(HttpContext context, string filePath)
+        private static async Task<IResult> InvokeGetContentAsync(HttpContext context, string filePath, Mock<IAccessAuditLogRepository>? auditMock = null)
         {
             var mediaItemId = Guid.NewGuid();
 
@@ -140,7 +158,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = storage.Setup(s => s.OpenReadStreamAsync(filePath, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => File.OpenRead(filePath));
 
-            var auditLog = new Mock<IAccessAuditLogRepository>();
+            Mock<IAccessAuditLogRepository> auditLog = auditMock ?? new Mock<IAccessAuditLogRepository>();
             _ = auditLog.Setup(a => a.RecordAccessAsync(
                 mediaItemId,
                 It.IsAny<string>(),

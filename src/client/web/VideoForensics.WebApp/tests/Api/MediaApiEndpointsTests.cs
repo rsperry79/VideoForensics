@@ -512,7 +512,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
-        public async Task GetContentAsync_RangeHeaderBytes1000_ServeButNotAudit()
+        public async Task GetContentAsync_RangeHeaderBytes1000_ServeAndAudit()
         {
             (Mock<IMediaAccessTicketService>? ticketService, Mock<IOperatorWriteRepository>? operators, Mock<IAccessAuditLogRepository>? auditLog, _, Mock<ILogger<Program>>? logger) = CreateMocks();
             var mediaItemId = Guid.NewGuid();
@@ -557,14 +557,14 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
             _ = Assert.IsType<FileStreamHttpResult>(result);
 
-            // Should NOT audit range request not starting at byte 0
+            // A range request not starting at byte 0 must still be audited, or a clip could be read in ranges unlogged.
             auditLog.Verify(a => a.RecordAccessAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<CancellationToken>()), Times.Never);
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

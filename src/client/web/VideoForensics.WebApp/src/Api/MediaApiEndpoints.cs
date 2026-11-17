@@ -161,7 +161,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// 2. Per-item ticket query parameter (for img/video tags)
         ///
         /// Both paths validate the operator's Active/IsApproved status before serving.
-        /// Records access in the audit log unless the request includes a Range header not starting at byte 0.
+        /// Records access in the audit log for every request, including range requests.
         /// Returns 500 if the audit write fails (evidence access must be logged).
         /// </summary>
         public static async Task<IResult> GetContentAsync(
@@ -203,36 +203,22 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.NotFound();
             }
 
-            // Determine if we should audit this request
-            // Skip auditing range requests unless they start at byte 0
-            bool shouldAudit = true;
-            if (context.Request.Headers.TryGetValue("Range", out StringValues rangeValue))
+            // Every content request is audited, including range requests: a client that skipped the
+            // audit for non-zero ranges could read a whole clip in ranges with no audit trail.
+            try
             {
-                string? rangeHeader = rangeValue.FirstOrDefault();
-                if (!string.IsNullOrEmpty(rangeHeader) && !rangeHeader.StartsWith("bytes=0-", StringComparison.OrdinalIgnoreCase))
-                {
-                    shouldAudit = false;
-                }
+                _ = await auditLog.RecordAccessAsync(
+                    id,
+                    operatorId.Value.ToString(),
+                    "View",
+                    tierResolver.ResolveClientIp(context),
+                    "In-app media view",
+                    ct);
             }
-
-            // Record access in audit log if required
-            if (shouldAudit)
+            catch (Exception ex)
             {
-                try
-                {
-                    _ = await auditLog.RecordAccessAsync(
-                        id,
-                        operatorId.Value.ToString(),
-                        "View",
-                        tierResolver.ResolveClientIp(context),
-                        "In-app media view",
-                        ct);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError("Failed to record access audit for media item {MediaItemId} by operator {OperatorId}: {Message} ({ErrorType})", id, operatorId, ex.Message, ex.GetType().Name);
-                    return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
-                }
+                logger.LogError("Failed to record access audit for media item {MediaItemId} by operator {OperatorId}: {Message} ({ErrorType})", id, operatorId, ex.Message, ex.GetType().Name);
+                return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
             }
 
             // Stream the content
