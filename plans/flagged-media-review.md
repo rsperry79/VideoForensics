@@ -2,6 +2,8 @@
 
 Status (2026-10-31): PLAN, reviewed by a Sonnet pass against the code. Nothing built. Batch 0 decisions come first. Review claims marked (R) were taken from the review and not re-checked by hand; confirm in B0.
 
+Update (2026-11-16): the mobile hand-off and shared shell are covered by `media-review-implementation.md` (ReviewShell built; flag pages moving to TimelineStrip is U7b, not verified here). Browser checks remain open.
+
 ## Goals
 1. Track flagged media for every flag type, not only RSSI and bit rate. A new flag type plugs in without schema or shell changes.
 2. A reusable review control set shared by every report that has flagged media (Signal History and Bit rate history now; more later).
