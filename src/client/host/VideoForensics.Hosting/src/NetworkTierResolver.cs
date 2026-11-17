@@ -87,13 +87,18 @@ namespace VideoForensics.Client.Hosting
                 return NetworkTier.Network;
             }
 
-            if (IPAddress.IsLoopback(remoteIp))
+            IPAddress mapped = remoteIp.IsIPv4MappedToIPv6 ? remoteIp.MapToIPv4() : remoteIp;
+            if (IPAddress.IsLoopback(mapped))
             {
-                return NetworkTier.Local;
+                // cloudflared connects to localhost, so tunnel traffic arrives from loopback and always
+                // carries CF-Connecting-IP. Such a request is Internet tier, not Local. A local process
+                // can forge the header, but that only downgrades it to the more restricted tier.
+                return context.Request.Headers.ContainsKey("CF-Connecting-IP")
+                    ? NetworkTier.Internet
+                    : NetworkTier.Local;
             }
 
-            IPAddress mapped = remoteIp.IsIPv4MappedToIPv6 ? remoteIp.MapToIPv4() : remoteIp;
-            return IPAddress.IsLoopback(mapped) ? NetworkTier.Local : NetworkTier.Network;
+            return NetworkTier.Network;
         }
 
         /// <summary>True when the address is inside the hardcoded Cloudflare IPv4 edge ranges. IPv6 is never reported (no IPv6 ranges are listed).</summary>
