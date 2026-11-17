@@ -18,6 +18,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         private string _currentQuery = string.Empty;
         private SfSplitter? _outerSplitter;
         private double _leftNavWidth = 220;
+
+        // The pane's size as a bound value. Expanding after a collapse re-applies it, so the saved width comes back.
+        private string _leftNavPaneSize = "220px";
         private double _rightPanelWidth = 280;
         private bool _rightPanelHandleAttached;
         // Mirrors SessionState.PasskeySetupOnly (limited create-passkey session): hides all navigation and the settings panel.
@@ -82,6 +85,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 if (LayoutPrefs.LeftNavWidth > 0)
                 {
                     _leftNavWidth = LayoutPrefs.LeftNavWidth;
+                    _leftNavPaneSize = $"{_leftNavWidth}px";
                 }
 
                 if (LayoutPrefs.RightPanelWidth > 0)
@@ -186,6 +190,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             }
             else
             {
+                _leftNavPaneSize = $"{_leftNavWidth}px";
                 await splitter.ExpandAsync(LeftPaneIndex);
             }
 
