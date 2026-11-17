@@ -124,8 +124,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             try
             {
-                await SetLeftNavPaneCollapsedAsync(true);
-                _leftNavRestorePending = false;
+                _leftNavRestorePending = !await SetLeftNavPaneCollapsedAsync(true);
             }
             catch (Exception ex) when (IsSplitterNotReady(ex))
             {
@@ -165,12 +164,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 || (!IsExpandedLeftNavPath(_currentPath) && LayoutPrefs.LeftNavCollapsed);
             try
             {
-                if (wantCollapsed != _leftNavPaneCollapsed)
-                {
-                    await SetLeftNavPaneCollapsedAsync(wantCollapsed);
-                }
-
-                _leftNavSyncPending = false;
+                bool applied = wantCollapsed == _leftNavPaneCollapsed || await SetLeftNavPaneCollapsedAsync(wantCollapsed);
+                _leftNavSyncPending = !applied;
             }
             catch (Exception ex) when (IsSplitterNotReady(ex))
             {
@@ -182,10 +177,16 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// Hides or shows the left-nav pane through the DOM, not the splitter's Collapse/Expand: those reset the pane to its
         /// minimum width when it is shown again, which lost the saved width on every visit to /media.
         /// </summary>
-        private async Task SetLeftNavPaneCollapsedAsync(bool collapsed)
+        /// <returns>False when the pane could not be hidden yet (the splitter has not initialised); the caller keeps its sync pending.</returns>
+        private async Task<bool> SetLeftNavPaneCollapsedAsync(bool collapsed)
         {
-            await JS.InvokeVoidAsync("vfLayoutPrefs.setLeftNavHidden", collapsed);
-            _leftNavPaneCollapsed = collapsed;
+            bool applied = await JS.InvokeAsync<bool>("vfLayoutPrefs.setLeftNavHidden", collapsed);
+            if (applied)
+            {
+                _leftNavPaneCollapsed = collapsed;
+            }
+
+            return applied;
         }
 
         /// <summary>
