@@ -2,6 +2,8 @@
 
 Status (2026-10-28): the review page is built and live at `/media` (also `/media/review`); the old Evidence page is retired. All batches B1 to B8 are done and pushed to `wip` (see "Built"). Nothing has been looked at in a browser yet (every batch was verified by builds and bUnit tests only): do a manual pass first. Open follow-ups are listed under "Follow-ups".
 
+Update (2026-11-16): the open layout items are superseded by `media-review-implementation.md` (built). Follow-up 3 (orphaned Evidence code) is done: the dead types, `/media/dates-filter` and their tests were removed.
+
 ## Goals
 1. On `/media`, hide the left nav (done).
 2. Rework the media page to resemble Frigate's review UI: top bar (Back, Live, camera select, date range, filter, actions, Timeline/Events/Detail tabs), large player, camera preview strip below the player, and a vertical timeline in the right panel. The review UI replaces the Evidence list.
