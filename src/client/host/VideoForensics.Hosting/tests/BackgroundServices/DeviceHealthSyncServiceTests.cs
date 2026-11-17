@@ -248,24 +248,92 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_HealthCaptureOff_SkipsDeviceReadings()
+        public async Task RunOneTickAsync_CaptureOffDevice_StillStoresReading()
         {
-            // HealthCaptureEnabled is the per-device "off" and "snapshots only" choices: no health row is written for it.
+            // The account call already returns every device, so a capture-off device's reading is stored too: the Devices page
+            // judges online/offline from it.
             (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
             Device device = MakeDevice("ring-off");
-            device.HealthCaptureEnabled = false;
+            device.CaptureMode = DeviceCaptureMode.Off;
             _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([device]);
             _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(
                 [
-                    new("ring-off", Connected: true, BatteryPercentage: 50m, Rssi: -60, WifiName: null, FirmwareVersion: null)
+                    new("ring-off", Connected: false, BatteryPercentage: 50m, Rssi: -60, WifiName: null, FirmwareVersion: null)
                 ]);
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Never);
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.Is<DeviceHealth>(h => h.DeviceId == device.Id), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_CaptureOffCameraReportsConnected_ResumesCapture()
+        {
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, _, _) = CreateService();
+
+            Device device = MakeDevice("ring-cam");
+            device.Type = "stickup_cam";
+            device.CaptureMode = DeviceCaptureMode.Off;
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([device]);
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
+                    new("ring-cam", Connected: true, BatteryPercentage: 50m, Rssi: -60, WifiName: null, FirmwareVersion: null)
+                ]);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Equal(DeviceCaptureMode.Capture, device.CaptureMode);
+            deviceRepo.Verify(r => r.UpdateAsync(device, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_CaptureOffChimeReportsConnected_ResumesHealthOnly()
+        {
+            // A chime has no snapshots, so it resumes health alone.
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, _, _) = CreateService();
+
+            Device device = MakeDevice("ring-chime");
+            device.Type = "chime";
+            device.CaptureMode = DeviceCaptureMode.Off;
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([device]);
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
+                    new("ring-chime", Connected: true, BatteryPercentage: null, Rssi: -60, WifiName: null, FirmwareVersion: null)
+                ]);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Equal(DeviceCaptureMode.HealthOnly, device.CaptureMode);
+            deviceRepo.Verify(r => r.UpdateAsync(device, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_CaptureOffDeviceReportsDisconnected_StaysOff()
+        {
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceWriteRepository>? deviceRepo, _, _) = CreateService();
+
+            Device device = MakeDevice("ring-cam");
+            device.Type = "stickup_cam";
+            device.CaptureMode = DeviceCaptureMode.Off;
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([device]);
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
+                    new("ring-cam", Connected: false, BatteryPercentage: 50m, Rssi: -60, WifiName: null, FirmwareVersion: null)
+                ]);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Equal(DeviceCaptureMode.Off, device.CaptureMode);
+            deviceRepo.Verify(r => r.UpdateAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

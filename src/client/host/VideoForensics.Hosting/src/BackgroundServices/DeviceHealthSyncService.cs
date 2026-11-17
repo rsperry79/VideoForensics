@@ -253,10 +253,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     foreach (DeviceHealthReading reading in readings)
                     {
-                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device) || !device.HealthCaptureEnabled)
+                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device))
                         {
                             continue;
                         }
+
+                        // The account call returns every device, so a capture-off device's reading is stored too: the Devices page
+                        // judges online/offline from it. It raises no alerts, and a reading that shows it connected resumes capture.
+                        bool captureWasOff = !device.HealthCaptureEnabled;
 
                         var health = new DeviceHealth
                         {
@@ -299,6 +303,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
                         await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
+                        if (captureWasOff)
+                        {
+                            if (reading.Connected == true && !await ResumeCaptureAsync(deviceRepository, device, ct))
+                            {
+                                itemFailed = true;
+                            }
+
+                            continue;
+                        }
+
                         if (wentOffline)
                         {
                             if (!await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct))
@@ -598,6 +612,26 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             IReadOnlyList<ProviderAccount> accounts = await locations.ListProviderAccountsForLocationAsync(device.LocationId, ct);
             return accounts.Count > 0 ? $"/accounts/{accounts[0].Id}/sync" : null;
+        }
+
+        /// <summary>
+        /// Turns capture back on for a capture-off device whose reading shows it connected: full capture for a camera, health only for
+        /// a chime or other non-camera (it has no snapshots). A save failure is logged and never undoes the health write.
+        /// </summary>
+        private async Task<bool> ResumeCaptureAsync(IDeviceWriteRepository deviceRepository, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        {
+            try
+            {
+                device.CaptureMode = SnapshotSyncBackgroundService.HasCamera(device.Type) ? DeviceCaptureMode.Capture : DeviceCaptureMode.HealthOnly;
+                await deviceRepository.UpdateAsync(device, ct);
+                _logger.LogInformation("Health sync tick: device {DeviceName} is connected again; capture resumed as {CaptureMode}", device.Name, device.CaptureMode);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Health sync tick: could not resume capture for device {DeviceName}: {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
+                return false;
+            }
         }
 
         /// <summary>Raises the DeviceOffline alert. A dispatch failure is logged and never undoes the health write that already happened.</summary>
