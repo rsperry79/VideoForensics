@@ -192,8 +192,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.True(Math.Abs(lapseSeconds - captureSeconds) <= 1,
                 $"The time lapse runs {lapseSeconds:F1}s but the capture timeframe is {captureSeconds:F1}s.");
 
-            // The snapshots are kept as evidence: the roll-up never deletes them. Hiding them in the timeline view is
-            // TimeLapseCoverage.HideCovered in Ui.Shared, which this project does not reference, so TimeLapseCoverageTests covers that part.
+            // The snapshots are kept as evidence: the roll-up never deletes them.
             IReadOnlyList<MediaItem> snapshotRows = await mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(device.Id, start.UtcDateTime.AddSeconds(-1), end.UtcDateTime.AddSeconds(1), ct);
             Assert.True(snapshotRows.Count >= images, $"Expected at least {images} snapshot rows to remain, found {snapshotRows.Count}.");
             foreach (string file in writtenFiles)
