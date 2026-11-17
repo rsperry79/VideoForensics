@@ -125,6 +125,9 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="UseAdvancedJammingSchedule">Indicates whether the advanced jamming detection schedule is active.</param>
     /// <param name="EventNextRunUtc">The UTC timestamp when the next event poll is scheduled to run; null if no future poll is scheduled.</param>
     /// <param name="EventLastRunUtc">The UTC timestamp of the most recent event poll run; null if never run.</param>
+    /// <param name="SnapshotIntervalSeconds">Optional snapshot interval in seconds; null when not set.</param>
+    /// <param name="BackfillCursorUtc">Optional UTC cursor marking how far historical backfill has progressed; null when not set.</param>
+    /// <param name="JammingWindows">Optional jamming schedule windows; null when none are defined.</param>
     public record SyncScheduleDto(
         Guid Id,
         Guid ProviderAccountId,

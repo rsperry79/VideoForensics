@@ -10,7 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Common.Contracts;
 
 using Xunit;
 
