@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using VideoForensics.Core.Helpers.Forensics.Exceptions;
@@ -36,6 +37,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
 
         public async Task<string> GenerateKeyPairAsync(string keyId)
         {
+            _ = ValidateKeyId(keyId);
             return await Task.Run(() =>
             {
                 using var rsa = RSA.Create(2048);
@@ -46,10 +48,10 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
 
                 byte[] encryptedPrivateKey = EncryptKey(privateKey, keyId);
 
-                string keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
+                string keyPath = KeyFile(keyId);
                 File.WriteAllBytes(keyPath, encryptedPrivateKey);
 
-                string pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
+                string pubKeyPath = PubKeyFile(keyId);
                 File.WriteAllBytes(pubKeyPath, publicKey);
 
                 StoreKeyMetadata(keyId, thumbprint);
@@ -62,7 +64,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
         {
             return await Task.Run(() =>
             {
-                string pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
+                string pubKeyPath = PubKeyFile(keyId);
                 return File.Exists(pubKeyPath) ? File.ReadAllBytes(pubKeyPath) : Array.Empty<byte>();
             }).ConfigureAwait(true);
         }
@@ -71,7 +73,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
         {
             return await Task.Run(() =>
             {
-                string keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
+                string keyPath = KeyFile(keyId);
                 if (!File.Exists(keyPath))
                 {
                     throw new ForensicAnalysisException($"Key {keyId} not found");
@@ -117,9 +119,9 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
         {
             await Task.Run(() =>
             {
-                string keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
-                string pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
-                string metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
+                string keyPath = KeyFile(keyId);
+                string pubKeyPath = PubKeyFile(keyId);
+                string metadataPath = MetaFile(keyId);
 
                 if (File.Exists(keyPath))
                 {
@@ -163,6 +165,26 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                 };
             }).ConfigureAwait(true);
         }
+
+        // keyId is used to build file names. Only a plain identifier may reach the filesystem: no separators,
+        // no dots, so "../" or an absolute path cannot escape the key store.
+        private static readonly Regex KeyIdPattern = new("^[A-Za-z0-9_-]{1,128}$", RegexOptions.CultureInvariant);
+
+        private static string ValidateKeyId(string keyId)
+        {
+            if (keyId is null || !KeyIdPattern.IsMatch(keyId))
+            {
+                throw new ArgumentException("keyId must be 1-128 letters, digits, '-' or '_'.", nameof(keyId));
+            }
+
+            return keyId;
+        }
+
+        private string KeyFile(string keyId) => Path.Combine(_keyStorePath, ValidateKeyId(keyId) + KeyFileExtension);
+
+        private string PubKeyFile(string keyId) => Path.Combine(_keyStorePath, ValidateKeyId(keyId) + ".pub");
+
+        private string MetaFile(string keyId) => Path.Combine(_keyStorePath, ValidateKeyId(keyId) + ".meta");
 
         private byte[] EncryptKey(byte[] keyData, string keyId)
         {
@@ -253,14 +275,14 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                 Algorithm = "RSA-2048"
             };
 
-            string metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
+            string metadataPath = MetaFile(keyId);
             string json = JsonSerializer.Serialize(metadata);
             File.WriteAllText(metadataPath, json);
         }
 
         private KeyMetadata? RetrieveKeyMetadata(string keyId)
         {
-            string metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
+            string metadataPath = MetaFile(keyId);
             if (File.Exists(metadataPath))
             {
                 try
