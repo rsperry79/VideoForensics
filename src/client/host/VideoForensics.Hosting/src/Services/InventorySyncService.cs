@@ -96,6 +96,15 @@ namespace VideoForensics.Client.Hosting.Services
                 }
             }
 
+            // Why: discovery returns no locations when the provider session is not signed in yet (every startup, before the
+            // session is restored). Caching that empty result hides the stored inventory, and the event pull then does nothing.
+            // The cache is left as it was; an unset cache makes the pull load the inventory from the database.
+            if (locations.Count == 0)
+            {
+                _logger.LogWarning("Device inventory sync returned no locations; the stored inventory is kept");
+                return new InventorySyncResult(0, 0, configsRead, configFailures);
+            }
+
             _referenceCache.Replace(accountId, new AccountReferenceData(locations, devices));
             _logger.LogInformation("Synced device inventory: {LocationCount} location(s), {DeviceCount} device(s)", locations.Count, devices.Count);
             return new InventorySyncResult(locations.Count, devices.Count, configsRead, configFailures);
