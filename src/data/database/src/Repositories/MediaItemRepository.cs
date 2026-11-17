@@ -41,7 +41,7 @@ namespace VideoForensics.Data.Database.Repositories
             return await unitOfWork.ReadAsync(context => context.Db().MediaItems
                 .AsNoTracking()
                 .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
-                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot-rollup\""))
+                    && m.MediaKind == MediaKinds.Timelapse)
                 .OrderByDescending(m => m.RecordedAtUtc)
                 .FirstOrDefaultAsync(ct), ct);
         }
@@ -129,7 +129,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .Where(m => m.DeviceId == deviceId
                     && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
                     && m.MediaFormat == "jpg"
-                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot\""))
+                    && m.MediaKind == MediaKinds.Snapshot)
                 .OrderBy(m => m.RecordedAtUtc)
                 .ToListAsync(ct), ct);
         }
@@ -142,7 +142,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             return await unitOfWork.ReadAsync(context => context.Db().MediaItems
                 .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && (m.MetadataJson == null || !m.MetadataJson.Contains("\"type\":\"snapshot-rollup\"")))
+                    && m.MediaKind != MediaKinds.Timelapse)
                 .OrderBy(m => m.RecordedAtUtc)
                 .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags, m.Id))
                 .ToListAsync(ct), ct);
@@ -158,7 +158,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             var totals = await unitOfWork.ReadAsync(context => context.Db().MediaItems
                 .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && (m.MetadataJson == null || !m.MetadataJson.Contains("\"type\":\"snapshot-rollup\"")))
+                    && m.MediaKind != MediaKinds.Timelapse)
                 .GroupBy(m => m.DeviceId)
                 .Select(g => new
                 {

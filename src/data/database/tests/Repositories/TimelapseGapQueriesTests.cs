@@ -63,6 +63,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 RecordedAtUtc = Start.AddMinutes(minute),
                 DurationSeconds = seconds,
                 DownloadedAtUtc = Start,
+                MediaKind = MediaKinds.Timelapse,
                 MetadataJson = LoopMetadata,
             };
         }

@@ -128,6 +128,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             // must not overwrite the window length with that.
             MediaItem loop = Clip(_deviceId, "Day", 0);
             loop.MetadataJson = "{\"type\":\"snapshot-rollup\"}";
+            loop.MediaKind = MediaKinds.Timelapse;
             loop.DurationSeconds = 900;
             SetUpClip(loop, Array.Empty<MediaItem>(), new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
                 new ClipColorStats(0.5, 25.0), null!);

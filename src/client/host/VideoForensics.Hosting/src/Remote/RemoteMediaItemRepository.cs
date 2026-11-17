@@ -99,7 +99,7 @@ namespace VideoForensics.Client.Hosting.Remote
             IReadOnlyList<MediaItemDto> range = await GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
             return range
                 .Where(m => string.Equals(m.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
-                    && m.MetadataJson is not null && m.MetadataJson.Contains("\"type\":\"snapshot\"", StringComparison.Ordinal))
+                    && string.Equals(m.MediaKind, MediaKindNames.Snapshot, StringComparison.Ordinal))
                 .OrderBy(m => m.RecordedAtUtc)
                 .ToList();
         }

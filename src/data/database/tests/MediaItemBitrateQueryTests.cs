@@ -82,6 +82,7 @@ namespace VideoForensics.Data.Database.Tests
             MediaItem clip = Row(device, "clip", Start.AddMinutes(1), 1_000_000, false);
             MediaItem lapse = Row(device, "lapse", Start.AddMinutes(2), 300_000, false);
             lapse.MetadataJson = "{\"type\":\"snapshot-rollup\"}";
+            lapse.MediaKind = MediaKinds.Timelapse;
             await _repository.AddAsync(clip, CancellationToken.None);
             await _repository.AddAsync(lapse, CancellationToken.None);
 
