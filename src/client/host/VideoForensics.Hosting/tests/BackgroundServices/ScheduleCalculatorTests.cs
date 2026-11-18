@@ -80,12 +80,12 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public void NewLinkedAccount_SnapshotIntervalDefaultsToTwoMinutes()
+        public void NewLinkedAccount_SnapshotIntervalDefaultsToFiveMinutes()
         {
             SyncSchedule created = SyncSchedule.CreateDefault(Guid.NewGuid());
 
-            Assert.Equal(2, created.SnapshotRssiIntervalMinutes);
-            Assert.Equal(120, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(created, Now, TimeZoneInfo.Utc));
+            Assert.Equal(5, created.SnapshotRssiIntervalMinutes);
+            Assert.Equal(300, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(created, Now, TimeZoneInfo.Utc));
         }
 
         [Fact]
