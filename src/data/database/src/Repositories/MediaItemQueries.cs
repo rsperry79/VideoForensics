@@ -119,6 +119,43 @@ namespace VideoForensics.Data.Database.Repositories
                 .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags, m.Id));
         }
 
+        /// <summary>Count, sum and sum of squares of a device's bitrates, as one SQL aggregate row.</summary>
+        internal sealed record BitrateTotals(int Count, double Sum, double SumOfSquares);
+
+        /// <summary>
+        /// The rows a device's all-time bitrate baseline is taken over, aggregated in SQL. Time-lapse roll-ups are excluded.
+        /// </summary>
+        internal static IQueryable<BitrateTotals> BitrateTotalsByDevice(VideoForensicsDbContext db, Guid deviceId)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
+                    && m.MediaKind != MediaKinds.Timelapse)
+                .GroupBy(m => m.DeviceId)
+                .Select(g => new BitrateTotals(
+                    g.Count(),
+                    g.Sum(m => (double)m.VideoBitrateBps!.Value),
+                    g.Sum(m => (double)m.VideoBitrateBps!.Value * (double)m.VideoBitrateBps!.Value)));
+        }
+
+        /// <summary>The filtered rows of a page query: devices, a UTC window, and optionally video only. Callers order and page.</summary>
+        internal static IQueryable<MediaItem> PageMatches(VideoForensicsDbContext db, Guid[] deviceIds, DateTime fromUtc, DateTime toUtc, bool videoOnly)
+        {
+            IQueryable<MediaItem> matches = db.MediaItems.AsNoTracking()
+                .Where(m => deviceIds.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
+            if (videoOnly)
+            {
+                matches = matches.Where(m => m.MediaFormat != null && (m.MediaFormat.Contains("mp4") || m.MediaFormat.Contains("video")));
+            }
+
+            return matches;
+        }
+
+        /// <summary>Every media row, untracked.</summary>
+        internal static IQueryable<MediaItem> All(VideoForensicsDbContext db)
+        {
+            return db.MediaItems.AsNoTracking();
+        }
+
         /// <summary>The media row with this SHA-256, or none.</summary>
         internal static IQueryable<MediaItem> ByHash(VideoForensicsDbContext db, string sha256Hash)
         {

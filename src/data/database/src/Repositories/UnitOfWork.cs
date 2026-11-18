@@ -570,14 +570,7 @@ namespace VideoForensics.Data.Database.Repositories
             ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
             ArgumentOutOfRangeException.ThrowIfGreaterThan(take, 500);
 
-            Guid[] ids = deviceIds.ToArray();
-            IQueryable<MediaItem> matches = _db.MediaItems
-                .AsNoTracking()
-                .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
-            if (videoOnly)
-            {
-                matches = matches.Where(m => m.MediaFormat != null && (m.MediaFormat.Contains("mp4") || m.MediaFormat.Contains("video")));
-            }
+            IQueryable<MediaItem> matches = MediaItemQueries.PageMatches(_db, deviceIds.ToArray(), fromUtc, toUtc, videoOnly);
 
             int total = matches.Count();
             var items = matches.OrderBy(m => m.RecordedAtUtc).ThenBy(m => m.Id).Skip(skip).Take(take).ToList();
@@ -618,17 +611,7 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
             // Same aggregate as MediaItemRepository: one SQL GROUP BY, with the arithmetic shared through FromTotals.
-            var totals = _db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && m.MediaKind != MediaKinds.Timelapse)
-                .GroupBy(m => m.DeviceId)
-                .Select(g => new
-                {
-                    Count = g.Count(),
-                    Sum = g.Sum(m => (double)m.VideoBitrateBps!.Value),
-                    SumOfSquares = g.Sum(m => (double)m.VideoBitrateBps!.Value * (double)m.VideoBitrateBps!.Value),
-                })
-                .FirstOrDefault();
+            MediaItemQueries.BitrateTotals? totals = MediaItemQueries.BitrateTotalsByDevice(_db, deviceId).FirstOrDefault();
             return Task.FromResult(totals is null
                 ? AllTimeBitrateBaseline.FromTotals(0, 0, 0)
                 : AllTimeBitrateBaseline.FromTotals(totals.Count, totals.Sum, totals.SumOfSquares));
@@ -662,7 +645,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.All(_db).ToList());
         }
 
         public Task AddAsync(MediaItem mediaItem, CancellationToken ct) { _ = _db.MediaItems.Add(mediaItem); return Task.CompletedTask; }

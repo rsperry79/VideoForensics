@@ -61,13 +61,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             return await unitOfWork.ReadAsync<MediaItemPage>(async context =>
             {
-                IQueryable<MediaItem> matches = context.Db().MediaItems
-                    .AsNoTracking()
-                    .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
-                if (videoOnly)
-                {
-                    matches = matches.Where(m => m.MediaFormat != null && (m.MediaFormat.Contains("mp4") || m.MediaFormat.Contains("video")));
-                }
+                IQueryable<MediaItem> matches = MediaItemQueries.PageMatches(context.Db(), ids, fromUtc, toUtc, videoOnly);
 
                 int total = await matches.CountAsync(ct);
                 List<MediaItem> items = await matches
@@ -128,16 +122,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            var totals = await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && m.MediaKind != MediaKinds.Timelapse)
-                .GroupBy(m => m.DeviceId)
-                .Select(g => new
-                {
-                    Count = g.Count(),
-                    Sum = g.Sum(m => (double)m.VideoBitrateBps!.Value),
-                    SumOfSquares = g.Sum(m => (double)m.VideoBitrateBps!.Value * (double)m.VideoBitrateBps!.Value),
-                })
+            MediaItemQueries.BitrateTotals? totals = await unitOfWork.ReadAsync(context => MediaItemQueries.BitrateTotalsByDevice(context.Db(), deviceId)
                 .FirstOrDefaultAsync(ct), ct);
 
             return totals is null
@@ -175,7 +160,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all media items.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.All(context.Db()).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
