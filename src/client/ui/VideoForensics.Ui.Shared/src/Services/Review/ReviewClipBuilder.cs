@@ -1,4 +1,3 @@
-using System.Text.Json;
 
 using VideoForensics.Client.Common.Viewer;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
@@ -14,8 +13,6 @@ public static class ReviewClipBuilder
 {
     // The host writes this marker (SnapshotSyncBackgroundService). Ui.Shared cannot reference the host, so the value is repeated
     // here and must change together.
-    private const string SnapshotType = "snapshot";
-    private const string CaptureSource = "capture";
 
     /// <summary>
     /// The playable clips of one device, sorted by start. Excludes purged items, non-video items, timer stills,
@@ -95,43 +92,15 @@ public static class ReviewClipBuilder
         return !item.IsPurged
             && MediaFormatHelper.IsVideo(item.MediaFormat)
             && item.DurationSeconds is double duration && duration > 0
-            && !IsTimerStill(item.MetadataJson);
+            && !IsTimerStill(item);
     }
 
     /// <summary>
-    /// True for a timer still (a capture snapshot). Malformed or missing metadata is not a marker, so the item stays playable.
+    /// True for a timer still (a capture snapshot). Classified by the typed MediaKind, not by metadata text.
     /// </summary>
-    private static bool IsTimerStill(string? metadataJson)
+    private static bool IsTimerStill(MediaItemDto item)
     {
-        if (string.IsNullOrWhiteSpace(metadataJson))
-        {
-            return false;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(metadataJson);
-            JsonElement root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return false;
-            }
-
-            string? type = ReadString(root, "type");
-            string? source = ReadString(root, "source");
-            return string.Equals(type, SnapshotType, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(source, CaptureSource, StringComparison.OrdinalIgnoreCase);
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
+        return string.Equals(item.MediaKind, MediaKindNames.Snapshot, StringComparison.Ordinal);
     }
 
-    private static string? ReadString(JsonElement obj, string name)
-    {
-        return obj.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
-    }
 }
