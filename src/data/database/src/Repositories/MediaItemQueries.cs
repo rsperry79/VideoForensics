@@ -42,6 +42,45 @@ namespace VideoForensics.Data.Database.Repositories
                 .OrderBy(m => m.RecordedAtUtc);
         }
 
+        /// <summary>A device's media rows recorded in a UTC window, untracked, unordered.</summary>
+        internal static IQueryable<MediaItem> ByDeviceAndDateRange(VideoForensicsDbContext db, Guid deviceId, DateTime fromUtc, DateTime toUtc)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
+        }
+
+        /// <summary>Clips recorded at or after <paramref name="sinceUtc"/> whose stored RedFlags name BitrateCollapse, oldest first.</summary>
+        internal static IQueryable<MediaItem> FlaggedSince(VideoForensicsDbContext db, DateTime sinceUtc)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => m.RecordedAtUtc >= sinceUtc && m.RedFlags != null && m.RedFlags.Contains("BitrateCollapse"))
+                .OrderBy(m => m.RecordedAtUtc);
+        }
+
+        /// <summary>Oldest non-purged media with no video codec recorded, at most <paramref name="limit"/>.</summary>
+        internal static IQueryable<MediaItem> MissingCodec(VideoForensicsDbContext db, int limit)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.VideoCodec == null)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit);
+        }
+
+        /// <summary>Oldest non-purged media that analysis has never run on, at most <paramref name="limit"/>.</summary>
+        internal static IQueryable<MediaItem> Unanalyzed(VideoForensicsDbContext db, int limit)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.BaselineVersion == null)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit);
+        }
+
+        /// <summary>Every media row written by one download event, untracked.</summary>
+        internal static IQueryable<MediaItem> ByDownloadEventId(VideoForensicsDbContext db, Guid downloadEventId)
+        {
+            return db.MediaItems.AsNoTracking().Where(m => m.DownloadEventId == downloadEventId);
+        }
+
         /// <summary>The media row with this SHA-256, or none.</summary>
         internal static IQueryable<MediaItem> ByHash(VideoForensicsDbContext db, string sha256Hash)
         {

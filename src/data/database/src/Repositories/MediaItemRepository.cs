@@ -85,29 +85,20 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc)
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDeviceAndDateRange(context.Db(), deviceId, fromUtc, toUtc)
                 .ToListAsync(ct), ct);
         }
 
         /// <summary>Oldest non-purged media with no video codec recorded. Rows the codec backfill has already tried and failed on are skipped by the caller.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => !m.IsPurged && m.VideoCodec == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.MissingCodec(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>Oldest media that analysis has never run on. Analysis sets BaselineVersion on every result, so null means not yet analysed.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => !m.IsPurged && m.BaselineVersion == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.Unanalyzed(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>
@@ -171,11 +162,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => m.RecordedAtUtc >= sinceUtc && m.RedFlags != null && m.RedFlags.Contains("BitrateCollapse"))
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.FlaggedSince(context.Db(), sinceUtc).ToListAsync(ct), ct);
         }
 
         /// <summary>Gets a media item by API source hash for deduplication.</summary>
@@ -187,7 +174,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets media items by download event ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.Where(m => m.DownloadEventId == downloadEventId).ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDownloadEventId(context.Db(), downloadEventId).ToListAsync(ct), ct);
         }
 
         /// <summary>Lists all media items.</summary>

@@ -586,33 +586,22 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.ByDeviceAndDateRange(_db, deviceId, fromUtc, toUtc).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => m.RecordedAtUtc >= sinceUtc && m.RedFlags != null && m.RedFlags.Contains("BitrateCollapse"))
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.FlaggedSince(_db, sinceUtc).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => !m.IsPurged && m.VideoCodec == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.MissingCodec(_db, limit).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => !m.IsPurged && m.BaselineVersion == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.Unanalyzed(_db, limit).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
@@ -677,7 +666,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DownloadEventId == downloadEventId).ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.ByDownloadEventId(_db, downloadEventId).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
