@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 
@@ -79,6 +80,43 @@ namespace VideoForensics.Data.Database.Repositories
         internal static IQueryable<MediaItem> ByDownloadEventId(VideoForensicsDbContext db, Guid downloadEventId)
         {
             return db.MediaItems.AsNoTracking().Where(m => m.DownloadEventId == downloadEventId);
+        }
+
+        /// <summary>The media row with this id, or none.</summary>
+        internal static IQueryable<MediaItem> ById(VideoForensicsDbContext db, Guid mediaItemId)
+        {
+            return db.MediaItems.AsNoTracking().Where(m => m.Id == mediaItemId);
+        }
+
+        /// <summary>Non-purged video rows that have no thumbnail yet.</summary>
+        internal static IQueryable<MediaItem> VideosWithoutThumbnail(VideoForensicsDbContext db)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.ThumbnailPath == null
+                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")));
+        }
+
+        /// <summary>Oldest non-purged video rows that have no preview clip yet, at most <paramref name="limit"/>.</summary>
+        internal static IQueryable<MediaItem> VideosWithoutPreview(VideoForensicsDbContext db, int limit)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.PreviewPath == null
+                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit);
+        }
+
+        /// <summary>
+        /// A device's stream-reported bitrates, oldest first. Estimated bitrates and time-lapse roll-ups are excluded.
+        /// Why: roll-ups are built from snapshots, so their bitrate is not a camera signal.
+        /// </summary>
+        internal static IQueryable<MeasuredBitrate> MeasuredBitrates(VideoForensicsDbContext db, Guid deviceId)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
+                    && m.MediaKind != MediaKinds.Timelapse)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags, m.Id));
         }
 
         /// <summary>The media row with this SHA-256, or none.</summary>

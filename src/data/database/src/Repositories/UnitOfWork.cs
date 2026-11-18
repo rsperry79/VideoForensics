@@ -547,7 +547,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
-            return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Id == mediaItemId));
+            return Task.FromResult(MediaItemQueries.ById(_db, mediaItemId).FirstOrDefault());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
@@ -611,11 +611,8 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MeasuredBitrate>)_db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags))
-                .ToList());
+            // Why: the shared query also drops time-lapse roll-ups, as the all-time baseline already does.
+            return Task.FromResult((IReadOnlyList<MeasuredBitrate>)MediaItemQueries.MeasuredBitrates(_db, deviceId).ToList());
         }
 
         public Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
@@ -650,18 +647,12 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => !m.IsPurged && m.ThumbnailPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.VideosWithoutThumbnail(_db).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => !m.IsPurged && m.PreviewPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.VideosWithoutPreview(_db, limit).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)

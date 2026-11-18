@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a media item by ID.</summary>
         public async Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.FirstOrDefaultAsync(m => m.Id == mediaItemId, ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ById(context.Db(), mediaItemId).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>Gets media items by device ID.</summary>
@@ -117,12 +117,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && m.MediaKind != MediaKinds.Timelapse)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags, m.Id))
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.MeasuredBitrates(context.Db(), deviceId).ToListAsync(ct), ct);
         }
 
         /// <summary>
@@ -190,12 +185,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </remarks>
         public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => !m.IsPurged
-                    && m.ThumbnailPath == null
-                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.VideosWithoutThumbnail(context.Db()).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -205,14 +195,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </remarks>
         public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => !m.IsPurged
-                    && m.PreviewPath == null
-                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.VideosWithoutPreview(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>Adds a new media item.</summary>
