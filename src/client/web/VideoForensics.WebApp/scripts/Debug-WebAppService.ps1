@@ -72,7 +72,9 @@ $project = Join-Path $PSScriptRoot '..\..\..\..\..\src\client\web\VideoForensics
 $project = (Resolve-Path $project).Path
 $updatesRoot = Join-Path $env:ProgramData 'VideoForensics\updates'
 $healthUrl = 'http://localhost:5162/healthz'
-$logConsoleProject = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..\src\utils\logviewer\src\VideoForensics.Utils.LogViewer.csproj')).Path
+# Only used when the log console opens (not with -NoLogConsole). The project was removed from wip, so this is a
+# plain path: resolving it eagerly failed the whole script even when the console was not wanted.
+$logConsoleProject = Join-Path $PSScriptRoot '..\..\..\..\..\src\utils\logviewer\src\VideoForensics.Utils.LogViewer.csproj'
 # The build output folder is the project's bin\<Configuration>\net10.0, the folder Visual Studio builds into.
 $buildOutput = Join-Path (Split-Path -Parent $project) "bin\$Configuration\net10.0"
 # The published executable is named after the project's AssemblyName, not the file name.
@@ -373,7 +375,9 @@ try {
     # open before the WebApp starts.
     $viewerId = $null
     if (-not $NoLogConsole -and $PSCmdlet.ShouldProcess($logConsoleProject, 'Open logger console')) {
-        $viewerDll = Publish-LogViewer -ProjectPath $logConsoleProject -RunDirectory $DebugDirectory
+        # The log viewer is installed separately (SperryDev.Logger.Viewer), so the script opens that build.
+        $viewerDll = Join-Path $env:ProgramFiles 'SperryDev.Logger.Viewer\SperryDev.Logger.Viewer.dll'
+        if (-not (Test-Path -LiteralPath $viewerDll)) { throw "The installed log viewer was not found at $viewerDll." }
         $viewerId = Start-LogViewer -DllPath $viewerDll
     }
 
