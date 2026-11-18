@@ -556,11 +556,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
         public Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
         {
-            return Task.FromResult(_db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
-                    && m.MediaKind == MediaKinds.Timelapse)
-                .OrderByDescending(m => m.RecordedAtUtc)
-                .FirstOrDefault());
+            return Task.FromResult(MediaItemQueries.LatestRollupLoop(_db, deviceId).FirstOrDefault());
         }
         public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
