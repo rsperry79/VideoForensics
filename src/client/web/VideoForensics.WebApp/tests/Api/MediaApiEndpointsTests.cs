@@ -883,6 +883,45 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         #endregion
 
+        #region ListSnapshotsAsync Tests
+
+        [Fact]
+        public async Task ListSnapshotsAsync_DeviceAndRange_ReturnsOnlyTheSnapshotQueryResult()
+        {
+            // Why: the snapshot filter runs in SQL on the server. The endpoint must call the snapshot query, not a range query.
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+            var snapshot = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FileName = "s.jpg",
+                FilePath = "/path/s.jpg",
+                MediaFormat = "jpg",
+                MediaKind = MediaKinds.Snapshot,
+                Sha256Hash = "h",
+                RecordedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
+                DownloadedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
+            };
+
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
+            _ = mediaItemsRepo
+                .Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem> { snapshot });
+
+            IResult result = await MediaApiEndpoints.ListSnapshotsAsync(
+                deviceId, fromUtc, toUtc, mediaItemsRepo.Object, CancellationToken.None);
+
+            Ok<IEnumerable<MediaItemDto>> okResult = Assert.IsType<Ok<IEnumerable<MediaItemDto>>>(result);
+            MediaItemDto dto = Assert.Single(okResult.Value!);
+            Assert.Equal(snapshot.Id, dto.Id);
+            Assert.Equal(MediaKinds.Snapshot, dto.MediaKind);
+            mediaItemsRepo.Verify(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        #endregion
+
         #region ListMediaItemsAsync Tests
 
         [Fact]

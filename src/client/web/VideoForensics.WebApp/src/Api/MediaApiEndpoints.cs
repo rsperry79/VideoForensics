@@ -49,6 +49,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("/media-items/snapshots", ListSnapshotsAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
             _ = group.MapGet("/media-items/page", ListMediaItemPageAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
@@ -439,6 +443,25 @@ namespace VideoForensics.Client.WebApp.Api
             }
 
             return operatorId;
+        }
+
+        /// <summary>
+        /// Lists a device's snapshot JPEGs in a date range, oldest first. The filter runs in SQL, so clients get only snapshots.
+        /// </summary>
+        public static async Task<IResult> ListSnapshotsAsync(
+            Guid deviceId,
+            DateTime from,
+            DateTime to,
+            IMediaItemWriteRepository mediaItems,
+            CancellationToken ct)
+        {
+            if (from > to)
+            {
+                return Results.BadRequest();
+            }
+
+            IReadOnlyList<MediaItem> snapshots = await mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, from, to, ct);
+            return Results.Ok(snapshots.Select(x => x.ToDto()));
         }
 
         /// <summary>

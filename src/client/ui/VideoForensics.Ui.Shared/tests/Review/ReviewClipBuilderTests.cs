@@ -17,7 +17,8 @@ public class ReviewClipBuilder_Tests
         double? duration,
         string format = "video/mp4",
         string? metadata = null,
-        bool purged = false)
+        bool purged = false,
+        string kind = MediaKinds.Clip)
     {
         return new MediaItem
         {
@@ -26,6 +27,7 @@ public class ReviewClipBuilder_Tests
             FileName = "clip.mp4",
             FilePath = "clips/clip.mp4",
             MediaFormat = format,
+            MediaKind = kind,
             Sha256Hash = "hash",
             RecordedAtUtc = startUtc,
             DurationSeconds = duration,
@@ -67,7 +69,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItemDto[] items = new[] { Item(device, Start, 1, metadata: "{\"type\":\"snapshot\",\"source\":\"capture\"}") };
+        MediaItemDto[] items = new[] { Item(device, Start, 1, metadata: "{\"type\":\"snapshot\",\"source\":\"capture\"}", kind: MediaKinds.Snapshot) };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
