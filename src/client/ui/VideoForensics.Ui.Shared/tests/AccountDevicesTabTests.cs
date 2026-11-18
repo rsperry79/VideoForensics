@@ -92,6 +92,23 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         cut.WaitForAssertion(() => Assert.Contains("Porch", cut.Find("#account-devices").TextContent));
         Assert.Empty(cut.FindAll("[data-testid='device-offline-warning']"));
     }
+
+    [Fact]
+    public void DeviceTable_HeaderOrderMatchesCellOrder()
+    {
+        SetEmptyLists();
+        Device device = AddDevice("Porch");
+        _ = DeviceHealthRepositoryMock.Setup(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow }.ToDto());
+
+        IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
+
+        cut.WaitForAssertion(() => Assert.Contains("Porch", cut.Find("#account-devices").TextContent));
+        string[] headers = cut.FindAll("#account-devices thead th").Select(th => th.TextContent.Trim()).ToArray();
+        Assert.Equal("Type", headers[1]);
+        Assert.Equal("Status", headers[2]);
+    }
+
     [Fact]
     public void DeviceWithSnapshotAndLoop_ShowsOnlyTheLatestOfEach()
     {
