@@ -723,6 +723,20 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
+        public async Task RunOneTickAsync_NoStoredLocations_DoesNotRecordACleanSync()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            _ = h.Locations.Setup(r => r.ListByProviderAccountIdAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            // An empty location lookup pulled nothing, so it must not count as a clean pull that starts the time-lapse horizon.
+            h.Accounts.Verify(r => r.UpdateAsync(It.Is<ProviderAccount>(a => a.LastSyncCompletedUtc == Now), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_InactiveAccount_LogsOnceAcrossTicks()
         {
             var h = new Harness();

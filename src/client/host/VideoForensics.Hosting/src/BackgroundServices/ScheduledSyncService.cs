@@ -615,6 +615,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 outcome = ex.Message;
             }
 
+            // Why: a pull with no stored locations synced nothing, so it is a failed run, not a clean one that starts the time-lapse horizon.
+            if (outcome is null && counts is { NoStoredLocations: true })
+            {
+                outcome = "No stored locations for this account; run a device sync first";
+            }
+
             // A clean scheduled pull is a completed sync, the same as a manual one, so the Sync tab's Last Sync Completed is current.
             if (outcome is null && !backfillInProgress)
             {
