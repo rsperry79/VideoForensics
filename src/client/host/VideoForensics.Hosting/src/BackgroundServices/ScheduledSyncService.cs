@@ -350,8 +350,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             _nextTimelapseCheckUtc[account.Id] = now.AddMinutes(checkMinutes);
             _timelapseWatchdog.Attempted(account.Id, account.ProviderName, TimeSpan.FromMinutes(checkMinutes), now);
 
+            // Why: after a restart the in-memory clean pull is empty, so fall back to the saved clean completion time.
+            DateTime? cleanPull = _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : account.LastSyncCompletedUtc;
             DateTime? horizon = TimelapseHorizon.Compute(
-                _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : null,
+                cleanPull,
                 sp.GetService<SnapshotCycle>()?.LastSuccessfulPassUtc(account.Id),
                 PullOverlap);
             if (horizon is null)
@@ -675,20 +677,29 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <returns>True when the completion is recorded, or the account no longer exists; false when the write failed.</returns>
         private async Task<bool> MarkSyncCompletedAsync(IProviderAccountWriteRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
         {
+            ProviderAccount? account = null;
+            DateTime? previous = null;
             try
             {
-                ProviderAccount? account = await accounts.GetAsync(accountId, CancellationToken.None);
+                account = await accounts.GetAsync(accountId, CancellationToken.None);
                 if (account is null)
                 {
                     return true;
                 }
 
+                previous = account.LastSyncCompletedUtc;
                 account.LastSyncCompletedUtc = completedUtc;
                 await accounts.UpdateAsync(account, CancellationToken.None);
                 return true;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Why: the in-memory account must keep the saved time, or the time-lapse horizon would use a completion that was never stored.
+                if (account is not null)
+                {
+                    account.LastSyncCompletedUtc = previous;
+                }
+
                 _logger.LogError("Could not record the completed scheduled sync: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return false;
             }

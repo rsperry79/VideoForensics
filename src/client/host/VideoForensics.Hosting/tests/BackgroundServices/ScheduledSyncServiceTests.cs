@@ -680,7 +680,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 .ReturnsAsync(attempts);
             _ = h.SnapshotRollup.Setup(s => s.RollUpSegmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotRollupResult(1, 1, null));
-            // The completed-sync write fails. Without a recorded clean pull, the time-lapse horizon is not set.
+            // The completed-sync write fails and no clean sync was ever saved, so the time-lapse horizon is not set.
+            account.LastSyncCompletedUtc = null;
             _ = h.Accounts.Setup(r => r.UpdateAsync(It.Is<ProviderAccount>(a => a.LastSyncCompletedUtc == Now), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("database is locked"));
             ScheduledSyncService service = h.Build();
 
@@ -702,6 +703,23 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             // The check runs, but has no horizon yet. That is logged, not silently skipped.
             _ = Assert.Single(h.Logs.Lines, l => l.StartsWith("Information") && l.Contains("waiting") && l.Contains("Ring"));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RestartWithSavedCleanSync_SeedsTheHorizonFromTheSavedTime()
+        {
+            var h = new Harness();
+            // Not due this tick, so no fresh clean pull can set the horizon: only the saved sync time can.
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: Now.AddMinutes(5));
+            account.LastSyncCompletedUtc = Now.AddMinutes(-10);
+            _ = h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            h.Cycle.MarkPassCompleted(account.Id);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            // The saved clean sync gives the horizon right away, so the check does not wait for a fresh pull after a restart.
+            Assert.DoesNotContain(h.Logs.Lines, l => l.Contains("waiting") && l.Contains("Ring"));
         }
 
         [Fact]
