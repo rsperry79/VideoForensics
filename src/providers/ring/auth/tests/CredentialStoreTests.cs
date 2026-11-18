@@ -105,9 +105,10 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         }
 
         [Fact]
-        public void SanitizeClearTextPassword_UnreadableStoredRefreshToken_KeepsClearTextAndTheToken()
+        public void SanitizeClearTextPassword_UnreadableStoredRefreshToken_MigratesPasswordAndDropsToken()
         {
-            // A stored token that cannot be decrypted must not be overwritten with null; the clear text stays until it can be migrated.
+            // Decided: a refresh token in the old format cannot be read, so it is dropped and the user re-enters Ring
+            // credentials once. The clear-text password is still migrated now, so it does not stay on disk.
             string settingsPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-settings-{Guid.NewGuid()}.json");
             string authPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
             var store = new CredentialStore();
@@ -118,9 +119,12 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
 
                 bool migrated = store.SanitizeClearTextPassword(settingsPath, authPath);
 
-                Assert.False(migrated);
-                Assert.Contains("clear-text-secret", File.ReadAllText(settingsPath));
-                Assert.Contains("not-a-valid-ciphertext", File.ReadAllText(authPath));
+                Assert.True(migrated);
+                Assert.DoesNotContain("clear-text-secret", File.ReadAllText(settingsPath));
+                Assert.DoesNotContain("not-a-valid-ciphertext", File.ReadAllText(authPath));
+                RingCredentials migratedCredentials = store.Load(authPath);
+                Assert.Equal("clear-text-secret", migratedCredentials.Password);
+                Assert.True(string.IsNullOrEmpty(migratedCredentials.RefreshToken));
             }
             finally
             {

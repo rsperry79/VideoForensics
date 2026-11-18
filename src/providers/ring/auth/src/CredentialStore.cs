@@ -74,23 +74,6 @@ namespace VideoForensics.Providers.Ring
             RestrictToCurrentUserOnWindows(path);
         }
 
-        /// <summary>True when there is no stored refresh token to lose, or the stored one decrypts.</summary>
-        private bool StoredRefreshTokenIsReadable(string path)
-        {
-            if (!File.Exists(path))
-            {
-                return true;
-            }
-
-            StoredCredentials stored = JsonSerializer.Deserialize<StoredCredentials>(File.ReadAllText(path));
-            if (stored == null || string.IsNullOrEmpty(stored.RefreshToken))
-            {
-                return true;
-            }
-
-            return !string.IsNullOrEmpty(_encryption.Decrypt(stored.RefreshToken));
-        }
-
         public void SetCredentials(string path, string userName, string password = null, string refreshToken = null)
         {
             Save(path, new RingCredentials { UserName = userName, Password = password, RefreshToken = refreshToken });
@@ -122,12 +105,8 @@ namespace VideoForensics.Providers.Ring
                     return false;
                 }
 
-                // Why: a stored refresh token that cannot be decrypted would be saved back as null, wiping it.
-                if (!StoredRefreshTokenIsReadable(authPath))
-                {
-                    return false;
-                }
-
+                // Why: a refresh token in the old format does not decrypt, so it is saved back as null. The user re-enters
+                // Ring credentials once (decided). The clear-text password is migrated now so it does not stay on disk.
                 RingCredentials existing = Load(authPath);
                 existing.Password = clearText;
                 Save(authPath, existing);
