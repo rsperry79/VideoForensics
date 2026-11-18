@@ -462,27 +462,7 @@ builder.Services.AddRateLimiter(options =>
     _ = options.AddPolicy("auth", httpContext =>
     {
         INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
-
-        // This limiter exists to stop a REMOTE attacker from brute-forcing pairing/auth (plan
-        // §5.7) - it was never meant to throttle the physically-present owner setting up their own
-        // server over loopback, which is exactly what it was doing (5 requests/15min shared across
-        // every pairing+auth call adds up fast across an initial pairing ceremony plus a sign-in:
-        // initiate, register/options, register/complete, then assertion-options, assertion-complete
-        // is already 5 on its own). Local-tier traffic is unlimited; Network/Internet keep the real
-        // limit, since THAT'S the traffic this defense is actually for.
-        if (resolver.ResolveTier(httpContext) == NetworkTier.Local)
-        {
-            return RateLimitPartition.GetNoLimiter(resolver.ResolveClientIp(httpContext));
-        }
-
-        string key = resolver.ResolveClientIp(httpContext);
-        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromMinutes(15),
-            SegmentsPerWindow = 3,
-            QueueLimit = 0
-        });
+        return AuthRateLimitPolicy.Create(httpContext, resolver);
     });
 
     _ = options.AddPolicy("media", httpContext =>
