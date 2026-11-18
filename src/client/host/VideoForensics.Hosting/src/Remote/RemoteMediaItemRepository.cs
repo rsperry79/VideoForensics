@@ -93,15 +93,15 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        /// <remarks>No server endpoint returns only snapshots yet, so this filters the device's range on the client.</remarks>
         public async Task<IReadOnlyList<MediaItemDto>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            IReadOnlyList<MediaItemDto> range = await GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
-            return range
-                .Where(m => string.Equals(m.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(m.MediaKind, MediaKindNames.Snapshot, StringComparison.Ordinal))
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToList();
+            // Why: the server filters snapshots in SQL, so the client no longer loads the whole range first.
+            string fromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));
+            string toEscaped = Uri.EscapeDataString(toUtc.ToString("O"));
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items/snapshots?deviceId={deviceId}&from={fromEscaped}&to={toEscaped}", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<MediaItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<MediaItemDto>>(JsonOptions, ct);
+            return dtos ?? [];
         }
 
         /// <inheritdoc />
