@@ -19,7 +19,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets media items by device ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.Where(m => m.DeviceId == deviceId).ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDevice(context.Db(), deviceId).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -44,12 +44,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => m.DeviceId == deviceId)
-                .OrderByDescending(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.RecentByDevice(context.Db(), deviceId, limit).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -121,12 +116,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => m.DeviceId == deviceId
-                    && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
-                    && m.MediaFormat == "jpg"
-                    && m.MediaKind == MediaKinds.Snapshot)
-                .OrderBy(m => m.RecordedAtUtc)
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.SnapshotsByDeviceAndDateRange(context.Db(), deviceId, fromUtc, toUtc)
                 .ToListAsync(ct), ct);
         }
 
@@ -172,7 +162,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.FirstOrDefaultAsync(m => m.Sha256Hash == sha256Hash, ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByHash(context.Db(), sha256Hash).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>
@@ -191,7 +181,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a media item by API source hash for deduplication.</summary>
         public async Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.FirstOrDefaultAsync(m => m.ApiSourceHash == apiSourceHash, ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByApiSourceHash(context.Db(), apiSourceHash).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>Gets media items by download event ID.</summary>

@@ -552,7 +552,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.ByDevice(_db, deviceId).ToList());
         }
         public Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
         {
@@ -560,7 +560,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
         public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAtUtc).Take(limit).ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.RecentByDevice(_db, deviceId, limit).ToList());
         }
 
         public Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
@@ -617,11 +617,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
-                    && m.MediaFormat == "jpg" && m.MediaKind == MediaKinds.Snapshot)
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.SnapshotsByDeviceAndDateRange(_db, deviceId, fromUtc, toUtc).ToList());
         }
 
         public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
@@ -654,13 +650,13 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
-            return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Sha256Hash == sha256Hash));
+            return Task.FromResult(MediaItemQueries.ByHash(_db, sha256Hash).FirstOrDefault());
         }
 
         /// <summary>Gets a media item by API source hash for deduplication.</summary>
         public Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
-            return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.ApiSourceHash == apiSourceHash));
+            return Task.FromResult(MediaItemQueries.ByApiSourceHash(_db, apiSourceHash).FirstOrDefault());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
