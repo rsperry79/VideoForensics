@@ -1,0 +1,52 @@
+<div class="@RootClass" @attributes="AdditionalAttributes">
+    @if (Header is not null)
+    {
+        <div class="review-shell-header" data-testid="review-shell-header">@Header</div>
+    }
+
+    <div class="review-shell-stage" data-testid="review-shell-stage">@Stage</div>
+
+    @if (HasSide)
+    {
+        <div class="review-shell-side" data-testid="review-shell-side">@Side</div>
+    }
+
+    @if (Bottom is not null)
+    {
+        <div class="review-shell-bottom" data-testid="review-shell-bottom">@Bottom</div>
+    }
+</div>
+
+@code {
+    /// <summary>The top row: breadcrumb, top bar, or case banner.</summary>
+    [Parameter] public RenderFragment? Header { get; set; }
+
+    /// <summary>The main area: the player, or the tab content.</summary>
+    [Parameter, EditorRequired] public RenderFragment Stage { get; set; } = default!;
+
+    /// <summary>An optional column beside the stage, such as the vertical timeline. Omitted when not set.</summary>
+    [Parameter] public RenderFragment? Side { get; set; }
+
+    /// <summary>An optional strip under the stage, such as the playback timeline or the camera preview strip.</summary>
+    [Parameter] public RenderFragment? Bottom { get; set; }
+
+    /// <summary>True fills the height the parent gives the shell and never scrolls the page. False lets the page scroll.</summary>
+    [Parameter] public bool Fill { get; set; }
+
+    /// <summary>Extra class names for the caller's own layout hook. Merged with the shell's classes.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Extra attributes from the caller, such as data-testid.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool HasSide => Side is not null;
+
+    private string RootClass =>
+        string.Join(" ", new[]
+        {
+            "review-shell",
+            Fill ? "review-shell--fill" : null,
+            HasSide ? null : "review-shell--no-side",
+            Class,
+        }.Where(name => !string.IsNullOrWhiteSpace(name)));
+}

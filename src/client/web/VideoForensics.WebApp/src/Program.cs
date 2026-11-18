@@ -194,7 +194,7 @@ if (OperatingSystem.IsWindows() && updatesActiveAsService)
     }
 
     var startupApplier = new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
-        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()),
         new VideoForensics.Client.Hosting.Updates.UpdateApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>.Instance),
         Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>.Instance);
     string runningVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0";
@@ -526,7 +526,7 @@ if (inPlaceUpdatesEnabled)
     // Stage the release zip; StartupUpdateApplier applies it on the next service start. No installer is launched.
     _ = builder.Services.AddHttpClient();
     _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdatePackageVerifier>(
-        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier());
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()));
     _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateStager>(sp =>
         new VideoForensics.Client.Hosting.Updates.UpdateStager(
             updatesRoot,
@@ -568,10 +568,10 @@ if (updatesActiveAsService)
     builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.MaintenanceUpdateDrain>();
     _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
         updatesRoot,
-        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()),
         sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateDrain>(),
         new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
-            new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+            new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()),
             new VideoForensics.Client.Hosting.Updates.UpdateApplier(sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>>()),
             sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>>()),
         AppContext.BaseDirectory,
@@ -736,6 +736,8 @@ builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvide
 // initial connection - see Components/NetworkTierCapture.razor and SessionNetworkContext's own doc
 // comment for why this can't simply be re-resolved later from a self-HTTP call's own connection.
 builder.Services.AddScoped<SessionNetworkContext>();
+// Re-captures the tier whenever a circuit's connection comes up, including a resume with no prerender.
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, SessionNetworkTierCircuitHandler>();
 
 // Security Events page + SuperAdmin operator picker (plan §5.5): the WebApp's own Blazor UI reuses
 // the same HTTP-backed RemoteSecurityEventsService/RemoteAdminOperatorService that a MAUI client
@@ -913,6 +915,15 @@ VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
         call.StatusCode,
         call.Body?.Length ?? 0);
 
+// Registered first among the request middleware, so exceptions from the middleware below are also handled here.
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    _ = app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    _ = app.UseHsts();
+}
+
 app.UseMiddleware<LocalTransportMiddleware>();
 
 // The saved Internet address can change after startup. Add the browser origin to Fido2's allow-list and
@@ -944,14 +955,6 @@ app.Use(async (context, next) =>
     context.Response.Headers.RetryAfter = "5";
     await context.Response.WriteAsync("Starting up. Try again in a moment.");
 });
-
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    _ = app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    _ = app.UseHsts();
-}
 
 app.UseAuthentication();
 app.UseAuthorization();

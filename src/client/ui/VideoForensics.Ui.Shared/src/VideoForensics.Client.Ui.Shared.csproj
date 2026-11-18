@@ -20,7 +20,7 @@
 
     <ItemGroup>
         <PackageReference Include="BlazorLocalTime" Version="2.1.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.12.0" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.15" />
         <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.14" />
         <PackageReference Include="System.Reactive" Version="7.0.0" />

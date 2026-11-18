@@ -74,6 +74,23 @@ namespace VideoForensics.Providers.Ring
             RestrictToCurrentUserOnWindows(path);
         }
 
+        /// <summary>True when there is no stored refresh token to lose, or the stored one decrypts.</summary>
+        private bool StoredRefreshTokenIsReadable(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return true;
+            }
+
+            StoredCredentials stored = JsonSerializer.Deserialize<StoredCredentials>(File.ReadAllText(path));
+            if (stored == null || string.IsNullOrEmpty(stored.RefreshToken))
+            {
+                return true;
+            }
+
+            return !string.IsNullOrEmpty(_encryption.Decrypt(stored.RefreshToken));
+        }
+
         public void SetCredentials(string path, string userName, string password = null, string refreshToken = null)
         {
             Save(path, new RingCredentials { UserName = userName, Password = password, RefreshToken = refreshToken });
@@ -101,6 +118,12 @@ namespace VideoForensics.Providers.Ring
 
                 string clearText = clearValue.GetValue<string>();
                 if (string.IsNullOrWhiteSpace(clearText))
+                {
+                    return false;
+                }
+
+                // Why: a stored refresh token that cannot be decrypted would be saved back as null, wiping it.
+                if (!StoredRefreshTokenIsReadable(authPath))
                 {
                     return false;
                 }

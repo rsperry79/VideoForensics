@@ -113,6 +113,24 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewTimelineTab_GridPreviewClicked_OpensThatCameraAsTheSingleView()
+    {
+        // Arrange
+        AddDevices(2);
+        ReviewState.SetCameras(Devices.Select(d => d.Id));
+        ServeOneClipPerCamera();
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindAll("[data-testid='camera-tile-preview']")));
+
+        // Act
+        cut.Find("[data-testid='camera-tile-preview']").Click();
+
+        // Assert
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<SingleCameraView>()));
+        Assert.Equal([Devices[1].Id], ReviewState.CameraIds);
+    }
+
+    [Fact]
     public void ReviewTimelineTab_NoCamerasSelected_ShowsTheEmptyStateAndDoesNotLoad()
     {
         // Arrange
@@ -124,6 +142,19 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         // Assert
         Assert.Equal(L["NoCamerasSelected"].Value, cut.Find("[data-testid='review-timeline-no-cameras']").TextContent);
         Assert.Empty(ClipLoader.Calls);
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_NoCamerasSelected_RendersInAStagePlaceholder()
+    {
+        // Arrange
+        AddDevices(2);
+
+        // Act
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+
+        // Assert: the message sits in a box the size of the player stage, so the page does not jump when clips arrive
+        Assert.True(cut.Find("[data-testid='review-timeline-no-cameras']").ParentElement!.ClassList.Contains("review-stage--message"));
     }
 
     [Fact]

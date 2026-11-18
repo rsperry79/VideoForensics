@@ -143,6 +143,82 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task ImportBackupAsync_ZipEntryEscapesImportFolder_RefusesAndWritesNothingOutside()
+        {
+            // A crafted backup must not write outside the import folder (zip-slip).
+            string tempDir = CreateTempDirectory();
+            string escapeName = $"vf-zipslip-{Guid.NewGuid():N}.txt";
+            string escapedPath = Path.Combine(Path.GetTempPath(), escapeName);
+            try
+            {
+                string zipPath = Path.Combine(tempDir, "backup.zip");
+                using (var zipStream = new ZipOutputStream(File.Create(zipPath)))
+                {
+                    zipStream.PutNextEntry(new ZipEntry("../" + escapeName));
+                    byte[] payload = Encoding.UTF8.GetBytes("owned");
+                    zipStream.Write(payload, 0, payload.Length);
+                    zipStream.CloseEntry();
+                }
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.False(result.Success);
+                Assert.False(File.Exists(escapedPath));
+            }
+            finally
+            {
+                if (File.Exists(escapedPath))
+                {
+                    File.Delete(escapedPath);
+                }
+
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Theory]
+        [InlineData("../../outside.mp4")]
+        [InlineData("C:\\Windows\\win.ini")]
+        public async Task ImportBackupAsync_MediaPathOutsideMediaFolder_SkipsItemAndInsertsNothing(string relativePath)
+        {
+            // A media path must stay under the media folder; otherwise the import hashes and serves an arbitrary file.
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var deviceId = Guid.NewGuid();
+                var exportedItem = new ExportedMediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = deviceId,
+                    DownloadEventId = null,
+                    FileName = "outside.mp4",
+                    RelativeMediaPath = relativePath,
+                    MediaFormat = "mp4",
+                    MediaKind = "Clip",
+                    Sha256Hash = "abc123"
+                };
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), mediaItems: [exportedItem]);
+
+                _ = _mockMediaItems.Setup(r => r.GetAsync(exportedItem.Id, It.IsAny<CancellationToken>())).ReturnsAsync((MediaItem?)null);
+                _ = _mockDevices.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "d1", Name = "Cam", Type = "camera" });
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object, _mockDevices.Object, _mockDingIdLinks.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.True(result.Success);
+                Assert.Equal(0, result.MediaItems.Inserted);
+                Assert.Equal(1, result.MediaItems.SkippedOrphaned);
+                _mockMediaItems.Verify(r => r.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
         public async Task ImportBackupAsync_MediaItem_FlagsIntegrityIssue_WhenFileMissing()
         {
             string tempDir = CreateTempDirectory();

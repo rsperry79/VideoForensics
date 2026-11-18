@@ -3,7 +3,8 @@
 .review-timeline-vertical {
     position: relative;
     width: 80px;
-    flex: 0 0 80px;
+    flex: 1 1 0;
+    min-height: 0;
     background-color: var(--bs-tertiary-bg);
     border-radius: 4px;
 }
@@ -37,8 +38,25 @@
     width: 48px;
     transform: translateY(-50%);
     text-align: right;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
+    line-height: 1;
+    white-space: nowrap;
     color: var(--bs-secondary-color);
+    pointer-events: none;
+}
+
+/* Time under the pointer. Sits to the right of the bar and never takes pointer events itself. */
+.review-timeline-vertical .review-timeline-hover {
+    position: absolute;
+    left: 5.5rem;
+    transform: translateY(-50%);
+    padding: 0 0.25rem;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 3px;
     pointer-events: none;
 }
 

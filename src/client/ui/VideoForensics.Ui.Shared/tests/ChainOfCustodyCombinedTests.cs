@@ -19,7 +19,6 @@ using VideoForensics.Data.Core.Models;
 
 using Xunit;
 
-using VideoForensics.Core.Api.Contracts;
 using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;

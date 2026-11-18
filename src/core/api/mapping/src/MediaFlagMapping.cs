@@ -10,6 +10,7 @@ namespace VideoForensics.Client.Hosting.Signal
     /// </summary>
     public static class MediaFlagMapping
     {
+        /// <summary>Converts a domain media flag to its wire DTO.</summary>
         public static MediaFlagDto ToDto(this MediaFlag flag)
         {
             ArgumentNullException.ThrowIfNull(flag);
@@ -32,6 +33,7 @@ namespace VideoForensics.Client.Hosting.Signal
                 flag.DeviationSigma);
         }
 
+        /// <summary>Converts a wire media flag DTO to the domain type.</summary>
         public static MediaFlag ToDomain(this MediaFlagDto dto)
         {
             ArgumentNullException.ThrowIfNull(dto);
@@ -56,18 +58,21 @@ namespace VideoForensics.Client.Hosting.Signal
             };
         }
 
+        /// <summary>Converts a domain page of media flags to its wire DTO.</summary>
         public static MediaFlagPageDto ToDto(this MediaFlagPage page)
         {
             ArgumentNullException.ThrowIfNull(page);
             return new MediaFlagPageDto(page.Items.Select(f => f.ToDto()).ToList(), page.TotalCount);
         }
 
+        /// <summary>Converts a wire page of media flags to the domain type.</summary>
         public static MediaFlagPage ToDomain(this MediaFlagPageDto dto)
         {
             ArgumentNullException.ThrowIfNull(dto);
             return new MediaFlagPage(dto.Items.Select(f => f.ToDomain()).ToList(), dto.TotalCount);
         }
 
+        /// <summary>Converts a domain media flag filter to its wire DTO.</summary>
         public static MediaFlagFilterDto ToDto(this MediaFlagFilter filter)
         {
             ArgumentNullException.ThrowIfNull(filter);
@@ -93,6 +98,7 @@ namespace VideoForensics.Client.Hosting.Signal
             };
         }
 
+        /// <summary>Converts a domain status conflict to its wire DTO.</summary>
         public static FlagStatusConflictDto ToDto(this VideoForensics.Data.Common.Contracts.FlagStatusConflictException ex)
         {
             ArgumentNullException.ThrowIfNull(ex);

@@ -29,7 +29,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>
-        /// The snapshot/RSSI interval in effect at <paramref name="nowUtc"/>: SnapshotRssiIntervalSeconds unless
+        /// The snapshot/RSSI interval in effect at <paramref name="nowUtc"/>, in seconds: SnapshotRssiIntervalMinutes unless
         /// UseAdvancedJammingSchedule is set and at least one window applies (smallest wins). Always clamped to the minimum.
         /// </summary>
         /// <param name="timeZone">Zone used to evaluate jamming windows; null means the server's local zone.</param>

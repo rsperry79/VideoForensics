@@ -2,19 +2,23 @@
 @using VideoForensics.Client.Ui.Shared.Resources
 @inject IStringLocalizer<SharedResources> L
 
-<div class="flag-review-shell" data-testid="flag-review-shell">
-    <div class="flag-review-breadcrumb" data-testid="flag-review-breadcrumb">
-        @Breadcrumb
-    </div>
-
-    <section class="flag-review-media" data-testid="flag-review-media" aria-label="@L["FlagReviewMediaLabel"]">
-        @Media
-    </section>
-
-    <section class="flag-review-timeline" data-testid="flag-review-timeline" aria-label="@L["FlagReviewTimelineLabel"]">
-        @Timeline
-    </section>
-</div>
+<ReviewShell Class="flag-review-shell" data-testid="flag-review-shell" Fill="true">
+    <Header>
+        <div class="flag-review-breadcrumb" data-testid="flag-review-breadcrumb">
+            @Breadcrumb
+        </div>
+    </Header>
+    <Stage>
+        <section class="flag-review-media" data-testid="flag-review-media" aria-label="@L["FlagReviewMediaLabel"]">
+            @Media
+        </section>
+    </Stage>
+    <Bottom>
+        <section class="flag-review-timeline" data-testid="flag-review-timeline" aria-label="@L["FlagReviewTimelineLabel"]">
+            @Timeline
+        </section>
+    </Bottom>
+</ReviewShell>
 
 @code {
     /// <summary>The breadcrumb trail above the media, already built by the caller.</summary>

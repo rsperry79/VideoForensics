@@ -46,6 +46,7 @@ namespace VideoForensics.Data.Database.Tests
                 RecordedAtUtc = recordedAt,
                 DownloadedAtUtc = recordedAt,
                 MetadataJson = metadata,
+                MediaKind = format == "jpg" && metadata.Contains("snapshot") ? MediaKinds.Snapshot : MediaKinds.Clip,
             };
         }
 

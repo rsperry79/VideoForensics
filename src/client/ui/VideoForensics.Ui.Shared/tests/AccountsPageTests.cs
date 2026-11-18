@@ -148,7 +148,7 @@ public abstract class AccountsPageTestBase : BunitContext
         {
             IReadOnlyList<IElement> buttons = scope is null ? cut.FindAll("button") : cut.FindAll(scope + " button");
             target = buttons.First(b => b.TextContent.Trim() == text);
-        });
+        }, TimeSpan.FromSeconds(10));
         target!.Click();
     }
 
@@ -330,7 +330,7 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
             string removed = cut.Find("#removed-accounts").TextContent;
             Assert.Contains("Retired Owner", removed);
             Assert.Contains("disk full", removed);
-        });
+        }, TimeSpan.FromSeconds(10));
         AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 

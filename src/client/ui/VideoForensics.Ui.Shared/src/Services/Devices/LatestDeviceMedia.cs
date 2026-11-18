@@ -9,12 +9,6 @@ namespace VideoForensics.Client.Ui.Shared.Services.Devices;
 /// </summary>
 public static class LatestDeviceMedia
 {
-    /// <summary>Marker the snapshot download writes into a snapshot's metadata.</summary>
-    private const string SnapshotMarker = "\"type\":\"snapshot\"";
-
-    /// <summary>Marker the roll-up writes into a loop's metadata.</summary>
-    private const string LoopMarker = "snapshot-rollup";
-
     /// <summary>The newest snapshot JPEG and the newest roll-up loop; either is null when the device has none yet.</summary>
     public sealed record Selection(MediaItemDto? Snapshot, MediaItemDto? Loop);
 
@@ -39,17 +33,16 @@ public static class LatestDeviceMedia
         return new Selection(snapshot, loop);
     }
 
+    // Why: MediaKind is the typed classification (written by the snapshot capture and the roll-up). Text in MetadataJson is not read.
     private static bool IsSnapshot(MediaItemDto item)
     {
-        return string.Equals(item.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
-        && item.MetadataJson is not null
-        && item.MetadataJson.Contains(SnapshotMarker, StringComparison.Ordinal);
+        return string.Equals(item.MediaKind, MediaKindNames.Snapshot, StringComparison.Ordinal)
+        && string.Equals(item.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsLoop(MediaItemDto item)
     {
-        return string.Equals(item.MediaFormat, "mp4", StringComparison.OrdinalIgnoreCase)
-        && item.MetadataJson is not null
-        && item.MetadataJson.Contains(LoopMarker, StringComparison.Ordinal);
+        return string.Equals(item.MediaKind, MediaKindNames.Timelapse, StringComparison.Ordinal)
+        && string.Equals(item.MediaFormat, "mp4", StringComparison.OrdinalIgnoreCase);
     }
 }

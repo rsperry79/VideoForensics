@@ -48,6 +48,9 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The in-memory timeline the timeline tab publishes to and the right-panel timeline reads.</summary>
     protected ReviewTimelineModel TimelineModel { get; } = new();
 
+    /// <summary>The viewport double. Desktop by default; a test sets <c>IsMobile</c> before it renders.</summary>
+    protected Mock<IViewportService> Viewport { get; } = new();
+
     /// <summary>The device repository double.</summary>
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
 
@@ -141,6 +144,8 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped(_ => ScopeState);
         _ = Services.AddScoped(_ => ReviewState);
         _ = Services.AddScoped<ReviewPopupState>();
+        Viewport.SetupGet(v => v.IsMobile).Returns(false);
+        _ = Services.AddSingleton(Viewport.Object);
         _ = Services.AddScoped<PendingEvidenceTags>();
         _ = Services.AddScoped(_ => TimelineModel);
         _ = Services.AddScoped<RightPanelContentService>();

@@ -3,6 +3,7 @@
 @using Microsoft.Extensions.Localization
 @using Syncfusion.Blazor.Buttons
 @using Syncfusion.Blazor.Inputs
+@using VideoForensics.Client.Common.Viewer
 @using VideoForensics.Client.Ui.Shared.Components.Viewer
 @using VideoForensics.Client.Ui.Shared.Resources
 @using VideoForensics.Client.Ui.Shared.Services.Time
@@ -31,9 +32,17 @@
         </div>
         <div class="playback-timeline-overlay">
             <div class="playback-timeline-track">
-                <SfSlider TValue="double" Min="_minSeconds" Max="_maxSeconds" Step="1" Value="_position" Enabled="_maxSeconds > _minSeconds">
-                    <SliderEvents TValue="double" ValueChange="OnScrubAsync" />
-                </SfSlider>
+                @if (_maxSeconds > _minSeconds)
+                {
+                    <TimelineStrip Orientation="TimelineOrientation.Horizontal"
+                                   FillWidth="true"
+                                   Clips="_noClips"
+                                   WindowStartUtc="DateTime.UnixEpoch.AddSeconds(_minSeconds)"
+                                   WindowEndUtc="DateTime.UnixEpoch.AddSeconds(_maxSeconds)"
+                                   Cursor="DateTime.UnixEpoch.AddSeconds(_position)"
+                                   Label="@L["PlaybackTimelineLabel"].Value"
+                                   OnSeek="OnStripSeekAsync" />
+                }
             </div>
             <div class="playback-timeline-markers">
                 @foreach (DateTime at in _markTimesInWindow)
@@ -158,11 +167,14 @@
         await OnRateChange.InvokeAsync(Rate);
     }
 
-    private async Task OnScrubAsync(SliderChangeEventArgs<double> args)
+    /// <summary>The scrub strip seeks the player to the clicked time and moves the play bar there.</summary>
+    private async Task OnStripSeekAsync(DateTime at)
     {
-        _position = args.Value;
-        await Player.SeekToUtcAsync(DateTime.UnixEpoch.AddSeconds(args.Value));
+        _position = SecondsSinceEpoch(at);
+        await Player.SeekToUtcAsync(at);
     }
+
+    private static readonly IReadOnlyList<ClipWindow> _noClips = [];
 
     private double MarkTimePercent(DateTime at)
     {

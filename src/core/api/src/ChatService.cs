@@ -24,13 +24,16 @@ namespace VideoForensics.Core.Api.Contracts
     {
         /// <summary>"user" or "assistant".</summary>
         public string Role { get; set; } = string.Empty;
+        /// <summary>Text of the message.</summary>
         public string Content { get; set; } = string.Empty;
     }
 
     /// <summary>The assistant's reply to a chat turn, plus which MCP tools (if any) it invoked.</summary>
     public class ChatTurnResult
     {
+        /// <summary>The assistant's reply text.</summary>
         public string Reply { get; set; } = string.Empty;
+        /// <summary>Names of the MCP tools the assistant invoked, in order.</summary>
         public IReadOnlyList<string> ToolsInvoked { get; set; } = [];
     }
 

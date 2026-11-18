@@ -6,7 +6,11 @@ internal static class RepoFile
     private static readonly string Anchor = Path.Combine("src", "client", "ui", "VideoForensics.Ui.Shared", "src");
 
     /// <summary>Returns the text of a file under the Ui.Shared source folder. Walks up from the test binary to find the repository root.</summary>
-    public static string ReadUiSharedSource(string relativePath)
+    public static string ReadUiSharedSource(string relativePath) =>
+        File.ReadAllText(Path.Combine(UiSharedSourceRoot(), relativePath));
+
+    /// <summary>Returns the absolute path of the Ui.Shared source folder.</summary>
+    public static string UiSharedSourceRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
         while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, Anchor)))
@@ -16,6 +20,6 @@ internal static class RepoFile
 
         return directory is null
             ? throw new DirectoryNotFoundException($"Repository root with {Anchor} not found above {AppContext.BaseDirectory}.")
-            : File.ReadAllText(Path.Combine(directory.FullName, Anchor, relativePath));
+            : Path.Combine(directory.FullName, Anchor);
     }
 }

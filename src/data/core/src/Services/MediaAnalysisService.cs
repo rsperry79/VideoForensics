@@ -75,13 +75,13 @@ namespace VideoForensics.Data.Core.Services
             return !string.Equals(media.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(media.MediaFormat, "jpeg", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(media.MediaFormat, "png", StringComparison.OrdinalIgnoreCase)
-            && (media.MetadataJson is null || !media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal));
+            && media.MediaKind != MediaKinds.Timelapse;
         }
 
         /// <summary>True for a roll-up time-lapse loop, whose duration is the window it covers.</summary>
         private static bool IsRollUpLoop(MediaItem media)
         {
-            return media.MetadataJson is not null && media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal);
+            return media.MediaKind == MediaKinds.Timelapse;
         }
 
         /// <inheritdoc />

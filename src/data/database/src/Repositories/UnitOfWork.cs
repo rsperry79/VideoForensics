@@ -558,7 +558,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             return Task.FromResult(_db.MediaItems.AsNoTracking()
                 .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
-                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot-rollup\""))
+                    && m.MediaKind == MediaKinds.Timelapse)
                 .OrderByDescending(m => m.RecordedAtUtc)
                 .FirstOrDefault());
         }
@@ -623,7 +623,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
                 .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
-                    && m.MediaFormat == "jpg" && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot\""))
+                    && m.MediaFormat == "jpg" && m.MediaKind == MediaKinds.Snapshot)
                 .OrderBy(m => m.RecordedAtUtc)
                 .ToList());
         }
@@ -642,7 +642,7 @@ namespace VideoForensics.Data.Database.Repositories
             // Same aggregate as MediaItemRepository: one SQL GROUP BY, with the arithmetic shared through FromTotals.
             var totals = _db.MediaItems.AsNoTracking()
                 .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && (m.MetadataJson == null || !m.MetadataJson.Contains("\"type\":\"snapshot-rollup\"")))
+                    && m.MediaKind != MediaKinds.Timelapse)
                 .GroupBy(m => m.DeviceId)
                 .Select(g => new
                 {

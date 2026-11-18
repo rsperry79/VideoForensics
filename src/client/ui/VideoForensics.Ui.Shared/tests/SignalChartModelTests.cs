@@ -1,5 +1,6 @@
 using VideoForensics.Client.Ui.Shared.Services.Signal;
 using VideoForensics.Client.Ui.Shared.Services.Time;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 
@@ -89,8 +90,8 @@ public class SignalChartModelTests
     [Fact]
     public void ExpectedIntervalFor_UsesTheAccountsSnapshotIntervalAndFallsBackToTheDefault()
     {
-        Assert.Equal(TimeSpan.FromSeconds(120), SignalChartModel.ExpectedIntervalFor(120));
-        Assert.Equal(TimeSpan.FromSeconds(60), SignalChartModel.ExpectedIntervalFor(null));
+        Assert.Equal(TimeSpan.FromMinutes(5), SignalChartModel.ExpectedIntervalFor(5));
+        Assert.Equal(TimeSpan.FromMinutes(SyncScheduleLimits.DefaultSnapshotIntervalMinutes), SignalChartModel.ExpectedIntervalFor(null));
     }
 
     [Fact]

@@ -11,18 +11,18 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Interval in minutes for pulling events (e.g., rule violations, motion, person detection).
         /// This interval is independent of snapshot/RSSI polling.
-        /// Minimum floor is defined by MinimumSnapshotIntervalSeconds (rate-limit safety measure).</summary>
+        /// Minimum floor is defined by MinimumSnapshotIntervalMinutes (rate-limit safety measure).</summary>
         public int EventPollIntervalMinutes { get; set; }
 
-        /// <summary>Interval in seconds for pulling snapshots and RSSI data.
+        /// <summary>Interval in minutes for pulling snapshots and RSSI data.
         /// This is the DEFAULT interval used when UseAdvancedJammingSchedule is false or no active jamming window applies.
-        /// Minimum floor is defined by MinimumSnapshotIntervalSeconds (rate-limit safety measure).</summary>
-        public int SnapshotRssiIntervalSeconds { get; set; }
+        /// Minimum floor is defined by MinimumSnapshotIntervalMinutes (rate-limit safety measure).</summary>
+        public int SnapshotRssiIntervalMinutes { get; set; }
 
-        /// <summary>Spacing in seconds between snapshot requests for this account. Null means not configured: the effective
-        /// spacing is then the media pacer's current MinInterval. Raised by one second each time Ring starts a new rate-limit
+        /// <summary>Spacing in minutes between snapshot requests for this account. Null means not configured: the effective
+        /// spacing is then the media pacer's current MinInterval. Raised by one minute each time Ring starts a new rate-limit
         /// incident for the account (see RingMediaDownloadService), so the stored spacing settles at a rate Ring accepts.</summary>
-        public int? SnapshotIntervalSeconds { get; set; }
+        public int? SnapshotIntervalMinutes { get; set; }
 
         /// <summary>
         /// Where the scheduled backfill has reached: the start of the next month to pull. Null means the backfill has not started;
@@ -34,8 +34,8 @@ namespace VideoForensics.Data.Common.Entities
         public bool IsEnabled { get; set; }
 
         /// <summary>Indicates whether the advanced jamming detection schedule (JammingScheduleWindows) is active.
-        /// When false, only SnapshotRssiIntervalSeconds is used.
-        /// When true, JammingScheduleWindows override SnapshotRssiIntervalSeconds during their active windows.</summary>
+        /// When false, only SnapshotRssiIntervalMinutes is used.
+        /// When true, JammingScheduleWindows override SnapshotRssiIntervalMinutes during their active windows.</summary>
         public bool UseAdvancedJammingSchedule { get; set; }
 
         /// <summary>The UTC timestamp when the next event poll is scheduled to run; null if no future event poll is scheduled.</summary>
@@ -52,11 +52,11 @@ namespace VideoForensics.Data.Common.Entities
         /// Tune this value in one place if future provider quotas require adjustment.</summary>
         public const int MinimumPollIntervalMinutes = 1;
 
-        /// <summary>Default snapshot/RSSI interval for a newly linked account: one minute, stored in seconds.</summary>
-        public const int DefaultSnapshotIntervalSeconds = 60;
+        /// <summary>Default snapshot/RSSI interval for a newly linked account: two minutes, stored in minutes.</summary>
+        public const int DefaultSnapshotIntervalMinutes = 2;
 
-        /// <summary>Snapshot/RSSI floor in seconds. One second is the smallest interval an operator can set.</summary>
-        public const int MinimumSnapshotIntervalSeconds = 1;
+        /// <summary>Snapshot/RSSI floor in minutes. One minute is the smallest interval an operator can set.</summary>
+        public const int MinimumSnapshotIntervalMinutes = 1;
 
         /// <summary>Default event poll interval for a newly linked account, in minutes.</summary>
         public const int DefaultEventPollIntervalMinutes = 60;
@@ -72,7 +72,7 @@ namespace VideoForensics.Data.Common.Entities
                 Id = Guid.NewGuid(),
                 ProviderAccountId = providerAccountId,
                 EventPollIntervalMinutes = DefaultEventPollIntervalMinutes,
-                SnapshotRssiIntervalSeconds = DefaultSnapshotIntervalSeconds,
+                SnapshotRssiIntervalMinutes = DefaultSnapshotIntervalMinutes,
                 IsEnabled = true,
                 UseAdvancedJammingSchedule = false
             };

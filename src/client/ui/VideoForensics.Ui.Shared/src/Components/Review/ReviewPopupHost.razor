@@ -1,0 +1,45 @@
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
+@inject ReviewPopupState Popups
+
+@* Wraps every review popup. The backdrop and the Escape key live here, in the same container as the popups, so a popup
+   stacks above the backdrop on desktop and inside the phone sheet. *@
+<div class="review-popup-host" data-testid="review-popup-host" @onkeydown="OnKeyDown">
+    @if (Popups.Open is not null)
+    {
+        <div class="review-popup-backdrop" data-testid="review-popup-backdrop" @onclick="Popups.Close"></div>
+    }
+
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>The popups and the controls that open them.</summary>
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Popups.OnChange += OnPopupsChanged;
+    }
+
+    private void OnPopupsChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Escape closes the open popup. The key event bubbles up from whichever control inside the host has focus.</summary>
+    private void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Popups.Close();
+        }
+    }
+
+    public void Dispose()
+    {
+        Popups.OnChange -= OnPopupsChanged;
+    }
+}

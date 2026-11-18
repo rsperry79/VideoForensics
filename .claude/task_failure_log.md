@@ -22,6 +22,7 @@ Pruned 2026-11-06. Resolved entries removed; history is in git. Rules that came 
 - 2026-11-04 | ring salt tests | salt tests skipped until the path is injectable; the pinner pins Keys to ProgramData | OPEN: fix the pinner and keys pointer
 - 2026-11-04 | database location | stale ProgramData database-location.json still on disk | OPEN: remove manually
 - 2026-11-05 | cleanup | rm of F:/flagactions-green.log denied (outside repo) | OPEN: user deletes F:\flagactions-green.log
+- 2026-11-16 | device provider name fix | merged origin/dev into wip in the main checkout while it had an unrelated docs submodule change | followed the pre-work dev check without stopping for the dirty checkout | stop and ask when the main checkout is dirty, also for the pre-work merge
 
 Watch (flaky under full-run load; rerun alone before calling it a regression): ReviewFilterPanel debounce and provider-burst tests, FolderPicker_Cancel, GetSnapshotTimestampTest, ServerLogsPage_ManyEntries, MaintenanceHoldTimer ArmSafetyTimer_AfterReserve, CaseRepositoryNumberingTests concurrent create, StorageDefaultPath_Tests (Keys status), one unnamed src/data/database/tests failure (2026-11-05).
 
@@ -71,3 +72,15 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 - Cause: (1) fixtures evaluated ToDto() once at construction, so later entity edits were not seen; (2) JammingToolsOrchestrator uses the entity write interface, so tests mocked the wrong repository; (3) Moq callback typed to the entity while the setup returns DTOs.
 - Fix: lazy ReturnsAsync factories; mocks moved to the write mock; callbacks retyped to DTOs.
 - Rule: when a DTO interface changes, grep the callers' constructor parameter types before mocking.
+
+## 2026-11-16 Media review layout: edit and cleanup slips
+- Symptom: a scripted multi-line replace on TimelineStrip.razor matched nothing and only the single-line replaces applied; CRLF working copy vs LF patterns.
+- Cause: pattern used LF; the worktree copy is CRLF (autocrlf).
+- Fix: re-applied the multi-line edits with the Edit tool; verified with git diff.
+- Rule: check the diff after any scripted replace; use Edit for multi-line changes on CRLF working copies.
+- Also: Evidence cleanup removed 11 source files and 11 test files in one batch, built clean; only the known FolderPicker_Cancel flake failed (passes alone).
+
+## 2026-11-17 Known flaky tests (not yet fixed)
+- HistogramTimeline_Playback PlaybackTimeline_MarkerClick: failed in a full Ui.Shared run, passes alone.
+- FolderPicker_Tests.FolderPicker_Cancel_InvokesOnClosedWithNull: failed once in a full Ui.Shared run (Actual unset), passes alone and in the next full run. Earlier FolderPicker and WriteGateTests failures were also seen.
+- Rule: when one of these fails, rerun it alone before treating it as a regression, and record the run.

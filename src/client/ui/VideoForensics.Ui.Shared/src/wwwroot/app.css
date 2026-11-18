@@ -151,3 +151,16 @@ nav a:hover {
     height: 12px;
     vertical-align: middle;
 }
+
+/* The left-nav pane while hidden (see layout-prefs.js setLeftNavHidden). The pane leaves the flow but keeps its
+   layout box: display:none made Syncfusion re-measure it at 0 and reset it to its 48px minimum. */
+.splitter-left-nav.vf-left-nav-hidden {
+    position: absolute !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* The separator after the hidden pane has no pane to split, so it can go. */
+.e-splitter-separator.vf-left-nav-hidden {
+    display: none !important;
+}

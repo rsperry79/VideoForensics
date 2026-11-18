@@ -218,4 +218,7 @@
   <data name="CalendarLegendTwoSdOrMore" xml:space="preserve">
     <value>2 sd or more</value>
   </data>
+  <data name="LoadFailed" xml:space="preserve">
+    <value>Could not load the signal analysis. Try again.</value>
+  </data>
 </root>

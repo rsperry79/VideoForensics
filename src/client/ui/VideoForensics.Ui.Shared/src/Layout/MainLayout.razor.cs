@@ -124,7 +124,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             try
             {
-                await SetLeftNavPaneCollapsedAsync(splitter, true);
+                await SetLeftNavPaneCollapsedAsync(true);
                 _leftNavRestorePending = false;
             }
             catch (Exception ex) when (IsSplitterNotReady(ex))
@@ -136,14 +136,22 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         /// <summary>
         /// Pages in <see cref="ExpandedLeftNavPaths"/> always show the left nav pane, whatever the saved preference, because it
-        /// hosts the media view menu (Timeline, Events, Detail, Live). Every other page shows the saved preference.
-        /// The override is transient: it changes the pane, never <see cref="LayoutPreferencesState"/>.
+        /// hosts the Live view menu. Pages in <see cref="ForcedCollapsedLeftNavPaths"/> always collapse it: the review tabs
+        /// moved to the page header, so /media needs the width. Every other page shows the saved preference.
+        /// Both overrides are transient: they change the pane, never <see cref="LayoutPreferencesState"/>.
         /// </summary>
-        private static readonly string[] ExpandedLeftNavPaths = ["/media", "/media/review", "/live-view"];
+        private static readonly string[] ExpandedLeftNavPaths = ["/live-view"];
+
+        private static readonly string[] ForcedCollapsedLeftNavPaths = ["/media", "/media/review"];
 
         private static bool IsExpandedLeftNavPath(string path)
         {
             return ExpandedLeftNavPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static bool IsForcedCollapsedLeftNavPath(string path)
+        {
+            return ForcedCollapsedLeftNavPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -153,12 +161,13 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// </summary>
         private async Task SyncLeftNavForPathAsync(SfSplitter splitter)
         {
-            bool wantCollapsed = !IsExpandedLeftNavPath(_currentPath) && LayoutPrefs.LeftNavCollapsed;
+            bool wantCollapsed = IsForcedCollapsedLeftNavPath(_currentPath)
+                || (!IsExpandedLeftNavPath(_currentPath) && LayoutPrefs.LeftNavCollapsed);
             try
             {
                 if (wantCollapsed != _leftNavPaneCollapsed)
                 {
-                    await SetLeftNavPaneCollapsedAsync(splitter, wantCollapsed);
+                    await SetLeftNavPaneCollapsedAsync(wantCollapsed);
                 }
 
                 _leftNavSyncPending = false;
@@ -169,17 +178,13 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             }
         }
 
-        private async Task SetLeftNavPaneCollapsedAsync(SfSplitter splitter, bool collapsed)
+        /// <summary>
+        /// Hides or shows the left-nav pane through the DOM, not the splitter's Collapse/Expand: those reset the pane to its
+        /// minimum width when it is shown again, which lost the saved width on every visit to /media.
+        /// </summary>
+        private async Task SetLeftNavPaneCollapsedAsync(bool collapsed)
         {
-            if (collapsed)
-            {
-                await splitter.CollapseAsync(LeftPaneIndex);
-            }
-            else
-            {
-                await splitter.ExpandAsync(LeftPaneIndex);
-            }
-
+            await JS.InvokeVoidAsync("vfLayoutPrefs.setLeftNavHidden", collapsed);
             _leftNavPaneCollapsed = collapsed;
         }
 
@@ -263,11 +268,11 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
             // On an auto-collapse page the toggle only flips the pane for this visit. The saved preference
             // stays put, and leaving the page brings the pane back in line with it.
-            if (IsExpandedLeftNavPath(_currentPath))
+            if (IsExpandedLeftNavPath(_currentPath) || IsForcedCollapsedLeftNavPath(_currentPath))
             {
                 if (_outerSplitter is not null)
                 {
-                    await SetLeftNavPaneCollapsedAsync(_outerSplitter, !_leftNavPaneCollapsed);
+                    await SetLeftNavPaneCollapsedAsync(!_leftNavPaneCollapsed);
                 }
 
                 return;
@@ -281,7 +286,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 return;
             }
 
-            await SetLeftNavPaneCollapsedAsync(_outerSplitter, collapsed);
+            await SetLeftNavPaneCollapsedAsync(collapsed);
         }
 
         private async Task ToggleRightPanelAsync()

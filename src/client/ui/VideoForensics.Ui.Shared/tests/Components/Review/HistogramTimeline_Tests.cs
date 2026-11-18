@@ -40,6 +40,17 @@ public class HistogramTimeline_Tests : BunitContext
     }
 
     [Fact]
+    public void HistogramTimeline_ScrubBar_IsTheTimelineStripNotASlider()
+    {
+        // Arrange and Act
+        IRenderedComponent<HistogramTimeline> cut = RenderControl(null);
+
+        // Assert: the flag pages use the shared strip (U-D6); the Syncfusion slider is gone
+        _ = cut.FindComponent<VideoForensics.Client.Ui.Shared.Components.Viewer.TimelineStrip>();
+        Assert.Empty(cut.FindAll(".e-slider"));
+    }
+
+    [Fact]
     public void HistogramTimeline_Places_Histogram_Below_ScrubTimeline()
     {
         IRenderedComponent<HistogramTimeline> cut = RenderControl(builder => builder.AddMarkupContent(0, "<div data-testid=\"fed-histogram\"></div>"));

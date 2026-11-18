@@ -65,7 +65,7 @@ namespace VideoForensics.Providers.Ring.Services
         // Persists the account's snapshot spacing after a new rate-limit incident. Null when the host has no schedule store.
         private readonly ISyncScheduleWriteRepository? _syncScheduleRepository;
 
-        // Saved SnapshotIntervalSeconds per account, used as a spacing floor that SetRequestPacing must not drop below.
+        // Saved SnapshotIntervalMinutes per account, used as a spacing floor that SetRequestPacing must not drop below.
         // Loaded once per account per process (see EnsureStoredSpacingLoadedAsync); raised again after each saved incident.
         private readonly ConcurrentDictionary<Guid, TimeSpan> _storedSpacingFloors = new();
         private readonly ConcurrentDictionary<Guid, Lazy<Task>> _storedSpacingLoads = new();
@@ -342,9 +342,9 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// Saves one second more than the account's current snapshot spacing as its SnapshotIntervalSeconds. The current spacing is the
-        /// stored value when set, otherwise the pacer's spacing before this incident. Failures are logged, never thrown, so a settings
-        /// write cannot fail the download that triggered it.
+        /// Saves one minute more than the account's current snapshot spacing as its SnapshotIntervalMinutes. The current spacing is the
+        /// stored value when set, otherwise the pacer's spacing before this incident, rounded up to a whole minute. Failures are logged,
+        /// never thrown, so a settings write cannot fail the download that triggered it.
         /// </summary>
         private async Task SaveSnapshotIntervalAfterIncidentAsync(Guid accountId, TimeSpan spacingBeforeIncident, CancellationToken cancellationToken)
         {
@@ -356,12 +356,12 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 SyncSchedule? schedule = await _syncScheduleRepository.GetByProviderAccountIdAsync(accountId, cancellationToken);
-                int currentSeconds = schedule?.SnapshotIntervalSeconds ?? (int)Math.Ceiling(spacingBeforeIncident.TotalSeconds);
-                int raisedSeconds = currentSeconds + 1;
-                await _syncScheduleRepository.SetSnapshotIntervalSecondsAsync(accountId, raisedSeconds, cancellationToken);
-                _storedSpacingFloors[accountId] = TimeSpan.FromSeconds(raisedSeconds);
-                _logger.LogInformation("{AccountName} snapshot interval raised to {IntervalSeconds}s after a rate limit",
-                    RingAccountDisplayName, raisedSeconds);
+                int currentMinutes = schedule?.SnapshotIntervalMinutes ?? Math.Max(1, (int)Math.Ceiling(spacingBeforeIncident.TotalMinutes));
+                int raisedMinutes = currentMinutes + 1;
+                await _syncScheduleRepository.SetSnapshotIntervalMinutesAsync(accountId, raisedMinutes, cancellationToken);
+                _storedSpacingFloors[accountId] = TimeSpan.FromMinutes(raisedMinutes);
+                _logger.LogInformation("{AccountName} snapshot interval raised to {IntervalMinutes} min after a rate limit",
+                    RingAccountDisplayName, raisedMinutes);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -370,7 +370,7 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// Loads the account's saved SnapshotIntervalSeconds once per process and raises its pacer to at least that spacing, so a
+        /// Loads the account's saved SnapshotIntervalMinutes once per process and raises its pacer to at least that spacing, so a
         /// restart keeps the spacing the last rate-limit incident saved. Concurrent callers share one load. A load that fails is
         /// logged and not retried in this process; the pacer keeps its base spacing.
         /// </summary>
@@ -391,17 +391,17 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 SyncSchedule? schedule = await _syncScheduleRepository!.GetByProviderAccountIdAsync(accountId, cancellationToken);
-                int? storedSeconds = schedule?.SnapshotIntervalSeconds;
-                if (storedSeconds is not > 0)
+                int? storedMinutes = schedule?.SnapshotIntervalMinutes;
+                if (storedMinutes is not > 0)
                 {
                     return;
                 }
 
-                _storedSpacingFloors[accountId] = TimeSpan.FromSeconds(storedSeconds.Value);
+                _storedSpacingFloors[accountId] = TimeSpan.FromMinutes(storedMinutes.Value);
                 MediaRequestPacer pacer = GetPacerForAccount(accountId);
                 pacer.MinInterval = ApplyStoredSpacingFloor(accountId, pacer.MinInterval);
-                _logger.LogInformation("{AccountName} spacing restored to {IntervalSeconds}s from the saved snapshot interval",
-                    RingAccountDisplayName, storedSeconds.Value);
+                _logger.LogInformation("{AccountName} spacing restored to {IntervalMinutes} min from the saved snapshot interval",
+                    RingAccountDisplayName, storedMinutes.Value);
             }
             catch (OperationCanceledException)
             {

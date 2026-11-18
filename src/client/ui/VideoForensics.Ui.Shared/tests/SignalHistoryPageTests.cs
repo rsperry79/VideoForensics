@@ -23,6 +23,40 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The Signal history page shows the server's signal analysis per device and the flagged RSSI deviations.</summary>
 public class SignalHistory_Tests : ScopeRailTestContext
 {
+    [Fact]
+    public void ScopeChange_WhenLoadFails_ShowsLocalizedErrorInsteadOfThrowing()
+    {
+        // Before the fix the scope-change handler was async void, so this exception escaped unobserved.
+        _ = RegisterDeviceRepository();
+        int calls = 0;
+        var service = new Mock<ISignalAnalysisService>();
+        _ = service
+            .Setup(s => s.AnalyzeAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                calls++;
+                if (calls > 1)
+                {
+                    throw new HttpRequestException("server unreachable");
+                }
+
+                return Task.FromResult(new SignalAnalysis(Array.Empty<SignalDeviceAnalysis>()));
+            });
+        _ = Services.AddScoped(_ => service.Object);
+        _ = Services.AddScoped<SignalDrillTrail>();
+        var flags = new Mock<IMediaFlagRepository>();
+        _ = flags
+            .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilterDto>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaFlagPage(Array.Empty<MediaFlag>(), 0).ToDto());
+        _ = Services.AddScoped(_ => flags.Object);
+
+        IRenderedComponent<SignalHistory> cut = Render<SignalHistory>();
+        ScopeState scope = Services.GetRequiredService<ScopeState>();
+        scope.Set(scope.Current with { MatchesNoDevices = true });
+
+        cut.WaitForAssertion(() => Assert.Contains(PageL["LoadFailed"], cut.Markup));
+    }
+
     private IRenderedComponent<SignalHistory> RenderPage()
     {
         _ = RegisterDeviceRepository();

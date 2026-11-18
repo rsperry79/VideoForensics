@@ -50,16 +50,17 @@ public class ReviewPage_Tests : ReviewTestContext
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
         // Assert
-        // The Media page has no Back button; the top bar keeps only the case banner and the pending tags.
+        // The Media page has no Back button; the top bar keeps only the case banner.
         Assert.Empty(cut.FindAll("[data-testid='review-back']"));
 
-        string cameras = RenderRightPanel().Find("[data-testid='review-camera-button']").TextContent;
+        // The camera selector, tabs and time range are in the right sidebar with the filters (U6b).
+        IRenderedComponent<IComponent> right = RenderRightPanel();
+        string cameras = right.Find("[data-testid='review-camera-button']").TextContent;
         Assert.Contains(L["AllCameras"].Value, cameras);
 
         // Actions and Grab still live in the right sidebar, under the filters.
-        string actions = RenderRightPanel().Find("[data-testid='review-actions-panel']").TextContent;
+        string actions = right.Find("[data-testid='review-actions-panel']").TextContent;
         Assert.Contains(L["ActionsMenuTitle"].Value, actions);
-
     }
 
     [Fact]
@@ -216,7 +217,6 @@ public class ReviewPage_Tests : ReviewTestContext
     [Theory]
     [InlineData("review-case-section")]
     [InlineData("review-filter-panel")]
-    [InlineData("review-time-range")]
     [InlineData("review-actions-panel")]
     public void ReviewPage_RightPanelSection_HasACollapsibleHeading(string testId)
     {
@@ -233,7 +233,7 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_RightPanel_ListsTimeRangeThenFiltersThenCaseThenActions()
+    public void ReviewPage_RightPanel_ListsControlsThenFiltersThenCaseThenActions()
     {
         // Arrange
         AddDevices(2);
@@ -243,12 +243,14 @@ public class ReviewPage_Tests : ReviewTestContext
         // Act
         IRenderedComponent<IComponent> right = RenderRightPanel();
 
-        // Assert
+        // Assert - the view tabs, time range, camera selector and Filters sit at the top of the sidebar, and the header keeps none of them
         string[] order = right
-            .FindAll("[data-testid='review-time-range'], [data-testid='review-filter-panel'], [data-testid='review-case-section'], [data-testid='review-actions-panel']")
+            .FindAll("[data-testid='review-tabs'], [data-testid='review-time-range'], [data-testid='review-filter-panel'], [data-testid='review-camera-selector'], [data-testid='review-case-section'], [data-testid='review-actions-panel']")
             .Select(e => e.GetAttribute("data-testid")!)
             .ToArray();
-        Assert.Equal(new[] { "review-time-range", "review-filter-panel", "review-case-section", "review-actions-panel" }, order);
+        Assert.Equal(
+            new[] { "review-tabs", "review-time-range", "review-filter-panel", "review-camera-selector", "review-case-section", "review-actions-panel" },
+            order);
     }
 
     [Fact]
@@ -281,7 +283,8 @@ public class ReviewPage_Tests : ReviewTestContext
 
         // Assert - the panel is in the page body, inside the aside, never in the slots
         _ = Assert.Single(cut.FindAll("aside.review-timeline-aside [data-testid='review-timeline-panel']"));
-        _ = Assert.Single(cut.FindAll(".review-body > .review-content"));
+        _ = Assert.Single(cut.FindAll("[data-testid=review-shell-stage] > .review-content"));
+        _ = Assert.Single(cut.FindAll("[data-testid=review-shell-side] aside.review-timeline-aside"));
         Assert.Null(Services.GetRequiredService<LeftPanelContentService>().Content);
     }
 
@@ -398,19 +401,18 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_RightPanel_RendersTheCameraSelectorInsideTheFilterPanel()
+    public void ReviewPage_Sidebar_RendersTheCameraSelectorOnceUnderLocations()
     {
         // Arrange
         AddDevices(2);
         NavigateToReview();
-        _ = Render<ReviewPage>();
 
         // Act
-        IRenderedComponent<IComponent> panel = RenderRightPanel();
+        IRenderedComponent<ReviewPage> page = Render<ReviewPage>();
 
-        // Assert
-        _ = Assert.Single(panel.FindAll("[data-testid='review-filter-panel'] [data-testid='review-camera-selector']"));
-        _ = Assert.Single(panel.FindAll("[data-testid='review-camera-selector']"));
+        // Assert: the camera selector is in the filter section under Locations, once
+        _ = Assert.Single(RenderRightPanel().FindAll("[data-testid='review-camera-selector']"));
+        _ = Assert.Single(RenderRightPanel().FindAll("[data-testid='review-filter-panel'] [data-testid='review-camera-selector']"));
     }
 
     [Fact]
@@ -421,14 +423,14 @@ public class ReviewPage_Tests : ReviewTestContext
         NavigateToReview("provider=Ring");
 
         _ = Render<ReviewPage>();
+        IRenderedComponent<IComponent> right = RenderRightPanel();
 
-        // Act
-        IRenderedComponent<IComponent> filters = RenderRightPanel();
-        filters.Find("[data-testid='review-camera-button']").Click();
+        // Act: the camera selector is in the right sidebar's controls (U6b)
+        right.Find("[data-testid='review-camera-button']").Click();
 
         // Assert
-        _ = Assert.Single(filters.FindAll("[data-testid='review-camera-toggle-" + ringDevice.ToString("D") + "']"));
-        Assert.Empty(filters.FindAll("[data-testid='review-camera-toggle-" + wyzeDevice.ToString("D") + "']"));
+        _ = Assert.Single(right.FindAll("[data-testid='review-camera-toggle-" + ringDevice.ToString("D") + "']"));
+        Assert.Empty(right.FindAll("[data-testid='review-camera-toggle-" + wyzeDevice.ToString("D") + "']"));
     }
 
     [Fact]

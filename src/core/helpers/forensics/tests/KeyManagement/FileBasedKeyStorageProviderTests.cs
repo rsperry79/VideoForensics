@@ -26,6 +26,29 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
             }
         }
 
+        [Theory]
+        [InlineData("../escape")]
+        [InlineData("..\\escape")]
+        [InlineData("sub/key")]
+        [InlineData("")]
+        public async Task GenerateKeyPairAsync_KeyIdWithPathSyntax_Throws_AndWritesNothing(string keyId)
+        {
+            // A keyId is used to build file paths. A traversal or separator must never reach the filesystem.
+            string parent = Path.GetDirectoryName(_tempDirectory)!;
+            int filesBefore = Directory.GetFiles(parent).Length;
+
+            _ = await Assert.ThrowsAnyAsync<ArgumentException>(() => _provider.GenerateKeyPairAsync(keyId));
+
+            Assert.Equal(filesBefore, Directory.GetFiles(parent).Length);
+            Assert.Empty(Directory.GetFiles(_tempDirectory, "*.key"));
+        }
+
+        [Fact]
+        public async Task GetPublicKeyAsync_KeyIdWithTraversal_Throws()
+        {
+            _ = await Assert.ThrowsAnyAsync<ArgumentException>(() => _provider.GetPublicKeyAsync("../escape"));
+        }
+
         [Fact]
         public void IsAvailable_Always_ReturnsTrue()
         {

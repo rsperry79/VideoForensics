@@ -115,12 +115,12 @@ public static class SignalChartModel
     public const int MissedChecksToFlag = 2;
 
     /// <summary>
-    /// The expected spacing of readings for a camera: its account's SnapshotIntervalSeconds. Health is recorded with
+    /// The expected spacing of readings for a camera: its account's SnapshotIntervalMinutes. Health is recorded with
     /// each snapshot capture, so the snapshot interval is the check interval. Null (no schedule stored) uses the default.
     /// </summary>
-    public static TimeSpan ExpectedIntervalFor(int? snapshotIntervalSeconds)
+    public static TimeSpan ExpectedIntervalFor(int? snapshotIntervalMinutes)
     {
-        return TimeSpan.FromSeconds(snapshotIntervalSeconds ?? SyncScheduleLimits.DefaultSnapshotIntervalSeconds);
+        return TimeSpan.FromMinutes(snapshotIntervalMinutes ?? SyncScheduleLimits.DefaultSnapshotIntervalMinutes);
     }
 
     /// <summary>

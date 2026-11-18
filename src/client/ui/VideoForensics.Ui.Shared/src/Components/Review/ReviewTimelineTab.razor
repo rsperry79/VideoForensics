@@ -26,15 +26,21 @@
 <div class="review-timeline-tab" data-testid="review-timeline-tab">
     @if (State.CameraIds.Count == 0)
     {
-        <p class="review-timeline-message" data-testid="review-timeline-no-cameras">@L["NoCamerasSelected"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message" data-testid="review-timeline-no-cameras">@L["NoCamerasSelected"]</p>
+        </div>
     }
     else if (_error)
     {
-        <p class="review-timeline-message text-danger" role="alert" data-testid="review-timeline-error">@L["ClipsLoadFailed"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message text-danger" role="alert" data-testid="review-timeline-error">@L["ClipsLoadFailed"]</p>
+        </div>
     }
     else if (_loaded is null || !_loaded.Key.Matches(State))
     {
-        <p class="review-timeline-message" role="status" data-testid="review-timeline-loading">@L["LoadingClips"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message" role="status" data-testid="review-timeline-loading">@L["LoadingClips"]</p>
+        </div>
     }
     else
     {
@@ -45,13 +51,16 @@
 
         @if (!_loaded.HasSelectedClips)
         {
-            <p class="review-timeline-message" data-testid="review-timeline-no-clips">@L["NoClipsInRange"]</p>
+            <div class="review-stage--message">
+                <p class="review-timeline-message" data-testid="review-timeline-no-clips">@L["NoClipsInRange"]</p>
+            </div>
         }
         else if (State.CameraIds.Count == 1)
         {
+            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" OnPlaybackUtc="OnPlaybackPosition" OnGrabStill="StillCommand.GrabAsync" />
             @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
             {
-                <div class="review-grab-still-bar">
+                <div class="review-grab-still-bar" role="status" aria-live="polite">
                     <span class="@(_stillStatus.IsError ? "text-danger" : null)" data-testid="review-grab-still-status">@_stillStatus.Text</span>
                     @if (_stillStatus.OpenUrl is not null)
                     {
@@ -59,11 +68,10 @@
                     }
                 </div>
             }
-            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" />
         }
         else
         {
-            <CameraGrid Tiles="_tiles" Cursor="State.Cursor" />
+            <CameraGrid Tiles="_tiles" Cursor="State.Cursor" OnSelect="OnGridSelect" />
         }
     }
 </div>
@@ -348,6 +356,12 @@
         return clips.Count;
     }
 
+    /// <summary>The video reports its position as it plays. The timeline follows it without seeking the player.</summary>
+    private void OnPlaybackPosition(DateTime utc)
+    {
+        State.SetPlaybackCursor(utc);
+    }
+
     /// <summary>The strip asks for a single camera. The tab narrows the selection to it and keeps the cursor.</summary>
     private void OnStripSelect(int index)
     {
@@ -386,6 +400,17 @@
     /// Publishes the Grab still reason and handler to the sidebar button. Grab still needs the single-camera player, so
     /// a grid of several cameras reports that instead of the capture reasons.
     /// </summary>
+    /// <summary>A click on a grid preview opens that camera as the single view, the same as selecting only it in the filter.</summary>
+    private void OnGridSelect(int index)
+    {
+        if (index < 0 || index >= _tileDeviceIds.Count)
+        {
+            return;
+        }
+
+        State.SetCameras([_tileDeviceIds[index]]);
+    }
+
     private void PublishGrabStill()
     {
         if (_disposed)

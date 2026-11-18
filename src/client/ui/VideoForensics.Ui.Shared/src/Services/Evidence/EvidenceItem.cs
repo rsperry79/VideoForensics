@@ -79,8 +79,7 @@ public sealed class EvidenceItem
     /// True for a roll-up loop: an MP4 built from a camera's snapshots. The media view calls these Time Lapse.
     /// </summary>
     public bool IsTimeLapse =>
-        Media is not null && Media.MetadataJson is not null
-        && Media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal);
+        Media is not null && string.Equals(Media.MediaKind, MediaKindNames.Timelapse, StringComparison.Ordinal);
 
     /// <summary>
     /// True if this item has viewable media (image or video).
