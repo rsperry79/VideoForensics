@@ -57,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             await service.RecordThrottledAsync(AccountA, new ThrottledException { RetryAfter = TimeSpan.FromSeconds(5) }, CancellationToken.None);
 
-            Assert.Equal(baseInterval + TimeSpan.FromSeconds(1), pacerA.MinInterval);
+            Assert.Equal(baseInterval + TimeSpan.FromMinutes(1), pacerA.MinInterval);
             Assert.Equal(baseInterval, pacerB.MinInterval);
         }
 
@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RecordThrottledAsync_TwoRateLimitsInOneIncident_AddsOneSecondOfSpacing()
+        public async Task RecordThrottledAsync_TwoRateLimitsInOneIncident_AddsOneMinuteOfSpacing()
         {
             (RingMediaDownloadService service, _) = CreateService();
             MediaRequestPacer pacerA = service.GetPacerForAccount(AccountA);
@@ -82,7 +82,7 @@ namespace VideoForensics.Providers.Ring.Tests
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
 
-            Assert.Equal(baseInterval + TimeSpan.FromSeconds(1), pacerA.MinInterval);
+            Assert.Equal(baseInterval + TimeSpan.FromMinutes(1), pacerA.MinInterval);
         }
 
         [Fact]
@@ -237,7 +237,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
 
-            Assert.Equal(TimeSpan.FromSeconds(3), pacerA.MinInterval);
+            Assert.Equal(TimeSpan.FromSeconds(62), pacerA.MinInterval);
         }
 
         private static (RingMediaDownloadService Service, Mock<ISyncScheduleWriteRepository> Repository) CreateServiceWithScheduleRepository()

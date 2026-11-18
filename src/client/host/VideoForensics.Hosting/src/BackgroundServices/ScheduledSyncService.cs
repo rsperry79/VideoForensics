@@ -350,8 +350,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             _nextTimelapseCheckUtc[account.Id] = now.AddMinutes(checkMinutes);
             _timelapseWatchdog.Attempted(account.Id, account.ProviderName, TimeSpan.FromMinutes(checkMinutes), now);
 
+            // Why: after a restart the in-memory clean pull is empty, so fall back to the saved clean completion time.
+            DateTime? cleanPull = _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : account.LastSyncCompletedUtc;
             DateTime? horizon = TimelapseHorizon.Compute(
-                _cleanPullUtc.TryGetValue(account.Id, out DateTime clean) ? clean : null,
+                cleanPull,
                 sp.GetService<SnapshotCycle>()?.LastSuccessfulPassUtc(account.Id),
                 PullOverlap);
             if (horizon is null)
@@ -613,6 +615,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 outcome = ex.Message;
             }
 
+            // Why: a pull with no stored locations synced nothing, so it is a failed run, not a clean one that starts the time-lapse horizon.
+            if (outcome is null && counts is { NoStoredLocations: true })
+            {
+                outcome = "No stored locations for this account; run a device sync first";
+            }
+
             // A clean scheduled pull is a completed sync, the same as a manual one, so the Sync tab's Last Sync Completed is current.
             if (outcome is null && !backfillInProgress)
             {
@@ -675,20 +683,29 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <returns>True when the completion is recorded, or the account no longer exists; false when the write failed.</returns>
         private async Task<bool> MarkSyncCompletedAsync(IProviderAccountWriteRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
         {
+            ProviderAccount? account = null;
+            DateTime? previous = null;
             try
             {
-                ProviderAccount? account = await accounts.GetAsync(accountId, CancellationToken.None);
+                account = await accounts.GetAsync(accountId, CancellationToken.None);
                 if (account is null)
                 {
                     return true;
                 }
 
+                previous = account.LastSyncCompletedUtc;
                 account.LastSyncCompletedUtc = completedUtc;
                 await accounts.UpdateAsync(account, CancellationToken.None);
                 return true;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Why: the in-memory account must keep the saved time, or the time-lapse horizon would use a completion that was never stored.
+                if (account is not null)
+                {
+                    account.LastSyncCompletedUtc = previous;
+                }
+
                 _logger.LogError("Could not record the completed scheduled sync: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 return false;
             }

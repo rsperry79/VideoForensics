@@ -497,16 +497,16 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
-        public async Task RunOneTickAsync_DefaultInterval_CapturesOncePerTwoMinutes()
+        public async Task RunOneTickAsync_DefaultInterval_CapturesOncePerFiveMinutes()
         {
             _ = AddDevice("12345");
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
-            _time.Now = T0.AddSeconds(61);
-            await RunTickAsync();
             _time.Now = T0.AddSeconds(121);
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(301);
             await RunTickAsync();
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
@@ -639,7 +639,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             await RunTickAsync();
             _time.Now = T0.AddSeconds(30);
             await RunTickAsync();
-            _time.Now = T0.AddSeconds(121);
+            _time.Now = T0.AddSeconds(301);
             await RunTickAsync();
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));

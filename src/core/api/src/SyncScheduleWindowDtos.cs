@@ -15,7 +15,7 @@ namespace VideoForensics.Core.Api.Contracts
         public const int MinimumPollIntervalMinutes = 1;
 
         /// <summary>Default snapshot interval, in minutes.</summary>
-        public const int DefaultSnapshotIntervalMinutes = 2;
+        public const int DefaultSnapshotIntervalMinutes = 5;
 
         /// <summary>Minimum snapshot interval, in minutes.</summary>
         public const int MinimumSnapshotIntervalMinutes = 1;

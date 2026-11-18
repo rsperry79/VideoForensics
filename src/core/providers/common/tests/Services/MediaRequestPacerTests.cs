@@ -39,18 +39,18 @@ namespace VideoForensics.Core.Providers.Common.Tests.Services
         }
 
         [Fact]
-        public void RecordRateLimited_NoRetryAfter_AddsOneSecondToMinInterval()
+        public void RecordRateLimited_NoRetryAfter_AddsOneMinuteToMinInterval()
         {
             var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
 
             _ = pacer.RecordRateLimited(null);
 
-            Assert.Equal(TimeSpan.FromSeconds(2), pacer.MinInterval);
-            Assert.Equal(TimeSpan.FromSeconds(1), pacer.RateLimitPenalty);
+            Assert.Equal(TimeSpan.FromSeconds(61), pacer.MinInterval);
+            Assert.Equal(TimeSpan.FromMinutes(1), pacer.RateLimitPenalty);
         }
 
         [Fact]
-        public void RecordRateLimited_TwoConsecutiveCallsInOneIncident_AddsOneSecondAndReturnsTrueThenFalse()
+        public void RecordRateLimited_TwoConsecutiveCallsInOneIncident_AddsOneMinuteAndReturnsTrueThenFalse()
         {
             var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
 
@@ -59,12 +59,12 @@ namespace VideoForensics.Core.Providers.Common.Tests.Services
 
             Assert.True(first);
             Assert.False(second);
-            Assert.Equal(TimeSpan.FromSeconds(2), pacer.MinInterval);
-            Assert.Equal(TimeSpan.FromSeconds(1), pacer.RateLimitPenalty);
+            Assert.Equal(TimeSpan.FromSeconds(61), pacer.MinInterval);
+            Assert.Equal(TimeSpan.FromMinutes(1), pacer.RateLimitPenalty);
         }
 
         [Fact]
-        public void RecordRateLimited_AfterMarkRequestSucceeded_AddsAnotherSecondAndReturnsTrue()
+        public void RecordRateLimited_AfterMarkRequestSucceeded_AddsAnotherMinuteAndReturnsTrue()
         {
             var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
             _ = pacer.RecordRateLimited(null);
@@ -73,7 +73,7 @@ namespace VideoForensics.Core.Providers.Common.Tests.Services
             bool newIncident = pacer.RecordRateLimited(null);
 
             Assert.True(newIncident);
-            Assert.Equal(TimeSpan.FromSeconds(3), pacer.MinInterval);
+            Assert.Equal(TimeSpan.FromSeconds(121), pacer.MinInterval);
         }
 
         [Fact]
@@ -86,7 +86,7 @@ namespace VideoForensics.Core.Providers.Common.Tests.Services
             pacer.MarkRequestSucceeded();
 
             Assert.False(pacer.IsInRateLimitIncident);
-            Assert.Equal(TimeSpan.FromSeconds(2), pacer.MinInterval);
+            Assert.Equal(TimeSpan.FromSeconds(61), pacer.MinInterval);
         }
 
         [Fact]
@@ -97,12 +97,12 @@ namespace VideoForensics.Core.Providers.Common.Tests.Services
             var pacer = new MediaRequestPacer(() => now, (delay, _) => { delays.Add(delay); now += delay; return Task.CompletedTask; }, TimeSpan.FromSeconds(1));
 
             await pacer.WaitTurnAsync(CancellationToken.None);
-            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(7));
-            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(20));
+            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(70));
+            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(90));
             await pacer.WaitTurnAsync(CancellationToken.None);
 
-            Assert.Equal(TimeSpan.FromSeconds(20), Assert.Single(delays));
-            Assert.Equal(Start.AddSeconds(20), now);
+            Assert.Equal(TimeSpan.FromSeconds(90), Assert.Single(delays));
+            Assert.Equal(Start.AddSeconds(90), now);
         }
 
         [Fact]
@@ -113,12 +113,12 @@ namespace VideoForensics.Core.Providers.Common.Tests.Services
             var pacer = new MediaRequestPacer(() => now, (delay, _) => { delays.Add(delay); now += delay; return Task.CompletedTask; }, TimeSpan.FromSeconds(1));
 
             await pacer.WaitTurnAsync(CancellationToken.None);
-            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(20));
-            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(3));
+            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(90));
+            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(30));
             await pacer.WaitTurnAsync(CancellationToken.None);
 
-            Assert.Equal(TimeSpan.FromSeconds(20), Assert.Single(delays));
-            Assert.Equal(Start.AddSeconds(20), now);
+            Assert.Equal(TimeSpan.FromSeconds(90), Assert.Single(delays));
+            Assert.Equal(Start.AddSeconds(90), now);
         }
 
         [Fact]
@@ -129,11 +129,11 @@ namespace VideoForensics.Core.Providers.Common.Tests.Services
             var pacer = new MediaRequestPacer(() => now, (delay, _) => { delays.Add(delay); now += delay; return Task.CompletedTask; }, TimeSpan.FromSeconds(1));
 
             await pacer.WaitTurnAsync(CancellationToken.None);
-            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(7));
+            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(90));
             await pacer.WaitTurnAsync(CancellationToken.None);
 
-            Assert.Equal(TimeSpan.FromSeconds(7), Assert.Single(delays));
-            Assert.Equal(Start.AddSeconds(7), now);
+            Assert.Equal(TimeSpan.FromSeconds(90), Assert.Single(delays));
+            Assert.Equal(Start.AddSeconds(90), now);
         }
 
         [Fact]

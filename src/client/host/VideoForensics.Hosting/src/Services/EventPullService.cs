@@ -33,13 +33,15 @@ namespace VideoForensics.Client.Hosting.Services
     /// <param name="ConfigAreasSynced">Devices whose configuration was returned by the provider.</param>
     /// <param name="FeedsFailed">Per-device event feeds that failed.</param>
     /// <param name="RateLimited">True when Ring throttled the account. The pull stopped there and the rest of its devices were not called.</param>
+    /// <param name="NoStoredLocations">True when the account has no stored locations, so nothing was pulled.</param>
     public readonly record struct EventPullResult(
         int DevicesSynced = 0,
         int LocationsSynced = 0,
         int EventsSynced = 0,
         int ConfigAreasSynced = 0,
         int FeedsFailed = 0,
-        bool RateLimited = false);
+        bool RateLimited = false,
+        bool NoStoredLocations = false);
 
     /// <summary>Pulls events and configuration from provider accounts automatically.</summary>
     public class EventPullService : IEventPullService
@@ -162,7 +164,7 @@ namespace VideoForensics.Client.Hosting.Services
                 if (inventory.LocationCount == 0)
                 {
                     _logger.LogWarning("No stored locations for account; run a device sync before pulling events");
-                    return default;
+                    return new EventPullResult(NoStoredLocations: true);
                 }
 
                 // Why: the media service reads the active account id when it downloads, so it must be set before the queue
