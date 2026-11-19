@@ -2,7 +2,8 @@
 
 .review-timeline-vertical {
     position: relative;
-    width: 80px;
+    /* Wide enough for the hover time label, which sits at 5.5rem; a narrower strip makes that label overflow and shows scrollbars. */
+    width: 10rem;
     flex: 1 1 0;
     min-height: 0;
     background-color: var(--bs-tertiary-bg);
