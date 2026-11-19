@@ -58,7 +58,7 @@ namespace VideoForensics.Client.WebApp.Api
                 string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
                 string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
                 bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role == OperatorRole.SuperAdmin;
-                bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
+                bool isLocal = VideoForensics.Client.WebApp.Auth.PasskeyTierRules.IsLocalOrPasskey(context.User);
 
                 if (!isSuperAdmin || !isLocal)
                 {

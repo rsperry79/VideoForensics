@@ -107,13 +107,32 @@ namespace VideoForensics.Client.WebApp.Auth
             options.AddPolicy(SuperAdminLocal, p =>
             {
                 p.Requirements.Add(new MinimumRoleRequirement(OperatorRole.SuperAdmin));
-                p.Requirements.Add(new RequireLocalTierRequirement());
+                p.Requirements.Add(new RequireLocalOrPasskeyRequirement());
             });
             options.AddPolicy(SuperAdminLocalOrPasskey, p =>
             {
                 p.Requirements.Add(new MinimumRoleRequirement(OperatorRole.SuperAdmin));
                 p.Requirements.Add(new RequireLocalOrPasskeyRequirement());
             });
+        }
+    }
+}
+
+namespace VideoForensics.Client.WebApp.Auth
+{
+    /// <summary>
+    /// Shared check for direct endpoint code that used to require the Local tier by hand. A session passes when it is on
+    /// the Local tier or was established with an operator passkey on any tier, matching RequireLocalOrPasskeyHandler.
+    /// </summary>
+    public static class PasskeyTierRules
+    {
+        /// <summary>True when the caller is on the Local tier or holds an operator-passkey session.</summary>
+        public static bool IsLocalOrPasskey(System.Security.Claims.ClaimsPrincipal user)
+        {
+            string? tierClaim = user.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
+            bool local = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
+            bool passkey = user.FindFirst(VideoForensicsClaimTypes.CredentialKind)?.Value == "OperatorPasskey";
+            return local || passkey;
         }
     }
 }
