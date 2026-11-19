@@ -78,8 +78,8 @@ namespace VideoForensics.Core.Providers.Common.Services
                 }
 
                 _inRateLimitIncident = true;
-                _minInterval += TimeSpan.FromSeconds(1);
-                RateLimitPenalty += TimeSpan.FromSeconds(1);
+                _minInterval += TimeSpan.FromMinutes(1);
+                RateLimitPenalty += TimeSpan.FromMinutes(1);
                 return true;
             }
         }

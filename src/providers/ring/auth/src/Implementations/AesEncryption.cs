@@ -9,7 +9,7 @@ namespace VideoForensics.Providers.Ring.Implementations
 {
     /// <summary>
     /// Cross-platform AES encryption implementation for encrypting credentials.
-    /// Uses AES-256-CBC with PBKDF2 key derivation from machine identifier, user profile,
+    /// Uses AES-256-GCM (authenticated) with PBKDF2 key derivation from machine identifier, user profile,
     /// and a per-installation random salt.
     ///
     /// On Windows, credentials are encrypted via DPAPI (platform-native). On non-Windows
@@ -40,7 +40,9 @@ namespace VideoForensics.Providers.Ring.Implementations
         }
 
         private const int KeySize = 32; // AES-256
-        private const int IvSize = 16;  // AES block size
+        private const string FormatPrefix = "v2:";
+        private const int GcmNonceSize = 12;
+        private const int GcmTagSize = 16;
         private const int SaltSize = 16;
         /// <summary>
         /// PBKDF2 iteration count for key derivation. Must increase annually per OWASP guidance.
@@ -60,25 +62,24 @@ namespace VideoForensics.Providers.Ring.Implementations
 
             try
             {
+                // Why: AES-GCM authenticates the ciphertext. The old CBC mode without a MAC returned garbage for a changed
+                // value or a wrong key. Format: "v2:" + base64(nonce | tag | ciphertext). Values without the prefix (the old
+                // CBC format) do not decrypt, so the user re-enters them once.
                 byte[] key = DeriveKey();
-                using var aes = Aes.Create();
-                aes.KeySize = KeySize * 8;
-                aes.Mode = CipherMode.CBC;
-                aes.Padding = PaddingMode.PKCS7;
-                aes.GenerateIV();
-
-                using ICryptoTransform encryptor = aes.CreateEncryptor(key, aes.IV);
-                using var ms = new MemoryStream();
-                // Write IV first (needed for decryption)
-                ms.Write(aes.IV, 0, aes.IV.Length);
-
-                using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-                using (var sw = new StreamWriter(cs, Encoding.UTF8))
+                byte[] nonce = RandomNumberGenerator.GetBytes(GcmNonceSize);
+                byte[] data = Encoding.UTF8.GetBytes(plaintext);
+                byte[] cipher = new byte[data.Length];
+                byte[] tag = new byte[GcmTagSize];
+                using (var gcm = new AesGcm(key, GcmTagSize))
                 {
-                    sw.Write(plaintext);
+                    gcm.Encrypt(nonce, data, cipher, tag);
                 }
 
-                return Convert.ToBase64String(ms.ToArray());
+                byte[] payload = new byte[GcmNonceSize + GcmTagSize + cipher.Length];
+                Buffer.BlockCopy(nonce, 0, payload, 0, GcmNonceSize);
+                Buffer.BlockCopy(tag, 0, payload, GcmNonceSize, GcmTagSize);
+                Buffer.BlockCopy(cipher, 0, payload, GcmNonceSize + GcmTagSize, cipher.Length);
+                return FormatPrefix + Convert.ToBase64String(payload);
             }
             catch
             {
@@ -88,7 +89,7 @@ namespace VideoForensics.Providers.Ring.Implementations
 
         public string Decrypt(string ciphertext)
         {
-            if (string.IsNullOrEmpty(ciphertext))
+            if (string.IsNullOrEmpty(ciphertext) || !ciphertext.StartsWith(FormatPrefix, StringComparison.Ordinal))
             {
                 return null;
             }
@@ -96,23 +97,23 @@ namespace VideoForensics.Providers.Ring.Implementations
             try
             {
                 byte[] key = DeriveKey();
-                byte[] buffer = Convert.FromBase64String(ciphertext);
+                byte[] payload = Convert.FromBase64String(ciphertext[FormatPrefix.Length..]);
+                if (payload.Length < GcmNonceSize + GcmTagSize)
+                {
+                    return null;
+                }
 
-                using var aes = Aes.Create();
-                aes.KeySize = KeySize * 8;
-                aes.Mode = CipherMode.CBC;
-                aes.Padding = PaddingMode.PKCS7;
+                byte[] nonce = payload[..GcmNonceSize];
+                byte[] tag = payload[GcmNonceSize..(GcmNonceSize + GcmTagSize)];
+                byte[] cipher = payload[(GcmNonceSize + GcmTagSize)..];
+                byte[] data = new byte[cipher.Length];
+                using (var gcm = new AesGcm(key, GcmTagSize))
+                {
+                    // Throws when the tag does not match (changed value or wrong key); the catch returns null.
+                    gcm.Decrypt(nonce, cipher, tag, data);
+                }
 
-                // Extract IV from the beginning of the buffer
-                byte[] iv = new byte[IvSize];
-                Buffer.BlockCopy(buffer, 0, iv, 0, IvSize);
-                aes.IV = iv;
-
-                using ICryptoTransform decryptor = aes.CreateDecryptor(key, aes.IV);
-                using var ms = new MemoryStream(buffer, IvSize, buffer.Length - IvSize);
-                using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
-                using var sr = new StreamReader(cs, Encoding.UTF8);
-                return sr.ReadToEnd();
+                return Encoding.UTF8.GetString(data);
             }
             catch
             {

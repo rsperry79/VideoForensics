@@ -81,6 +81,19 @@ public class ReviewLayoutStylesheet_Tests
     }
 
     [Fact]
+    public void TimelineStripStylesheet_VerticalWidth_FitsTheHoverLabel()
+    {
+        // Why: the hover time label sits at 5.5rem and is about 4.5rem wide. A narrower strip makes it overflow, and the
+        // overflow shows scrollbars when the pointer is over the timeline.
+        string css = RepoFile.ReadUiSharedSource("Components/Viewer/TimelineStrip.razor.css");
+        Match block = Regex.Match(css, @"\.review-timeline-vertical\s*\{([^}]*)\}");
+        Match width = Regex.Match(block.Groups[1].Value, @"(?<![-\w])width:\s*([\d.]+)rem;");
+
+        Assert.True(width.Success, "The vertical timeline must set its width in rem.");
+        Assert.True(double.Parse(width.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) >= 10, "The vertical timeline must be at least 10rem wide.");
+    }
+
+    [Fact]
     public void TimelineStripStylesheet_VerticalCursor_StartsRightOfTheLabelGutter()
     {
         // Arrange

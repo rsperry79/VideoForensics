@@ -89,12 +89,12 @@ namespace VideoForensics.Data.Database.Repositories
 
             // Hold the chain gate for the whole transaction. A chain append must not read a tail that this transaction is
             // about to extend, and no other writer may read that tail before this one commits.
-            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow(_factory);
             if (entered)
             {
                 await EnterGateAsync(caller, ct);
                 // Why: set here, not in EnterGateAsync, because an async helper's AsyncLocal write is not seen by its caller.
-                ActionLogAppendGate.IsHeldByCurrentFlow = true;
+                ActionLogAppendGate.SetHeldByCurrentFlow(_factory, true);
             }
 
             try
@@ -105,8 +105,8 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 if (entered)
                 {
-                    ActionLogAppendGate.IsHeldByCurrentFlow = false;
-                    ActionLogAppendGate.Release();
+                    ActionLogAppendGate.SetHeldByCurrentFlow(_factory, false);
+                    ActionLogAppendGate.Release(_factory);
                 }
             }
         }
@@ -125,11 +125,11 @@ namespace VideoForensics.Data.Database.Repositories
             string caller = DescribeCaller(new StackTrace(skipFrames: 1, fNeedFileInfo: false));
             using IDisposable tracked = _inFlight.Begin(caller, DateTimeOffset.UtcNow);
 
-            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow(_factory);
             if (entered)
             {
                 await EnterGateAsync(caller, ct);
-                ActionLogAppendGate.IsHeldByCurrentFlow = true;
+                ActionLogAppendGate.SetHeldByCurrentFlow(_factory, true);
             }
 
             try
@@ -141,8 +141,8 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 if (entered)
                 {
-                    ActionLogAppendGate.IsHeldByCurrentFlow = false;
-                    ActionLogAppendGate.Release();
+                    ActionLogAppendGate.SetHeldByCurrentFlow(_factory, false);
+                    ActionLogAppendGate.Release(_factory);
                 }
             }
         }
@@ -154,7 +154,7 @@ namespace VideoForensics.Data.Database.Repositories
         private async Task EnterGateAsync(string caller, CancellationToken ct)
         {
             var wait = Stopwatch.StartNew();
-            if (!await ActionLogAppendGate.TryWaitAsync(_queueTimeout, ct))
+            if (!await ActionLogAppendGate.TryWaitAsync(_factory, _queueTimeout, ct))
             {
                 _logger.LogError("Write for {Caller} gave up waiting for the write queue after {TimeoutMs} ms", caller, (long)_queueTimeout.TotalMilliseconds);
                 throw new TimeoutException($"Write for {caller} timed out waiting for the write queue after {(long)_queueTimeout.TotalMilliseconds} ms.");
@@ -547,24 +547,20 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
-            return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Id == mediaItemId));
+            return Task.FromResult(MediaItemQueries.ById(_db, mediaItemId).FirstOrDefault());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.ByDevice(_db, deviceId).ToList());
         }
         public Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
         {
-            return Task.FromResult(_db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
-                    && m.MediaKind == MediaKinds.Timelapse)
-                .OrderByDescending(m => m.RecordedAtUtc)
-                .FirstOrDefault());
+            return Task.FromResult(MediaItemQueries.LatestRollupLoop(_db, deviceId).FirstOrDefault());
         }
         public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAtUtc).Take(limit).ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.RecentByDevice(_db, deviceId, limit).ToList());
         }
 
         public Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
@@ -574,14 +570,7 @@ namespace VideoForensics.Data.Database.Repositories
             ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
             ArgumentOutOfRangeException.ThrowIfGreaterThan(take, 500);
 
-            Guid[] ids = deviceIds.ToArray();
-            IQueryable<MediaItem> matches = _db.MediaItems
-                .AsNoTracking()
-                .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
-            if (videoOnly)
-            {
-                matches = matches.Where(m => m.MediaFormat != null && (m.MediaFormat.Contains("mp4") || m.MediaFormat.Contains("video")));
-            }
+            IQueryable<MediaItem> matches = MediaItemQueries.PageMatches(_db, deviceIds.ToArray(), fromUtc, toUtc, videoOnly);
 
             int total = matches.Count();
             var items = matches.OrderBy(m => m.RecordedAtUtc).ThenBy(m => m.Id).Skip(skip).Take(take).ToList();
@@ -590,67 +579,39 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.ByDeviceAndDateRange(_db, deviceId, fromUtc, toUtc).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => m.RecordedAtUtc >= sinceUtc && m.RedFlags != null && m.RedFlags.Contains("BitrateCollapse"))
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.FlaggedSince(_db, sinceUtc).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => !m.IsPurged && m.VideoCodec == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.MissingCodec(_db, limit).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => !m.IsPurged && m.BaselineVersion == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.Unanalyzed(_db, limit).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
-                    && m.MediaFormat == "jpg" && m.MediaKind == MediaKinds.Snapshot)
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.SnapshotsByDeviceAndDateRange(_db, deviceId, fromUtc, toUtc).ToList());
         }
 
         public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MeasuredBitrate>)_db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags))
-                .ToList());
+            // Why: the shared query also drops time-lapse roll-ups, as the all-time baseline already does.
+            return Task.FromResult((IReadOnlyList<MeasuredBitrate>)MediaItemQueries.MeasuredBitrates(_db, deviceId).ToList());
         }
 
         public Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
             // Same aggregate as MediaItemRepository: one SQL GROUP BY, with the arithmetic shared through FromTotals.
-            var totals = _db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && m.MediaKind != MediaKinds.Timelapse)
-                .GroupBy(m => m.DeviceId)
-                .Select(g => new
-                {
-                    Count = g.Count(),
-                    Sum = g.Sum(m => (double)m.VideoBitrateBps!.Value),
-                    SumOfSquares = g.Sum(m => (double)m.VideoBitrateBps!.Value * (double)m.VideoBitrateBps!.Value),
-                })
-                .FirstOrDefault();
+            MediaItemQueries.BitrateTotals? totals = MediaItemQueries.BitrateTotalsByDevice(_db, deviceId).FirstOrDefault();
             return Task.FromResult(totals is null
                 ? AllTimeBitrateBaseline.FromTotals(0, 0, 0)
                 : AllTimeBitrateBaseline.FromTotals(totals.Count, totals.Sum, totals.SumOfSquares));
@@ -658,39 +619,33 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
-            return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Sha256Hash == sha256Hash));
+            return Task.FromResult(MediaItemQueries.ByHash(_db, sha256Hash).FirstOrDefault());
         }
 
         /// <summary>Gets a media item by API source hash for deduplication.</summary>
         public Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
-            return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.ApiSourceHash == apiSourceHash));
+            return Task.FromResult(MediaItemQueries.ByApiSourceHash(_db, apiSourceHash).FirstOrDefault());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => !m.IsPurged && m.ThumbnailPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.VideosWithoutThumbnail(_db).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
-                .Where(m => !m.IsPurged && m.PreviewPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.VideosWithoutPreview(_db, limit).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DownloadEventId == downloadEventId).ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.ByDownloadEventId(_db, downloadEventId).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().ToList());
+            return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.All(_db).ToList());
         }
 
         public Task AddAsync(MediaItem mediaItem, CancellationToken ct) { _ = _db.MediaItems.Add(mediaItem); return Task.CompletedTask; }

@@ -96,9 +96,9 @@ namespace VideoForensics.Client.WebApp.Api
                 // real browser is, so re-resolving it here would silently grant Local tier to a
                 // caller whose real session tier is Internet/Network.
                 string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
-                if (!Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) || tier != NetworkTier.Local)
+                if (!VideoForensics.Client.WebApp.Auth.PasskeyTierRules.IsLocalOrPasskey(context.User))
                 {
-                    logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} is not on Local tier (tier={Tier})", callerId, tier);
+                    logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} is not on Local tier or a passkey session", callerId);
                     return Results.StatusCode(StatusCodes.Status403Forbidden);
                 }
             }

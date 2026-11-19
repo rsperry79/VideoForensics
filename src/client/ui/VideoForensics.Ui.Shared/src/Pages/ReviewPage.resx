@@ -50,6 +50,9 @@
   <data name="AllCameras" xml:space="preserve">
     <value>All cameras</value>
   </data>
+  <data name="ShowAllCameras" xml:space="preserve">
+    <value>Show all cameras</value>
+  </data>
   <data name="CamerasSelected" xml:space="preserve">
     <value>{0} Cameras</value>
   </data>

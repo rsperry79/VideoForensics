@@ -11,7 +11,9 @@
                  Fit="MediaFitMode.Contain"
                  Class="review-player"
                  OnProgress="HandleProgressAsync"
+                 Controls="MediaPlayerControls.None"
                  data-clip-id="@_selection?.ClipId" />
+    <MediaTransportControls OnPlayPause="TogglePlayAsync" OnStep="StepAsync" Disabled="_player is null" />
 </div>
 
 @code {
@@ -56,6 +58,10 @@
     /// <summary>Plays or pauses the video. Does nothing when no video is rendered (a gap).</summary>
     public Task TogglePlayAsync() =>
         _player is null ? Task.CompletedTask : _player.TogglePlayAsync();
+
+    /// <summary>Steps the video by a number of seconds (negative goes back). Does nothing when no video is rendered (a gap).</summary>
+    public Task StepAsync(double seconds) =>
+        _player is null ? Task.CompletedTask : _player.StepAsync(seconds);
 
     /// <summary>
     /// Moves the playback position by <paramref name="seconds"/>, forward or back. Does nothing when no video is rendered or the

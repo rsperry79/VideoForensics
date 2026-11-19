@@ -70,6 +70,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(tier.Object);
             _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
             _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+        _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
             _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
             _ = builder.Services.AddAuthentication(TestScheme).AddScheme<AuthenticationSchemeOptions, SuperAdminTestHandler>(TestScheme, _ => { });
 
