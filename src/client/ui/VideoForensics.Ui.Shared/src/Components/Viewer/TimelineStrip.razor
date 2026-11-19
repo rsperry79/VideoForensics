@@ -169,7 +169,15 @@ else
     {
         if (_module is not null)
         {
-            await _module.DisposeAsync();
+            // Why: when the circuit has already disconnected, the JS module cannot be disposed. That is expected on
+            // teardown, so it is not an error to log.
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
         }
     }
 
