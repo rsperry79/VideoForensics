@@ -81,6 +81,7 @@ namespace VideoForensics.Providers.Ring.Entities
         /// Confidence score for detection/analysis match (0.0 to 1.0).
         /// Null if not computed.
         /// </summary>
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.LenientNullableDoubleConverter))]
         [JsonPropertyName("similarity")]
         public double? Similarity { get; set; }
 
