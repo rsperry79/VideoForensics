@@ -1,0 +1,37 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
+
+@* Reusable play, pause, reverse and fast-forward controls. The host wires them to its player, so the same bar works under any
+   MediaPlayer with its native controls turned off. *@
+<div class="media-transport d-flex justify-content-center gap-2 mt-2" role="toolbar" aria-label="@L["TransportLabel"]" data-testid="media-transport">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="media-transport-back"
+            title="@L["TransportBack10"]" aria-label="@L["TransportBack10"]" disabled="@Disabled"
+            @onclick="() => OnStep.InvokeAsync(-SkipSeconds)">
+        <i class="material-icons" aria-hidden="true">replay_10</i>
+    </button>
+    <button type="button" class="btn btn-sm btn-primary" data-testid="media-transport-playpause"
+            title="@L["TransportPlayPause"]" aria-label="@L["TransportPlayPause"]" disabled="@Disabled"
+            @onclick="() => OnPlayPause.InvokeAsync()">
+        <i class="material-icons" aria-hidden="true">play_arrow</i>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="media-transport-forward"
+            title="@L["TransportForward10"]" aria-label="@L["TransportForward10"]" disabled="@Disabled"
+            @onclick="() => OnStep.InvokeAsync(SkipSeconds)">
+        <i class="material-icons" aria-hidden="true">forward_10</i>
+    </button>
+</div>
+
+@code {
+    /// <summary>Raised by the play/pause button. The host toggles playback.</summary>
+    [Parameter] public EventCallback OnPlayPause { get; set; }
+
+    /// <summary>Raised by reverse and fast-forward with a signed number of seconds (negative goes back).</summary>
+    [Parameter] public EventCallback<double> OnStep { get; set; }
+
+    /// <summary>Disables the buttons, for example while no video is rendered.</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>How far reverse and fast-forward move, in seconds.</summary>
+    [Parameter] public double SkipSeconds { get; set; } = 10;
+}
