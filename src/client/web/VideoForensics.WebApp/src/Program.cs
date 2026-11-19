@@ -548,6 +548,7 @@ builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.Circu
 builder.Services.AddSelfHttpService<ISecurityEventsService>(http => new RemoteSecurityEventsService(http));
 builder.Services.AddSelfHttpService<ILogViewerService>(http => new RemoteLogViewerService(http));
 builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdminOperatorService(http));
+builder.Services.AddSelfHttpService<INotificationPreferencesService>(http => new RemoteNotificationPreferencesService(http));
 
 // Pages/Security*.razor (SecurityLockoutPolicy/SecurityDevices/SecurityOperators/SecurityAuditLog)
 // build their own self-HTTP clients through this factory instead of a raw `new HttpClient { ... }` -
