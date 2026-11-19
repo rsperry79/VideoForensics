@@ -437,18 +437,7 @@ builder.Services.Configure<BrowserLiveViewOptions>(
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
 builder.Services.AddHostedService<MaintenanceBroadcastService>();
-// Per-circuit, so each circuit samples the sync activity log itself. Replaces the Razor panel's polling timer.
-builder.Services.AddScoped<IDownloadProgressSource, LocalDownloadProgressSource>();
-builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IMaintenanceStatusSource, VideoForensics.Client.WebApp.Services.LocalMaintenanceStatusSource>();
-// Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
-builder.Services.AddScoped<ISelfTestStatusSource, LocalSelfTestStatusSource>();
-// The LiveView page resolves this in both hosts. The WebApp has no live push channel, so it reports disconnected and the page polls.
-builder.Services.AddScoped<ILiveViewSessionSource, LocalLiveViewSessionSource>();
-builder.Services.AddSingleton<ISelfTestStatusChangeDetector, SelfTestStatusChangeDetector>();
-builder.Services.AddHostedService<SelfTestStatusBroadcastService>();
-builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
-builder.Services.AddScoped<VapidKeyProvider>();
-builder.Services.AddScoped<INotificationProvider, WebPushNotificationProvider>();
+builder.Services.AddWebAppCircuitStatusSources();
 
 // Rate limiting on auth/pairing endpoints (plan §5.7): keyed by the SAME network-tier-aware client
 // IP resolution used everywhere else (INetworkTierResolver.ResolveClientIp, registered by
@@ -705,13 +694,7 @@ builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
         ? new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>())
         : new NullFirewallRuleManager());
 
-// Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
-// the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk
-// to the pairing/auth API in Api/PairingEndpoints.cs.
-builder.Services.AddScoped<PairedSessionState>();
-builder.Services.AddScoped<WebAuthnClient>();
-builder.Services.AddScoped<StepUpService>();
-builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvider>();
+builder.Services.AddWebAppPairedSession();
 
 // This circuit's real network tier (plan §5.10/§5.12), captured once from the browser's actual
 // initial connection - see Components/NetworkTierCapture.razor and SessionNetworkContext's own doc
