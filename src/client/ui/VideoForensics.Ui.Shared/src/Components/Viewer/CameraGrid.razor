@@ -32,7 +32,7 @@ else
                         }
                         else
                         {
-                            <MediaPlayer Source="@preview.Url" SourceStartUtc="@preview.Clip.StartUtc" Cursor="Cursor" Muted="true" Loop="true" Autoplay="true" Controls="MediaPlayerControls.None" />
+                            <GridPreviewPlayer Url="@preview.Url" SourceStartUtc="@preview.Clip.StartUtc" Cursor="Cursor" Registered="RegisterPreview" Unregistered="UnregisterPreview" />
                         }
                     </button>
                 }
@@ -55,10 +55,41 @@ else
     private ReviewPlayer? _firstPlayer;
 
     /// <summary>Plays or pauses the first camera. Does nothing when there is no full player (a gap, or no cameras).</summary>
-    public Task TogglePlayAsync() => _firstPlayer is null ? Task.CompletedTask : _firstPlayer.TogglePlayAsync();
+    public async Task TogglePlayAsync()
+    {
+        foreach (IPlaybackTarget target in Targets())
+        {
+            await target.TogglePlayAsync();
+        }
+    }
+
+    private readonly Dictionary<GridPreviewPlayer, bool> _previews = new();
+
+    private void RegisterPreview(GridPreviewPlayer preview) => _previews[preview] = true;
+
+    private void UnregisterPreview(GridPreviewPlayer preview) => _previews.Remove(preview);
+
+    private IEnumerable<IPlaybackTarget> Targets()
+    {
+        if (_firstPlayer is not null)
+        {
+            yield return _firstPlayer;
+        }
+
+        foreach (GridPreviewPlayer preview in _previews.Keys)
+        {
+            yield return preview;
+        }
+    }
 
     /// <summary>Steps the first camera by a number of seconds (negative goes back).</summary>
-    public Task StepAsync(double seconds) => _firstPlayer is null ? Task.CompletedTask : _firstPlayer.StepAsync(seconds);
+    public async Task StepAsync(double seconds)
+    {
+        foreach (IPlaybackTarget target in Targets())
+        {
+            await target.StepAsync(seconds);
+        }
+    }
 
     /// <summary>The clip covering the cursor for one tile, and its preview URL. Either is null in a gap or with no preview.</summary>
     private sealed record CameraPreview(ClipWindow? Clip, string? Url);

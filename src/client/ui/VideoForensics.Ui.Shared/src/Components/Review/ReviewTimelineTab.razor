@@ -105,7 +105,17 @@
 
     private Task TogglePlayGridAsync() => _grid is null ? Task.CompletedTask : _grid.TogglePlayAsync();
 
-    private Task StepGridAsync(double seconds) => _grid is null ? Task.CompletedTask : _grid.StepAsync(seconds);
+    // Reverse and forward move the shared timeline cursor, not each player, so every camera seeks to the same recording
+    // time and stays in sync. Each tile follows the cursor.
+    private Task StepGridAsync(double seconds)
+    {
+        if (State.Cursor is DateTime now)
+        {
+            State.SetPlaybackCursor(now.AddSeconds(seconds));
+        }
+
+        return Task.CompletedTask;
+    }
 
     // The single-camera view, whose main player reads the playback position for Grab still.
     private SingleCameraView? _singleCamera;
