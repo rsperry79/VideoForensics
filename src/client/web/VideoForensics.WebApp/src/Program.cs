@@ -439,45 +439,7 @@ builder.Services.AddHostedService<DownloadProgressBroadcastService>();
 builder.Services.AddHostedService<MaintenanceBroadcastService>();
 builder.Services.AddWebAppCircuitStatusSources();
 
-// Rate limiting on auth/pairing endpoints (plan §5.7): keyed by the SAME network-tier-aware client
-// IP resolution used everywhere else (INetworkTierResolver.ResolveClientIp, registered by
-// AddVideoForensicsServerCore() below), so a request over the Cloudflare Tunnel is bucketed by the
-// real client behind it, not Cloudflare's shared edge IP - the escalation-flagged mistake the plan
-// calls out explicitly. A separate, more generous policy covers /api/v1/media/* so an already-paired
-// device can't hammer it into a self-inflicted DoS.
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    _ = options.AddPolicy("auth", httpContext =>
-    {
-        INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
-        return AuthRateLimitPolicy.Create(httpContext, resolver);
-    });
-
-    _ = options.AddPolicy("media", httpContext =>
-    {
-        INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
-        return MediaRateLimitPolicy.Create(httpContext, resolver);
-    });
-
-    // MCP HTTP endpoint rate limiting (Milestone 8): separate, more permissive policy than auth
-    // since authenticated paired devices can issue expensive analytical queries in tight loops
-    _ = options.AddPolicy("mcp", httpContext =>
-    {
-        INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
-        string key = resolver.ResolveClientIp(httpContext);
-        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
-        {
-            PermitLimit = 1000,
-            Window = TimeSpan.FromMinutes(1),
-            SegmentsPerWindow = 10,
-            QueueLimit = 0
-        });
-    });
-});
-
-// Shared data layer + server-tier provider/orchestrator registrations (session provider,
+builder.Services.AddWebAppRateLimiting();
 // active provider's four services, download/evidence orchestrators, JammingToolsOrchestrator) - see
 // VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. This is a deliberate, temporary
 // bootstrap shape for this milestone: VideoForensics.Client.WebApp owns its own local SQLite DB and talks
@@ -555,30 +517,7 @@ else
 {
     _ = builder.Services.AddSingleton<IUpdateInstaller, VideoForensics.Client.Platform.Web.LinuxUpdateInstaller>();
 }
-// Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
-// own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
-builder.Services.AddSingleton<ThumbnailReadyBus>();
-builder.Services.AddSingleton<EvidenceChangedBus>();
-builder.Services.AddSingleton<DeviceHealthChangedBus>();
-builder.Services.AddSingleton<ClientConfigChangedBus>();
-builder.Services.AddSingleton<IConfigurationChangeNotifier, LiveConfigNotifier>();
-builder.Services.AddScoped<IConfigChangedSource, LocalConfigChangedSource>();
-builder.Services.Replace(ServiceDescriptor.Singleton<IMediaThumbnailNotifier, LiveThumbnailNotifier>());
-builder.Services.Replace(ServiceDescriptor.Singleton<IEvidenceChangeNotifier, LiveEvidenceNotifier>());
-builder.Services.Replace(ServiceDescriptor.Singleton<IDeviceHealthChangeNotifier, LiveDeviceHealthNotifier>());
-builder.Services.AddScoped<IThumbnailReadySource, LocalThumbnailReadySource>();
-builder.Services.AddScoped<IEvidenceChangedSource, LocalEvidenceChangedSource>();
-builder.Services.AddScoped<IDeviceHealthChangedSource, LocalDeviceHealthChangedSource>();
-// Media-flag review changes: the flag endpoints publish, open review pages subscribe (in-process and over LiveHub).
-builder.Services.AddMediaFlagChangeServices();
-// The dispatcher runs in this process, so each raised notice is published to open Notices pages directly.
-builder.Services.AddSingleton<LocalNoticeFeed>();
-builder.Services.AddSingleton<INoticeFeed>(sp => sp.GetRequiredService<LocalNoticeFeed>());
-// Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so one
-// circuit's link never reaches another circuit; both interfaces share one bus instance.
-builder.Services.AddScoped<AccountLinkedBus>();
-builder.Services.AddScoped<IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
-builder.Services.AddScoped<IAccountLinkedNotifier>(sp => sp.GetRequiredService<AccountLinkedBus>());
+builder.Services.AddWebAppEventBuses();
 // Probe-only snapshot endpoints; registers nothing unless SnapshotProbe:Enabled and SnapshotProbe:Token are set.
 builder.Services.AddSnapshotProbe(builder.Configuration);
 
@@ -887,80 +826,6 @@ app.UseRateLimiter();
 
 app.UseAntiforgery();
 
-app.MapStaticAssets();
-
-app.MapVideoForensicsHealthEndpoints();
-
-app.MapSystemVersionEndpoints();
-
-// Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
-// for the explicit "unauthenticated until M6" note.
-app.MapMediaApiEndpoints();
-app.MapMediaFlagEndpoints();
-app.MapSnapshotCaptureEndpoints();
-app.MapReportEndpoints();
-app.MapLiveViewEndpoints();
-app.MapAuthEndpoints();
-app.MapOperatorAuthEndpoints();
-app.MapSecurityEventsEndpoints();
-app.MapSetupEndpoints();
-app.MapPairingEndpoints();
-app.MapDeviceCodePairingEndpoints();
-app.MapDeviceManagementEndpoints();
-app.MapSecurityAuditLogEndpoints();
-app.MapRemoteAccessEndpoints();
-app.MapNotificationEndpoints();
-app.MapEvidenceEndpoints();
-app.MapNetworkSettingsEndpoints();
-app.MapReleaseChannelEndpoints();
-app.MapLogEndpoints();
-app.MapLockoutPolicyEndpoints();
-app.MapProviderPermissionEndpoints();
-app.MapBannedIpsEndpoints();
-app.MapTwoFactorPolicyEndpoints();
-app.MapAuthMethodEndpoints();
-app.MapDeviceCaptureModeEndpoints();
-app.MapExportDownloadEndpoints();
-app.MapBackupEndpoints();
-app.MapBackupUploadEndpoints();
-app.MapDeviceConfigEndpoints();
-app.MapDeviceControlEndpoints();
-app.MapEventEndpoints();
-app.MapCaseEndpoints();
-app.MapNoteEndpoints();
-app.MapJammingEndpoints();
-app.MapSelfTestEndpoints();
-app.MapAccountEndpoints();
-app.MapConfigEndpoints();
-app.MapDiscoveryEndpoints();
-app.MapStorageSettingsEndpoints();
-app.MapFolderBrowseEndpoints();
-app.MapUpdateCheckEndpoints();
-app.MapPushEndpoints();
-app.MapNotificationPreferencesEndpoints();
-app.MapNoticeEndpoints();
-app.MapChatEndpoints();
-app.MapLlmSettingsEndpoints();
-app.MapLogPipeEndpoints();
-app.MapDatabaseEndpoints();
-app.MapSnapshotProbeEndpoints();
-
-// MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)
-// Gated with paired-device authorization (matching other API endpoints)
-_ = app.MapMcp("/mcp")
-    .RequireAuthorization()
-    .RequireRateLimiting("mcp");
-
-app.MapHub<LiveHub>("/hubs/live");
-app.MapHub<LiveViewSignalingHub>("/hubs/liveview-signaling");
-
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
-    // Routable pages (Dashboard.razor, SignIn.razor, Accounts.razor) live in the shared RCL
-    // (VideoForensics.Client.Ui.Shared), a different assembly than App itself - without this,
-    // MapRazorComponents only discovers routes in App's own assembly and every RCL page 404s
-    // at the ASP.NET Core routing level (confirmed by actually running the app: GET / returned
-    // a real HTTP 404, not a rendered Blazor "not found" page, which is what tipped this off).
-    .AddAdditionalAssemblies(typeof(Routes).Assembly);
+app.MapWebAppEndpoints();
 
 app.Run();
