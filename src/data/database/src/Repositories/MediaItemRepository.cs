@@ -13,13 +13,13 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a media item by ID.</summary>
         public async Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.FirstOrDefaultAsync(m => m.Id == mediaItemId, ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ById(context.Db(), mediaItemId).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>Gets media items by device ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.Where(m => m.DeviceId == deviceId).ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDevice(context.Db(), deviceId).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -38,22 +38,13 @@ namespace VideoForensics.Data.Database.Repositories
         /// <inheritdoc />
         public async Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
-                    && m.MediaKind == MediaKinds.Timelapse)
-                .OrderByDescending(m => m.RecordedAtUtc)
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.LatestRollupLoop(context.Db(), deviceId)
                 .FirstOrDefaultAsync(ct), ct);
         }
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => m.DeviceId == deviceId)
-                .OrderByDescending(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.RecentByDevice(context.Db(), deviceId, limit).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -70,13 +61,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             return await unitOfWork.ReadAsync<MediaItemPage>(async context =>
             {
-                IQueryable<MediaItem> matches = context.Db().MediaItems
-                    .AsNoTracking()
-                    .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
-                if (videoOnly)
-                {
-                    matches = matches.Where(m => m.MediaFormat != null && (m.MediaFormat.Contains("mp4") || m.MediaFormat.Contains("video")));
-                }
+                IQueryable<MediaItem> matches = MediaItemQueries.PageMatches(context.Db(), ids, fromUtc, toUtc, videoOnly);
 
                 int total = await matches.CountAsync(ct);
                 List<MediaItem> items = await matches
@@ -94,29 +79,20 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc)
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDeviceAndDateRange(context.Db(), deviceId, fromUtc, toUtc)
                 .ToListAsync(ct), ct);
         }
 
         /// <summary>Oldest non-purged media with no video codec recorded. Rows the codec backfill has already tried and failed on are skipped by the caller.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => !m.IsPurged && m.VideoCodec == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.MissingCodec(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>Oldest media that analysis has never run on. Analysis sets BaselineVersion on every result, so null means not yet analysed.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => !m.IsPurged && m.BaselineVersion == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.Unanalyzed(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>
@@ -125,12 +101,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => m.DeviceId == deviceId
-                    && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
-                    && m.MediaFormat == "jpg"
-                    && m.MediaKind == MediaKinds.Snapshot)
-                .OrderBy(m => m.RecordedAtUtc)
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.SnapshotsByDeviceAndDateRange(context.Db(), deviceId, fromUtc, toUtc)
                 .ToListAsync(ct), ct);
         }
 
@@ -140,12 +111,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && m.MediaKind != MediaKinds.Timelapse)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags, m.Id))
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.MeasuredBitrates(context.Db(), deviceId).ToListAsync(ct), ct);
         }
 
         /// <summary>
@@ -156,16 +122,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            var totals = await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && m.MediaKind != MediaKinds.Timelapse)
-                .GroupBy(m => m.DeviceId)
-                .Select(g => new
-                {
-                    Count = g.Count(),
-                    Sum = g.Sum(m => (double)m.VideoBitrateBps!.Value),
-                    SumOfSquares = g.Sum(m => (double)m.VideoBitrateBps!.Value * (double)m.VideoBitrateBps!.Value),
-                })
+            MediaItemQueries.BitrateTotals? totals = await unitOfWork.ReadAsync(context => MediaItemQueries.BitrateTotalsByDevice(context.Db(), deviceId)
                 .FirstOrDefaultAsync(ct), ct);
 
             return totals is null
@@ -176,7 +133,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.FirstOrDefaultAsync(m => m.Sha256Hash == sha256Hash, ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByHash(context.Db(), sha256Hash).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>
@@ -185,29 +142,25 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => m.RecordedAtUtc >= sinceUtc && m.RedFlags != null && m.RedFlags.Contains("BitrateCollapse"))
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.FlaggedSince(context.Db(), sinceUtc).ToListAsync(ct), ct);
         }
 
         /// <summary>Gets a media item by API source hash for deduplication.</summary>
         public async Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.FirstOrDefaultAsync(m => m.ApiSourceHash == apiSourceHash, ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByApiSourceHash(context.Db(), apiSourceHash).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>Gets media items by download event ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.Where(m => m.DownloadEventId == downloadEventId).ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDownloadEventId(context.Db(), downloadEventId).ToListAsync(ct), ct);
         }
 
         /// <summary>Lists all media items.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems.ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.All(context.Db()).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -217,12 +170,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </remarks>
         public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => !m.IsPurged
-                    && m.ThumbnailPath == null
-                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.VideosWithoutThumbnail(context.Db()).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -232,14 +180,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </remarks>
         public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
         {
-            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
-                .AsNoTracking()
-                .Where(m => !m.IsPurged
-                    && m.PreviewPath == null
-                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct), ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.VideosWithoutPreview(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>Adds a new media item.</summary>
