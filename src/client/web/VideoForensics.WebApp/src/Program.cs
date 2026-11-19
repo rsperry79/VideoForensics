@@ -413,32 +413,7 @@ builder.Services.AddWebAppRateLimiting();
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
 
-// Platform update installer. Windows downloads the release .exe and launches it with /passive; Linux downloads the
-// .deb to a pending-update location for a manual dpkg install. AddVideoForensicsServerCore registers no default.
-if (inPlaceUpdatesEnabled)
-{
-    // Stage the release zip; StartupUpdateApplier applies it on the next service start. No installer is launched.
-    _ = builder.Services.AddHttpClient();
-    _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdatePackageVerifier>(
-        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()));
-    _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateStager>(sp =>
-        new VideoForensics.Client.Hosting.Updates.UpdateStager(
-            updatesRoot,
-            sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdatePackageVerifier>(),
-            allowDevUpdatePackages,
-            () => System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0",
-            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateStager>>()));
-    _ = builder.Services.AddSingleton<IUpdateInstaller>(sp =>
-        new VideoForensics.Client.Hosting.Updates.StagedUpdateInstaller(
-            sp.GetRequiredService<IHttpClientFactory>(),
-            sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateStager>(),
-            updatesRoot,
-            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StagedUpdateInstaller>>()));
-}
-else if (OperatingSystem.IsWindows())
-{
-    _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
-}
+builder.Services.AddWebAppUpdateInstaller(inPlaceUpdatesEnabled, updatesRoot, allowDevUpdatePackages);
 
 // One maintenance gate for the process. Scheduled sync, the update drain and the Database coordinator all share it.
 _ = builder.Services.AddServerMaintenance();
@@ -454,31 +429,7 @@ else
     builder.Services.TryAddSingleton<VideoForensics.Client.Common.Contracts.IChildProcessReaper, VideoForensics.Client.Common.Contracts.NoOpChildProcessReaper>();
 }
 
-if (updatesActiveAsService)
-{
-    // A package staged while the service runs (the dev stage script, or a downloaded release) is drained, applied in place,
-    // and the service then exits so the service manager restarts it on the new version.
-    // The drain holds back new work through the maintenance gate and waits for in-flight work to finish before applying.
-    builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.MaintenanceUpdateDrain>();
-    _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
-        updatesRoot,
-        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()),
-        sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateDrain>(),
-        new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
-            new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(new VideoForensics.Client.Hosting.Updates.Ed25519PackageSignatureVerifier()),
-            new VideoForensics.Client.Hosting.Updates.UpdateApplier(sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>>()),
-            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>>()),
-        AppContext.BaseDirectory,
-        allowDevUpdatePackages,
-        () => System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0",
-        code => { Log.CloseAndFlush(); Environment.Exit(code); },
-        TimeSpan.FromSeconds(5),
-        sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher>>()));
-}
-else
-{
-    _ = builder.Services.AddSingleton<IUpdateInstaller, VideoForensics.Client.Platform.Web.LinuxUpdateInstaller>();
-}
+builder.Services.AddWebAppUpdateWatcher(updatesActiveAsService, updatesRoot, allowDevUpdatePackages);
 builder.Services.AddWebAppEventBuses();
 // Probe-only snapshot endpoints; registers nothing unless SnapshotProbe:Enabled and SnapshotProbe:Token are set.
 builder.Services.AddSnapshotProbe(builder.Configuration);
