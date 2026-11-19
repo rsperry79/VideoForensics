@@ -35,7 +35,18 @@
     </div>
 }
 
+@if (_hasMain)
+{
+    <MediaTransportControls OnPlayPause="TogglePlayMainAsync" OnStep="StepMainAsync" Disabled="_mainPlayer is null" />
+}
+
 @code {
+    /// <summary>Plays or pauses the main video. Does nothing when no video is rendered.</summary>
+    private Task TogglePlayMainAsync() => _mainPlayer is null ? Task.CompletedTask : _mainPlayer.TogglePlayAsync();
+
+    /// <summary>Steps the main video by a number of seconds (negative goes back).</summary>
+    private Task StepMainAsync(double seconds) => _mainPlayer is null ? Task.CompletedTask : _mainPlayer.StepAsync(seconds);
+
     // The main player, read by the timeline tab's Grab still button for the playback position.
     private ReviewPlayer? _mainPlayer;
 
