@@ -70,3 +70,36 @@
     transform: translateY(-1px);
     pointer-events: none;
 }
+
+/* Colour by kind: green timelapse, blue motion, grey missing video, yellow doorbell, red in a case. */
+.review-timeline-vertical .review-timeline-kind-motion {
+    background-color: var(--bs-primary);
+}
+
+.review-timeline-vertical .review-timeline-kind-timelapse {
+    background-color: var(--bs-success);
+}
+
+.review-timeline-vertical .review-timeline-kind-missing {
+    background-color: var(--bs-secondary);
+    opacity: 0.5;
+}
+
+.review-timeline-vertical .review-timeline-kind-doorbell {
+    background-color: var(--bs-warning);
+}
+
+.review-timeline-vertical .review-timeline-kind-case {
+    background-color: var(--bs-danger);
+}
+
+/* The hover label lists the time, then one line per specific event type. It wraps so the whole tooltip shows. */
+.review-timeline-vertical .review-timeline-hover {
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.review-timeline-vertical .review-timeline-hover-event {
+    font-size: 0.65rem;
+    color: var(--bs-secondary-color);
+}

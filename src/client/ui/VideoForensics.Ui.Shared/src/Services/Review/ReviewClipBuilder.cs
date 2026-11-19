@@ -24,7 +24,7 @@ public static class ReviewClipBuilder
         return items
             .Where(item => item.DeviceId == deviceId && IsPlayableClip(item))
             .OrderBy(item => item.RecordedAtUtc)
-            .Select(item => new ClipWindow(item.Id.ToString("D"), item.RecordedAtUtc, item.DurationSeconds!.Value))
+            .Select(item => new ClipWindow(item.Id.ToString("D"), item.RecordedAtUtc, item.DurationSeconds!.Value, null, false, deviceId.ToString("D"), item.MediaKind == MediaKindNames.Timelapse ? "Timelapse" : "Motion"))
             .ToList();
     }
 
@@ -40,7 +40,7 @@ public static class ReviewClipBuilder
         return events
             .Where(evt => evt.DeviceId == deviceId && evt.DownloadStatus != EventDownloadStatusDto.Downloaded)
             .OrderBy(evt => evt.OccurredAtUtc)
-            .Select(evt => new ClipWindow("event:" + evt.Id.ToString("D"), evt.OccurredAtUtc, UnavailableMarkerSeconds, null, IsUnavailable: true))
+            .Select(evt => new ClipWindow("event:" + evt.Id.ToString("D"), evt.OccurredAtUtc, UnavailableMarkerSeconds, null, IsUnavailable: true, LaneId: deviceId.ToString("D"), Kind: "Missing"))
             .ToList();
     }
 
