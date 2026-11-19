@@ -1,3 +1,4 @@
+using VideoForensics.Client.WebApp.Startup;
 using CloudflaredKit;
 
 using Fido2NetLib;
@@ -739,46 +740,7 @@ builder.Services.AddScoped<IProviderAccountEditAccess, ProviderAccountEditAccess
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();
 
-// Docked-layout chrome state (plan: docked MAUI/Blazor layout) - collapse state (device-local),
-// right-panel page-context slot, and per-operator theme/culture, all circuit-scoped like
-// PairedSessionState above.
-builder.Services.AddScoped<LayoutPreferencesState>();
-builder.Services.AddScoped<RightPanelContentService>();
-builder.Services.AddScoped<RightPanelFilterStore>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Filters.ProviderAccountFilterState>();
-builder.Services.AddScoped<LeftPanelContentService>();
-builder.Services.AddScoped<InspectorState>();
-builder.Services.TryAddSingleton(TimeProvider.System);
-builder.Services.AddScoped<ScopeState>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPopupState>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSettingsStore>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewCaseMode>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewSelection>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewTimelineModel>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewStillCommand>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewClipLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewClipLoader>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewEventLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewEventLoader>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IReviewDetailLoader, VideoForensics.Client.Ui.Shared.Services.Review.ReviewDetailLoader>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewUrlCache>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
-builder.Services.AddScoped<DeviceOwnershipService>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, VideoForensics.Client.Hosting.Signal.SignalAnalysisService>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IBitrateAnalysisService, VideoForensics.Client.Hosting.Signal.BitrateAnalysisService>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IMediaBitrateSeriesSource, VideoForensics.Client.Hosting.Signal.LocalMediaBitrateSeriesSource>();
-builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
-builder.Services.AddScoped<CaseState>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.PendingEvidenceTags>();
-builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewEvidenceTagger>();
-builder.Services.AddScoped<ThemePreferenceService>();
-builder.Services.AddScoped<IUiModeService, UiModeService>();
-builder.Services.AddScoped<SimpleHomeBuilder>(sp => new SimpleHomeBuilder(
-    sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<IMediaContentUrlProvider>(),
-    sp.GetRequiredService<IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources>>()));
-builder.Services.AddScoped<IViewportService, DefaultViewportService>();
-builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
-builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
-builder.Services.AddLocalization();
+builder.Services.AddWebAppUiState();
 
 // Hosts that support interactive render modes register InteractiveServerBlazorRenderModeProvider - this
 // is a real ASP.NET Core host with interactive server components configured below. MAUI's
