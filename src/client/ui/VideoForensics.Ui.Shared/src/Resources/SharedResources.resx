@@ -1223,4 +1223,16 @@
   <data name="SingleCameraKeysLabel" xml:space="preserve">
     <value>Player. Space plays or pauses, the arrow keys move five seconds, and S grabs a still.</value>
   </data>
+  <data name="TransportLabel" xml:space="preserve">
+    <value>Playback controls</value>
+  </data>
+  <data name="TransportBack10" xml:space="preserve">
+    <value>Back 10 seconds</value>
+  </data>
+  <data name="TransportPlayPause" xml:space="preserve">
+    <value>Play or pause</value>
+  </data>
+  <data name="TransportForward10" xml:space="preserve">
+    <value>Forward 10 seconds</value>
+  </data>
 </root>
