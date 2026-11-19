@@ -19,7 +19,7 @@ else
                 @if (index == 0)
                 {
                     @* The first camera is the full player with its own controls. *@
-                    <ReviewPlayer Clips="tile.Clips" ContentUrlFor="tile.ContentUrlFor" Cursor="Cursor" />
+                    <ReviewPlayer @ref="_firstPlayer" Clips="tile.Clips" ContentUrlFor="tile.ContentUrlFor" Cursor="Cursor" />
                 }
                 else
                 {
@@ -50,6 +50,15 @@ else
 
     /// <summary>Raised with a tile's index when its preview is clicked.</summary>
     [Parameter] public EventCallback<int> OnSelect { get; set; }
+
+    // The first camera's full player, which the grid's transport bar drives.
+    private ReviewPlayer? _firstPlayer;
+
+    /// <summary>Plays or pauses the first camera. Does nothing when there is no full player (a gap, or no cameras).</summary>
+    public Task TogglePlayAsync() => _firstPlayer is null ? Task.CompletedTask : _firstPlayer.TogglePlayAsync();
+
+    /// <summary>Steps the first camera by a number of seconds (negative goes back).</summary>
+    public Task StepAsync(double seconds) => _firstPlayer is null ? Task.CompletedTask : _firstPlayer.StepAsync(seconds);
 
     /// <summary>The clip covering the cursor for one tile, and its preview URL. Either is null in a gap or with no preview.</summary>
     private sealed record CameraPreview(ClipWindow? Clip, string? Url);

@@ -21,7 +21,7 @@
 }
 
 .camera-tile ::deep .review-player {
-    max-height: 30vh;
+    max-height: 22vh;
 }
 
 /* A preview is a button, so the whole tile opens the single view. Its video is muted and has no controls. */
