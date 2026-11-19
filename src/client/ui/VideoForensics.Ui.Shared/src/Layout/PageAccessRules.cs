@@ -74,7 +74,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/accounts/{Id:guid}/sync"] = AccessPolicy.Admin,
                 ["/accounts/{Id:guid}/cases"] = AccessPolicy.Admin,
                 // Device config is SuperAdminLocal on the server, so this tab stays SuperAdmin on the Local tier.
-                ["/accounts/{Id:guid}/devices"] = AccessPolicy.SuperAdminLocal,
+                ["/accounts/{Id:guid}/devices"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
                 ["/review/export"] = AccessPolicy.SuperAdminLocal,
                 ["/cases/new"] = AccessPolicy.Review,
