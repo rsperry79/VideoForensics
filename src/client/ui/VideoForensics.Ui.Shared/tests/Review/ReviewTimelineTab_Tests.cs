@@ -131,6 +131,24 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewTimelineTab_OneCameraSelected_ShowAllCamerasReturnsToTheGrid()
+    {
+        // Arrange: one camera is open as the single view, with the other cameras in its strip.
+        AddDevices(3);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ServeOneClipPerCamera();
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<SingleCameraView>()));
+
+        // Act
+        cut.Find("[data-testid='review-show-all-cameras']").Click();
+
+        // Assert: back to the multi-camera grid with every camera selected.
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<CameraGrid>()));
+        Assert.Equal(Devices.Select(d => d.Id), ReviewState.CameraIds);
+    }
+
+    [Fact]
     public void ReviewTimelineTab_NoCamerasSelected_ShowsTheEmptyStateAndDoesNotLoad()
     {
         // Arrange
