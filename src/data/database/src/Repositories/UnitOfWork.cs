@@ -89,12 +89,12 @@ namespace VideoForensics.Data.Database.Repositories
 
             // Hold the chain gate for the whole transaction. A chain append must not read a tail that this transaction is
             // about to extend, and no other writer may read that tail before this one commits.
-            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow(_factory);
             if (entered)
             {
                 await EnterGateAsync(caller, ct);
                 // Why: set here, not in EnterGateAsync, because an async helper's AsyncLocal write is not seen by its caller.
-                ActionLogAppendGate.IsHeldByCurrentFlow = true;
+                ActionLogAppendGate.SetHeldByCurrentFlow(_factory, true);
             }
 
             try
@@ -105,8 +105,8 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 if (entered)
                 {
-                    ActionLogAppendGate.IsHeldByCurrentFlow = false;
-                    ActionLogAppendGate.Release();
+                    ActionLogAppendGate.SetHeldByCurrentFlow(_factory, false);
+                    ActionLogAppendGate.Release(_factory);
                 }
             }
         }
@@ -125,11 +125,11 @@ namespace VideoForensics.Data.Database.Repositories
             string caller = DescribeCaller(new StackTrace(skipFrames: 1, fNeedFileInfo: false));
             using IDisposable tracked = _inFlight.Begin(caller, DateTimeOffset.UtcNow);
 
-            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow(_factory);
             if (entered)
             {
                 await EnterGateAsync(caller, ct);
-                ActionLogAppendGate.IsHeldByCurrentFlow = true;
+                ActionLogAppendGate.SetHeldByCurrentFlow(_factory, true);
             }
 
             try
@@ -141,8 +141,8 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 if (entered)
                 {
-                    ActionLogAppendGate.IsHeldByCurrentFlow = false;
-                    ActionLogAppendGate.Release();
+                    ActionLogAppendGate.SetHeldByCurrentFlow(_factory, false);
+                    ActionLogAppendGate.Release(_factory);
                 }
             }
         }
@@ -154,7 +154,7 @@ namespace VideoForensics.Data.Database.Repositories
         private async Task EnterGateAsync(string caller, CancellationToken ct)
         {
             var wait = Stopwatch.StartNew();
-            if (!await ActionLogAppendGate.TryWaitAsync(_queueTimeout, ct))
+            if (!await ActionLogAppendGate.TryWaitAsync(_factory, _queueTimeout, ct))
             {
                 _logger.LogError("Write for {Caller} gave up waiting for the write queue after {TimeoutMs} ms", caller, (long)_queueTimeout.TotalMilliseconds);
                 throw new TimeoutException($"Write for {caller} timed out waiting for the write queue after {(long)_queueTimeout.TotalMilliseconds} ms.");
