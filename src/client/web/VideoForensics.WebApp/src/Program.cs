@@ -380,45 +380,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandle
 builder.Services.AddScoped<IProviderAccountEditPolicy, ProviderAccountEditPolicy>();
 builder.Services.AddScoped<ISettingsAccessPolicy, SettingsAccessPolicy>();
 
-// Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
-// SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET
-// Core's default key-storage heuristic (usually %LOCALAPPDATA%\ASP.NET\DataProtection-Keys on
-// Windows, keyed by content-root path) - explicit here so a signed-in session actually survives a
-// server restart instead of depending on that heuristic continuing to resolve the same way. Keys
-// live next to the app's own database rather than the OS default location, matching how every
-// other piece of this app's persistent state is already rooted at %ProgramData%\VideoForensics.
-string dataProtectionKeyPath = storageProvider.GetDefaultRoot(StorageCategory.Keys);
-Directory.CreateDirectory(dataProtectionKeyPath);
-IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtection()
-    .SetApplicationName("VideoForensics")
-    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
-// DPAPI encrypts the key-ring file at rest but is Windows-only (this app is platform-agnostic -
-// see PlatformDirectoryService/CredentialEncryptionFactory for the same Windows/other-OS split).
-// The WebApp may run interactively during development and as LocalSystem in production. Use
-// machine scope so a key ring created by one of those identities remains usable by the service.
-// Access to the key directory is still restricted by its filesystem ACL.
-// When the TPM is usable, the key ring is encrypted to a TPM-held certificate, so only this machine's TPM can
-// decrypt it. Otherwise DPAPI (machine scope) protects it.
-string dataProtectionWrapping = "not Windows";
-if (OperatingSystem.IsWindows())
-{
-    // A machine that already has the TPM key never falls back to DPAPI: the start is retried with waits, then refused.
-    X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.DataProtectionKeyWrapping.ResolveTpmCertificate(
-        VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate,
-        VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.KeyExists,
-        Thread.Sleep,
-        [TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)]);
-    _ = tpmCertificate is not null
-        ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
-        : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
-
-    // Logged at startup: a restart that falls back to DPAPI cannot later read keys wrapped by the TPM certificate.
-    bool elevated = new System.Security.Principal.WindowsPrincipal(System.Security.Principal.WindowsIdentity.GetCurrent())
-        .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
-    bool tpmProbeAvailable = new VideoForensics.Client.Platform.Windows.KeyManagement.TpmKeyStorageProvider().IsAvailable;
-    dataProtectionWrapping = VideoForensics.Client.Platform.Windows.KeyManagement.DataProtectionKeyWrapping.Describe(
-        tpmCertificate is not null, tpmProbeAvailable, elevated);
-}
+string dataProtectionWrapping = builder.Services.AddWebAppDataProtection(storageProvider);
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
 // paired clients (MAUI) - the WebApp's own UI doesn't consume this hub at all (see LiveHub's doc
