@@ -576,15 +576,7 @@ builder.Services.AddScoped<IChatService, ChatOrchestrator>();
 // Geo-IP and threat-intelligence blocking services for login pipeline
 // GeoIP lookup service using MaxMind GeoLite2 database (stored in the main data directory)
 string geoLite2DbPath = Path.Combine(storageProvider.GetDefaultRoot(StorageCategory.Database), "GeoLite2-Country.mmdb");
-builder.Services.AddScoped<IGeoIpLookupService>(_ => new MaxMindGeoIpLookupService(geoLite2DbPath));
-
-// Threat intelligence blocklist service (null implementation for now; actual feed fetching is separate work)
-builder.Services.AddScoped<IThreatIntelBlocklistService, NullThreatIntelBlocklistService>();
-
-// Banned IP range matching service
-builder.Services.AddScoped<IBannedIpMatchService, BannedIpMatchService>();
-// Singleton: the per-IP lockout counters must outlive a single request. Resolves its scoped repository per ban write.
-builder.Services.AddSingleton<IFailedLoginIpTracker, FailedLoginIpTracker>();
+builder.Services.AddWebAppLoginSecurity(geoLite2DbPath);
 
 // /healthz "services" check. The constructor takes a TimeSpan threshold that DI cannot supply, so the factory passes it.
 // ThreadHeartbeats is also registered by AddVideoForensicsSnapshotCapture, but only when snapshot capture is on. TryAdd keeps
