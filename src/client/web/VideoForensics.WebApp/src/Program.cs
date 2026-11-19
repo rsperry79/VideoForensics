@@ -603,17 +603,9 @@ builder.Services.AddHostedService<MdnsAdvertisementService>();
 builder.Services.AddTryCloudflare(_ => { });
 builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelService>();
 
-// Trusted certificate for the Internet hostname, issued through Let's Encrypt DNS-01 with the stored
-// Cloudflare token. Acme:UseStaging (default true) keeps issuance on the staging CA until it is switched off.
-builder.Services.AddSingleton(certificateHolder);
 // Plain-http LAN requests are redirected to the tunnel or to https; see LocalTransportMiddleware.
 int? httpsPort = listenEndpoints.FirstOrDefault(endpoint => endpoint.Scheme == "https")?.Port;
-builder.Services.AddSingleton(new LocalTransportOptions(httpsPort, () => certificateHolder.Current is not null));
-builder.Services.AddSingleton<IAcmeCertificateIssuer, CertesAcmeCertificateIssuer>();
-builder.Services.AddScoped<ILetsEncryptCertificateStore, LetsEncryptCertificateStore>();
-builder.Services.AddScoped<LetsEncryptCertificateManager>();
-builder.Services.AddHostedService<LetsEncryptRenewalService>();
-builder.Services.AddHostedService<CloudflareTunnelAutostart>();
+builder.Services.AddWebAppCertificates(certificateHolder, httpsPort);
 
 // Windows Firewall rule management (plan §5.2) - when the configured network tier is widened
 // beyond Local at runtime via Settings > Network Access, this ensures the corresponding inbound
