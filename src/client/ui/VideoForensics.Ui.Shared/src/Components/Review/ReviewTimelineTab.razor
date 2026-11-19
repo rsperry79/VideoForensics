@@ -57,6 +57,7 @@
         }
         else if (State.CameraIds.Count == 1)
         {
+            <button type="button" class="btn btn-sm btn-outline-secondary mb-2" data-testid="review-show-all-cameras" @onclick="ShowAllCameras">@L["ShowAllCameras"]</button>
             <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" OnPlaybackUtc="OnPlaybackPosition" OnGrabStill="StillCommand.GrabAsync" />
             @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
             {
@@ -360,6 +361,12 @@
     private void OnPlaybackPosition(DateTime utc)
     {
         State.SetPlaybackCursor(utc);
+    }
+
+    /// <summary>Returns from the single-camera view to the grid: every camera in the list, up to the grid's limit.</summary>
+    private void ShowAllCameras()
+    {
+        State.SetCameras(_tileDeviceIds.Take(CameraSync.MaxTiles).ToList());
     }
 
     /// <summary>The strip asks for a single camera. The tab narrows the selection to it and keeps the cursor.</summary>
