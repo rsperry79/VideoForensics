@@ -13,7 +13,6 @@
                  OnProgress="HandleProgressAsync"
                  Controls="MediaPlayerControls.None"
                  data-clip-id="@_selection?.ClipId" />
-    <MediaTransportControls OnPlayPause="TogglePlayAsync" OnStep="StepAsync" Disabled="_player is null" />
 </div>
 
 @code {
