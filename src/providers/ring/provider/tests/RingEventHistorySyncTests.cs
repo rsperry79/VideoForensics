@@ -220,6 +220,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private static Mock<IRingEventHistoryWriter> CreateWriter()
         {
             var writer = new Mock<IRingEventHistoryWriter>();
+            _ = writer.Setup(w => w.RunInBatchAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>())).Returns<Func<Task>, CancellationToken>((work, _) => work());
             _ = writer.Setup(w => w.ReplaceVideoSearchEventAsync(It.IsAny<Guid>(), It.IsAny<RingVideoSearchEvent>(), It.IsAny<RingEventDetails>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _ = writer.Setup(w => w.ReplaceLocationEventPageAsync(It.IsAny<RingLocationEventPage>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _ = writer.Setup(w => w.ReplaceLocationEventAsync(It.IsAny<RingLocationEvent>(), It.IsAny<RingEventDetails>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);

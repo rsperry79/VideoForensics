@@ -1184,12 +1184,15 @@ namespace VideoForensics.Providers.Ring.Services
                     var pageNotes = new List<string>();
                     await eventWriter.ReplaceLocationHistoryPageAsync(RingEventHistoryMapper.MapLocationHistoryPage(location.Id, response.PaginationKey, response.CekTransferRecipientResponse, pageNotes), ct);
                     LogEventNotes(pageNotes);
-                    foreach (Entities.LocationHistoryItem item in response.Items ?? [])
+                    await eventWriter.RunInBatchAsync(async () =>
                     {
-                        MappedRingEvent<Data.Common.Entities.RingLocationHistoryEvent> mapped = RingEventHistoryMapper.MapLocationHistoryItem(item, location.Id);
-                        LogEventNotes(mapped.Unstored);
-                        await eventWriter.ReplaceLocationHistoryEventAsync(mapped.Event, mapped.Details, ct);
-                    }
+                        foreach (Entities.LocationHistoryItem item in response.Items ?? [])
+                        {
+                            MappedRingEvent<Data.Common.Entities.RingLocationHistoryEvent> mapped = RingEventHistoryMapper.MapLocationHistoryItem(item, location.Id);
+                            LogEventNotes(mapped.Unstored);
+                            await eventWriter.ReplaceLocationHistoryEventAsync(mapped.Event, mapped.Details, ct);
+                        }
+                    }, ct);
                 }, ct);
 
                 await SyncFeedAsync("app location history", async () =>
@@ -1246,17 +1249,20 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // With a sync range, events older than its start are skipped. Once a page reaches past the start, older pages are out of range too.
                 bool reachedStart = startUtc.HasValue && page.Any(e => e.CreatedAtDateTime is { } created && ToUtc(created) < startUtc.Value);
-                foreach (Entities.DoorbotHistoryEvent evt in page)
+                await eventWriter.RunInBatchAsync(async () =>
                 {
-                    if (startUtc.HasValue && (evt.CreatedAtDateTime is not { } created || ToUtc(created) < startUtc.Value))
+                    foreach (Entities.DoorbotHistoryEvent evt in page)
                     {
-                        continue;
-                    }
+                        if (startUtc.HasValue && (evt.CreatedAtDateTime is not { } created || ToUtc(created) < startUtc.Value))
+                        {
+                            continue;
+                        }
 
-                    MappedRingEvent<Data.Common.Entities.RingDoorbotHistoryEvent> mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
-                    LogEventNotes(mapped.Unstored);
-                    await eventWriter.ReplaceDoorbotHistoryEventAsync(mapped.Event, mapped.Details, ct);
-                }
+                        MappedRingEvent<Data.Common.Entities.RingDoorbotHistoryEvent> mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
+                        LogEventNotes(mapped.Unstored);
+                        await eventWriter.ReplaceDoorbotHistoryEventAsync(mapped.Event, mapped.Details, ct);
+                    }
+                }, ct);
 
                 if (reachedStart || page.Count < DoorbotHistoryPageSize || !oldestId.HasValue)
                 {
