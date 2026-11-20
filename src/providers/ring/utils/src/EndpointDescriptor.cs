@@ -297,9 +297,8 @@ namespace VideoForensics.Providers.Ring
                 HttpMethod = "GET",
                 ApiPath = "https://api.ring.com/recordings/public/footages/{dingId}",
                 Scope = EndpointScope.None,
-                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
-                    ? session.GetPeriodicalFootage(DingId!)
-                    : throw new InvalidOperationException("recording-url requires --ding-id <id>")
+                Invoke = (_, _) => throw new InvalidOperationException(
+                    "recording-url is superseded: the public recordings host refuses this request (403/405). Use ding-recording, which reads the working clients-API path.")
             },
             new()
             {
