@@ -39,7 +39,10 @@ namespace VideoForensics.Client.Hosting.Services
         internal const int DefaultIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalMinutes * 60;
 
         /// <summary>Metadata on a capture's Media row. The "snapshot" type is what the Devices tab and the roll-up look for.</summary>
-        internal const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\",\"source\":\"capture\"}";
+        /// <summary>Marker kept in MetadataJson for a capture; its source is the typed MediaItem.Source column.</summary>
+        internal const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\"}";
+
+        internal const string CaptureSource = "capture";
 
         /// <summary>Wait between the trigger and the read of one attempt.</summary>
         internal static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(5);
@@ -475,6 +478,7 @@ namespace VideoForensics.Client.Hosting.Services
                     Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
                     IntegrityVerified = false,
                     MetadataJson = CaptureSnapshotMetadata,
+                    Source = CaptureSource,
                 }, ct);
 
                 IEvidenceChangeNotifier? evidenceChanges = sp.GetService<IEvidenceChangeNotifier>();
