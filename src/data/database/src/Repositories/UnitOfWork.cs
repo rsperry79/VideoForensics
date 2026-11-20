@@ -206,6 +206,12 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
+        /// <summary>True when the work phase alone ran longer than the threshold. Begin and finish do not count.</summary>
+        public static bool IsSlowWork(TimeSpan begun, TimeSpan worked, TimeSpan threshold)
+        {
+            return worked - begun > threshold;
+        }
+
         /// <summary>
         /// Logs one transaction's timing. The begin phase covers opening the connection and starting the transaction.
         /// The work phase covers the caller's lambda and SaveChanges, and the finish phase covers commit or rollback.
@@ -217,9 +223,9 @@ namespace VideoForensics.Data.Database.Repositories
             long finishMs = (long)(finished - worked).TotalMilliseconds;
             long totalMs = (long)finished.TotalMilliseconds;
 
-            // Why: time spent waiting for the write gate is in begin and is already logged by EnterGateAsync when it is slow.
-            // The warning is for work that holds the gate, so it counts only from begin to finish.
-            if (finished - begun >= _slowTransactionThreshold)
+            // Why: the warning judges the work phase alone. Time waiting for the write gate sits in begin, which EnterGateAsync
+            // already reports, and commit time sits in finish, which SQLite spends on fsync and is not caused by the caller's work.
+            if (IsSlowWork(begun, worked, _slowTransactionThreshold))
             {
                 _logger.LogWarning(
                     "Slow unit of work {Caller} {Outcome} in {TotalMs} ms (begin {BeginMs} ms, work {WorkMs} ms, finish {FinishMs} ms)",
