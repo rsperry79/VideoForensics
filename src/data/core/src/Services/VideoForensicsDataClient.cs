@@ -373,6 +373,16 @@ namespace VideoForensics.Data.Core.Services
             }, ct);
         }
 
+        public Task RunInBatchAsync(Func<Task> writes, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(writes);
+            return _unitOfWork.ExecuteAsync<object?>(async _ =>
+            {
+                await writes();
+                return null;
+            }, ct);
+        }
+
         public async Task<Event> UpsertEventAsync(
             Event evt,
             CancellationToken ct,

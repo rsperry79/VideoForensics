@@ -45,6 +45,12 @@ namespace VideoForensics.Data.Core.Contracts
         /// along with any related detection metadata. Call once when an event is discovered, and again
         /// once it's downloaded/hashed to enrich it.
         /// </summary>
+        /// <summary>
+        /// Runs the writes made inside <paramref name="writes"/> in one transaction, so a page of events commits once instead
+        /// of once per event. Single-event writes made inside join this transaction.
+        /// </summary>
+        Task RunInBatchAsync(Func<Task> writes, CancellationToken ct);
+
         Task<Event> UpsertEventAsync(
             Event evt,
             CancellationToken ct,

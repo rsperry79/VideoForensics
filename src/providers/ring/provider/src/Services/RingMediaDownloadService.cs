@@ -636,6 +636,11 @@ namespace VideoForensics.Providers.Ring.Services
 
                 try
                 {
+                    // Every event's Events row is written in one transaction before any download starts. One commit per page
+                    // instead of one per concurrent task: those queued behind the write gate and timed out, and their rows were lost.
+                    Dictionary<Entities.DoorbotHistoryEvent, DiscoveryOutcome> discoveries =
+                        await RecordDiscoveriesAsync(relevantEvents, deviceId, deviceGuid, rateLimitCts.Token);
+
                     IEnumerable<Task> downloadTasks = relevantEvents.Select(async (@event) =>
                     {
                         if (rateLimitCts.Token.IsCancellationRequested)
@@ -650,52 +655,18 @@ namespace VideoForensics.Providers.Ring.Services
                         string fileName = Path.Combine(outputPath,
                             MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, fileTypeSegment, "mp4"));
                         // The Events row and download key use the string ding id. The doorbot id equals the ding id exactly, so a row with no exact match is skipped.
-                        DingIdMatchResult dingLink = await ResolveDingIdAsync(@event, rateLimitCts.Token);
-                        if (dingLink.Outcome != DingIdMatchOutcome.Matched)
+                        // Discovery (the Events row) was recorded for the whole page before the downloads started.
+                        DiscoveryOutcome discovery = discoveries[@event];
+                        if (!discovery.Matched)
                         {
-                            // Why: the event exists at the provider but has no ding id yet, so it cannot be downloaded. Its row is stored now,
-                            // keyed by the doorbot id, so it is kept and can be linked to its ding once Ring assigns one.
-                            _logger.LogInformation("Stored unmatched doorbot event for {CameraName}: {Outcome}, awaiting its string ding id", SanitizeForLog(cameraName), dingLink.Outcome);
-                            if (@event.Id is { } doorbotHistoryId)
-                            {
-                                DateTime unmatchedOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
-                                Guid unmatchedDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, doorbotHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                                    eventType, unmatchedOccurredAtUtc, @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token,
-                                    apiResponse: @event, awaitingDingId: true);
-                                if (unmatchedDbId != Guid.Empty)
-                                {
-                                    await LinkDoorbotEventAsync(@event, unmatchedDbId, rateLimitCts.Token);
-                                }
-                            }
-
                             return;
                         }
 
-                        string eventIdStr = dingLink.DingId!;
+                        string eventIdStr = discovery.DingId;
                         DateTime eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
                         int previousAttemptCount = 0;
                         DownloadEvent? existingRecord = null;
-
-                        // Record this event in the Events table independent of download outcome —
-                        // Timeline/Integrity/Correlation/Audit forensic tools all read from Events,
-                        // not DownloadEvents, so an event must land here the moment it's discovered
-                        // (not only once/if it's successfully downloaded) or gaps and missing-download
-                        // detection have nothing to compare against.
-                        // Why: a row stored under the doorbot id before its ding id was known must be kept, not duplicated. Rekeying it to the
-                        // ding id lets the upsert below update that same row.
-                        if (@event.Id is { } matchedHistoryId
-                            && await _dataClient.GetLinkedEventAsync(matchedHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture), rateLimitCts.Token) is { } linkedRow
-                            && linkedRow.ProviderEventId != eventIdStr)
-                        {
-                            await _dataClient.RekeyLinkedEventAsync(linkedRow.Id, eventIdStr, rateLimitCts.Token);
-                        }
-
-                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
-                            @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
-                        if (eventDbId != Guid.Empty)
-                        {
-                            await LinkDoorbotEventAsync(@event, eventDbId, rateLimitCts.Token);
-                        }
+                        Guid eventDbId = discovery.EventDbId;
 
                         // Use the device GUID resolved at batch start; all events are for this same device
                         // (filtered by deviceId above). Avoids per-item redundant lookups.
@@ -1510,6 +1481,85 @@ namespace VideoForensics.Providers.Ring.Services
         /// Resolves a doorbot history row to its string ding id. The doorbot id is exactly the ding id, so only one exact
         /// match on the device's own candidates counts. Zero or several equal candidates are left unlinked.
         /// </summary>
+        /// <summary>What discovery recorded for one history event: whether it has a ding id, its ding id, and its Events row.</summary>
+        private sealed record DiscoveryOutcome(bool Matched, string DingId, Guid EventDbId);
+
+        /// <summary>
+        /// Resolves each event's ding id, then writes every Events row in one transaction. Ding-id lookups stay outside the
+        /// transaction because they can call Ring, and a held write gate must not wait on the network.
+        /// </summary>
+        private async Task<Dictionary<Entities.DoorbotHistoryEvent, DiscoveryOutcome>> RecordDiscoveriesAsync(
+            IReadOnlyList<Entities.DoorbotHistoryEvent> events, string deviceId, Guid deviceGuid, CancellationToken ct)
+        {
+            var resolved = new List<(Entities.DoorbotHistoryEvent Event, DingIdMatchResult Link)>(events.Count);
+            foreach (Entities.DoorbotHistoryEvent @event in events)
+            {
+                resolved.Add((@event, await ResolveDingIdAsync(@event, ct)));
+            }
+
+            var outcomes = new Dictionary<Entities.DoorbotHistoryEvent, DiscoveryOutcome>(ReferenceEqualityComparer.Instance);
+            await _dataClient.RunInBatchAsync(async () =>
+            {
+                foreach ((Entities.DoorbotHistoryEvent @event, DingIdMatchResult dingLink) in resolved)
+                {
+                    string cameraName = @event.Doorbot?.Description ?? deviceId;
+                    outcomes[@event] = await RecordDiscoveryAsync(@event, dingLink, cameraName, deviceGuid, ct);
+                }
+            }, ct);
+            return outcomes;
+        }
+
+        private async Task<DiscoveryOutcome> RecordDiscoveryAsync(
+            Entities.DoorbotHistoryEvent @event, DingIdMatchResult dingLink, string cameraName, Guid deviceGuid, CancellationToken ct)
+        {
+            string eventType = @event.Kind ?? "video";
+            if (dingLink.Outcome != DingIdMatchOutcome.Matched)
+            {
+                // Why: the event exists at the provider but has no ding id yet, so it cannot be downloaded. Its row is stored now,
+                // keyed by the doorbot id, so it is kept and can be linked to its ding once Ring assigns one.
+                _logger.LogInformation("Stored unmatched doorbot event for {CameraName}: {Outcome}, awaiting its string ding id", SanitizeForLog(cameraName), dingLink.Outcome);
+                if (@event.Id is { } doorbotHistoryId)
+                {
+                    DateTime unmatchedOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                    Guid unmatchedDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, doorbotHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        eventType, unmatchedOccurredAtUtc, @event.SnapshotUrl, downloadedAtUtc: null, hash: null, ct,
+                        apiResponse: @event, awaitingDingId: true);
+                    if (unmatchedDbId != Guid.Empty)
+                    {
+                        await LinkDoorbotEventAsync(@event, unmatchedDbId, ct);
+                    }
+                }
+
+                return new DiscoveryOutcome(false, string.Empty, Guid.Empty);
+            }
+
+            string eventIdStr = dingLink.DingId!;
+            DateTime eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+
+            // Record this event in the Events table independent of download outcome —
+            // Timeline/Integrity/Correlation/Audit forensic tools all read from Events,
+            // not DownloadEvents, so an event must land here the moment it's discovered
+            // (not only once/if it's successfully downloaded) or gaps and missing-download
+            // detection have nothing to compare against.
+            // Why: a row stored under the doorbot id before its ding id was known must be kept, not duplicated. Rekeying it to the
+            // ding id lets the upsert below update that same row.
+            if (@event.Id is { } matchedHistoryId
+                && await _dataClient.GetLinkedEventAsync(matchedHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture), ct) is { } linkedRow
+                && linkedRow.ProviderEventId != eventIdStr)
+            {
+                await _dataClient.RekeyLinkedEventAsync(linkedRow.Id, eventIdStr, ct);
+            }
+
+            Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
+                @event.SnapshotUrl, downloadedAtUtc: null, hash: null, ct, apiResponse: @event);
+            if (eventDbId != Guid.Empty)
+            {
+                await LinkDoorbotEventAsync(@event, eventDbId, ct);
+            }
+
+            return new DiscoveryOutcome(true, eventIdStr, eventDbId);
+        }
+
         internal async Task<DingIdMatchResult> ResolveDingIdAsync(Entities.DoorbotHistoryEvent doorbotEvent, CancellationToken ct)
         {
             if (doorbotEvent.Id is not { } historyId || doorbotEvent.Doorbot is null)

@@ -18,9 +18,17 @@ namespace VideoForensics.Providers.Ring.Tests.Services
     /// </summary>
     public class RingMediaDownloadServiceTests
     {
+        /// <summary>The download service records each page's events through RunInBatchAsync. A loose mock would skip the writes, so run them inline.</summary>
+        private static void RunBatchesInline(Mock<IVideoForensicsDataClient> mock)
+        {
+            _ = mock.Setup(d => d.RunInBatchAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>()))
+                .Returns<Func<Task>, CancellationToken>((writes, _) => writes());
+        }
+
         private static IVideoForensicsDataClient CreateMockDataClient()
         {
             var mock = new Mock<IVideoForensicsDataClient>();
+            RunBatchesInline(mock);
             // For tests that don't actually call DB methods, this mock will suffice.
             // Real integration tests would set up more specific behaviors.
             return mock.Object;
@@ -348,6 +356,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
             ILogger logger = new Mock<ILogger>().Object;
             var dataClientMock = new Mock<IVideoForensicsDataClient>();
+            RunBatchesInline(dataClientMock);
             _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
             _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
@@ -446,6 +455,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
             ILogger logger = new Mock<ILogger>().Object;
             var dataClientMock = new Mock<IVideoForensicsDataClient>();
+            RunBatchesInline(dataClientMock);
             _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
             _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
@@ -1294,6 +1304,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
 
             var dataClient = new Mock<IVideoForensicsDataClient>();
+            RunBatchesInline(dataClient);
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<CancellationToken>()))
