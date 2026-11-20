@@ -1,6 +1,14 @@
 "use strict";
 // Viewport width detection and live change notification for DefaultViewportService's
 // mobile/desktop form-factor detection.
+// Keeps the review address in step with the page state. replaceState changes the address bar without a navigation,
+// so no Blazor navigation (and no hidden JS call) runs for each state change.
+window.vfHistory = {
+    replaceUrl: function (url) {
+        history.replaceState(history.state, '', url);
+    }
+};
+
 window.vfViewport = {
     getIsMobile: function () {
         try {

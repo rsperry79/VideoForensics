@@ -44,7 +44,7 @@ public class ReviewLayoutStylesheet_Tests
         // Assert
         Assert.True(stage.Success, "The stage rule must exist.");
         Assert.Contains("aspect-ratio: 16 / 9", stage.Groups[1].Value);
-        Assert.Contains("max-height: 45vh", stage.Groups[1].Value);
+        Assert.Contains("max-height: var(--review-media-height, 45vh)", stage.Groups[1].Value);
     }
 
     [Fact]

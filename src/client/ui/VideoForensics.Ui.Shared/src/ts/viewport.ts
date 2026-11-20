@@ -42,3 +42,10 @@ window.vfViewport = {
         }
     }
 };
+
+// Keeps the review address in step with the page state. replaceState changes the address bar without a navigation.
+window.vfHistory = {
+    replaceUrl: function (url: string): void {
+        history.replaceState(history.state, '', url);
+    }
+};
