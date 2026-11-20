@@ -69,6 +69,7 @@ namespace VideoForensics.Client.Hosting.Services
         private const int MaxRetryPasses = 3;
 
         private readonly IEventWriteRepository? _events;
+        private readonly IVideoForensicsDataClient? _dataClient;
         private readonly TimeSpan _progressPollInterval;
 
         // Process-wide, not per pull: parallel account pulls share these two encode slots, so ffmpeg never runs more than two at once.
@@ -96,9 +97,11 @@ namespace VideoForensics.Client.Hosting.Services
             IMediaPathResolver? mediaPaths = null,
             IReferenceDataCache? referenceCache = null,
             IProviderApiBudgetGuard? budgetGuard = null,
-            IEventWriteRepository? events = null)
+            IEventWriteRepository? events = null,
+            IVideoForensicsDataClient? dataClient = null)
         {
             _events = events;
+            _dataClient = dataClient;
             _budgetGuard = budgetGuard;
             _progress = progress;
             _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
@@ -467,6 +470,7 @@ namespace VideoForensics.Client.Hosting.Services
             bool held = false;
             foreach (InventoryDevice inv in inventory.Devices)
             {
+                await ReleaseResolvableAsync(inv, ct);
                 IReadOnlyList<Event> queued = await _events!.ListAwaitingDingIdAsync(inv.Device.Id, MaxRetryPasses, ct);
                 if (queued.Count == 0)
                 {
@@ -500,6 +504,28 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             return held;
+        }
+
+        /// <summary>
+        /// Releases waiting events whose string ding id is already in the device's feeds. They are rekeyed by an exact match, so they
+        /// stop holding the pull without another download pass.
+        /// </summary>
+        private async Task ReleaseResolvableAsync(InventoryDevice inv, CancellationToken ct)
+        {
+            if (_events is null || _dataClient is null
+                || !long.TryParse(inv.Device.ProviderDeviceId, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out long doorbotId))
+            {
+                return;
+            }
+
+            foreach (Event evt in await _events.ListAwaitingDingIdAsync(inv.Device.Id, MaxRetryPasses, ct))
+            {
+                string? dingId = await AwaitingDingIdResolver.ResolveAsync(evt.ProviderEventId, doorbotId, _dataClient, ct);
+                if (dingId is not null)
+                {
+                    await _dataClient.RekeyLinkedEventAsync(evt.Id, dingId, ct);
+                }
+            }
         }
 
         /// <summary>True while the provider's rate-limit ban is in force. Read from the media service, which owns the session.</summary>
