@@ -754,10 +754,7 @@ namespace VideoForensics.Data.Database.Repositories
             // predecessor and the chain forks (reconciliation auto-fix appends several entries in one unit of work).
             _ = await _db.SaveChangesAsync(ct);
 
-            ActionLogEntry? lastEntry = await _db.ActionLogEntries
-                .OrderByDescending(ale => ale.TimestampUtc)
-                .ThenByDescending(ale => ale.Id)
-                .FirstOrDefaultAsync(ct);
+            ActionLogEntry? lastEntry = await ActionLogTail.Latest(_db).FirstOrDefaultAsync(ct);
 
             string? previousEntryHash = lastEntry?.EntryHash;
 
