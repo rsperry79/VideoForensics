@@ -447,7 +447,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             await RunTickAsync();
 
             _media.Verify(m => m.AddAsync(
-                It.Is<MediaItem>(i => i.MediaFormat == "jpg" && i.Source == "capture" && i.MetadataJson == "{\"type\":\"snapshot\"}" && i.FilePath.EndsWith(".jpg")),
+                It.Is<MediaItem>(i => i.MediaFormat == "jpg" && i.MediaKind == VideoForensics.Data.Common.Entities.MediaKinds.Snapshot && i.MetadataJson == "{\"type\":\"snapshot\"}" && i.FilePath.EndsWith(".jpg")),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 

@@ -2987,9 +2987,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int?>("SilentGapCount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Source")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("ThumbnailPath")
                         .HasMaxLength(260)
                         .HasColumnType("TEXT");
