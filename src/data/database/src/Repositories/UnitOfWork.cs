@@ -157,6 +157,7 @@ namespace VideoForensics.Data.Database.Repositories
             if (!await ActionLogAppendGate.TryWaitAsync(_factory, _queueTimeout, ct))
             {
                 _logger.LogError("Write for {Caller} gave up waiting for the write queue after {TimeoutMs} ms", caller, (long)_queueTimeout.TotalMilliseconds);
+
                 throw new TimeoutException($"Write for {caller} timed out waiting for the write queue after {(long)_queueTimeout.TotalMilliseconds} ms.");
             }
 
