@@ -78,7 +78,9 @@
 
     @if (_loaded?.HasSelectedClips == true && State.CameraIds.Count > 1)
     {
-        <MediaTransportControls OnPlayPause="TogglePlayGridAsync" OnStep="StepGridAsync" Disabled="_grid is null" />
+        <div class="review-transport-dock">
+            <MediaTransportControls OnPlayPause="TogglePlayGridAsync" OnStep="StepGridAsync" Disabled="_grid is null" />
+        </div>
     }
 </div>
 

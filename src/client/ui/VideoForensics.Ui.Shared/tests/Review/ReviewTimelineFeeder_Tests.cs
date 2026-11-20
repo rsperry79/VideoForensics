@@ -71,7 +71,7 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTimelineFeeder_Startup_PublishesOnlyThePrimaryCamerasClips()
+    public void ReviewTimelineFeeder_Startup_PublishesEverySelectedCameraInItsOwnLane()
     {
         // Arrange
         AddDevices(2);
@@ -82,8 +82,9 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
         IRenderedComponent<ReviewTimelineFeeder> cut = RenderFeeder();
 
         // Assert
-        WaitFor(() => Assert.Single(TimelineModel.Clips));
-        Assert.Equal(Devices[0].Id, Assert.Single(ClipLoader.Calls).DeviceIds.Single());
+        WaitFor(() => Assert.Equal(2, TimelineModel.Clips.Count));
+        Assert.Equal(2, TimelineModel.Clips.Select(c => c.LaneId).Distinct().Count());
+        Assert.Equal([Devices[0].Id, Devices[1].Id], ClipLoader.Calls.Single().DeviceIds);
         Assert.Equal(ReviewState.FromUtc, TimelineModel.FromUtc);
         Assert.Equal(ReviewState.ToUtc, TimelineModel.ToUtc);
     }
@@ -103,8 +104,8 @@ public class ReviewTimelineFeeder_Tests : ReviewTestContext
 
         // Assert
         WaitFor(() => Assert.Equal(2, ClipLoader.Calls.Count));
-        Assert.Equal(Devices[1].Id, ClipLoader.Calls[1].DeviceIds.Single());
-        WaitFor(() => Assert.Single(TimelineModel.Clips));
+        Assert.Equal([Devices[1].Id, Devices[0].Id], ClipLoader.Calls[1].DeviceIds);
+        WaitFor(() => Assert.Equal(2, TimelineModel.Clips.Count));
     }
 
     [Fact]

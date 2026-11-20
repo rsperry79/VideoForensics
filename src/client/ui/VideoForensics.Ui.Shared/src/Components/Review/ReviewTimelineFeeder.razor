@@ -88,17 +88,18 @@
 
         try
         {
-            ReviewClipSet set = await ClipLoader.LoadAsync([primary], key.FromUtc, key.ToUtc, ct);
+            // Every selected camera goes on the timeline, one lane each. Publishing only the primary camera drew a single lane.
+            ReviewClipSet set = await ClipLoader.LoadAsync(key.Cameras, key.FromUtc, key.ToUtc, ct);
             if (!IsCurrent(cts))
             {
                 return;
             }
 
             TimelineModel.Publish(
-                ReviewClipBuilder.BuildClips(set.Items, primary),
+                key.Cameras.SelectMany(id => ReviewClipBuilder.BuildClips(set.Items, id)).ToList(),
                 key.FromUtc,
                 key.ToUtc,
-                ReviewClipBuilder.BuildUnavailableClips(set.UnavailableEvents ?? [], primary));
+                key.Cameras.SelectMany(id => ReviewClipBuilder.BuildUnavailableClips(set.UnavailableEvents ?? [], id)).ToList());
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
