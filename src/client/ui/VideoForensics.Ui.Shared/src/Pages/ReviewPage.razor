@@ -23,6 +23,7 @@
 @inject DeviceOwnershipService OwnershipService
 @inject ILogger<ReviewPage> Logger
 @inject IStringLocalizer<ReviewPage> L
+@inject IViewportService Viewport
 
 @if (_isLoading)
 {
@@ -56,7 +57,7 @@ else
             }
         </Header>
         <Stage>
-            <div class="review-content">
+            <div class="review-content" style="@ReviewWindowSizing.StyleFor(Viewport.HeightPx)">
                 @if (State.ActiveTab == ReviewTab.Timeline)
                 {
                     <section class="review-tab-panel" data-testid="review-tab-timeline">
@@ -106,6 +107,8 @@ else
     {
         State.OnChange += OnReviewStateChanged;
         ScopeState.OnChange += OnScopeChanged;
+        Viewport.OnChange += OnViewportChanged;
+        await Viewport.InitializeAsync();
         CaseMode.OnChange += OnCaseModeChanged;
         NavigationManager.LocationChanged += OnLocationChanged;
 
@@ -374,10 +377,14 @@ else
         }
     }
 
+    // The window size changed: re-render so the media and timeline heights follow it.
+    private void OnViewportChanged() => _ = InvokeAsync(StateHasChanged);
+
     public void Dispose()
     {
         State.OnChange -= OnReviewStateChanged;
         ScopeState.OnChange -= OnScopeChanged;
+        Viewport.OnChange -= OnViewportChanged;
         CaseMode.OnChange -= OnCaseModeChanged;
         NavigationManager.LocationChanged -= OnLocationChanged;
         CaseMode.Exit();

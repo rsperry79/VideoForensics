@@ -12,7 +12,18 @@ namespace VideoForensics.Client.Ui.Shared.Services
         bool IsMobile { get; }
 
         /// <summary>
-        /// Fired when the viewport form factor changes between mobile and desktop.
+        /// The measured window width in CSS pixels. Zero until the browser has reported a size.
+        /// </summary>
+        double WidthPx { get; }
+
+        /// <summary>
+        /// The measured window height in CSS pixels. Zero until the browser has reported a size.
+        /// Layouts size media from this instead of fixed viewport-height guesses.
+        /// </summary>
+        double HeightPx { get; }
+
+        /// <summary>
+        /// Fired when the form factor changes between mobile and desktop, or when the window size changes.
         /// </summary>
         event Action? OnChange;
 

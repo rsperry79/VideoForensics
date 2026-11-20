@@ -10,6 +10,9 @@ window.vfViewport = {
             return false;
         }
     },
+    getSize: function () {
+        return { width: window.innerWidth || 0, height: window.innerHeight || 0 };
+    },
     watchViewport: function (dotNetRef) {
         try {
             const mql = window.matchMedia('(max-width: 599px)');
@@ -24,6 +27,18 @@ window.vfViewport = {
                 // Older WebView2/Safari fallback.
                 mql.addListener(listener);
             }
+
+            // Window size: one notification per animation frame, so a drag-resize does not flood the circuit.
+            let frame = 0;
+            window.addEventListener('resize', function () {
+                if (frame) {
+                    return;
+                }
+                frame = requestAnimationFrame(function () {
+                    frame = 0;
+                    dotNetRef.invokeMethodAsync('OnViewportSizeChanged', window.innerWidth, window.innerHeight).catch(function () { });
+                });
+            });
         }
         catch {
             // Best-effort - viewport won't live-update on hosts where matchMedia isn't available;

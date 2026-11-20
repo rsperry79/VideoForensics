@@ -9,6 +9,7 @@
     align-self: flex-start;
     flex-shrink: 0;
     width: 7rem;
-    height: calc(100vh - 8rem);
+    /* Measured window height (ReviewWindowSizing); the viewport-height value applies until the window is measured. */
+    height: var(--review-timeline-height, calc(100vh - 8rem));
     min-height: 0;
 }
