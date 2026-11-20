@@ -711,29 +711,9 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
-                Invoke = async (session, target) =>
-                {
-                    Guid locationId = target.LocationId!.Value;
-                    JsonElement before = await session.GetLocationModeSettingsRaw(locationId);
-                    LocationModeSettingsRoundTrip.Captured[locationId] = before;
-
-                    // Writes back the exact document read above, so nothing the typed model lacks can be lost.
-                    await session.SetLocationModeSettings(locationId, before.GetRawText());
-
-                    JsonElement after = await session.GetLocationModeSettingsRaw(locationId);
-                    if (!LocationModeSettingsRoundTrip.Same(before, after))
-                    {
-                        throw new InvalidOperationException("set-location-mode-settings: the settings read back differ from the ones written; check the location in the Ring app.");
-                    }
-                },
-                PrepareRestore = target =>
-                {
-                    Guid locationId = target.LocationId!.Value;
-                    bool captured = LocationModeSettingsRoundTrip.Captured.TryGetValue(locationId, out JsonElement value);
-                    return captured
-                        ? new RestorePlan("the raw location mode settings document", true, session => session.SetLocationModeSettings(locationId, value.GetRawText()))
-                        : new RestorePlan("unknown (no settings were captured) - nothing restored", false, _ => Task.CompletedTask);
-                }
+                NoRestoreReason = "not applicable: this endpoint refuses to run (see its own error), so nothing is changed to restore.",
+                Invoke = (_, _) => throw new InvalidOperationException(
+                    "set-location-mode-settings is not executable through the tester. A live write of the unchanged document changed a Front Door disarmed action on Arlington, and the write cannot be proven safe on a live location. Change mode settings in the Ring app, or add a verified write path first.")
             },
             new()
             {

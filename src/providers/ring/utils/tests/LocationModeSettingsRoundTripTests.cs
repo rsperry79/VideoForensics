@@ -30,6 +30,17 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         }
 
         [Fact]
+        public void Same_IgnoresOnlyTheWriteTimestamp()
+        {
+            JsonElement before = JsonDocument.Parse("{\"home\":[],\"lastUpdateTimeMS\":5}").RootElement.Clone();
+            JsonElement stamped = JsonDocument.Parse("{\"home\":[],\"lastUpdateTimeMS\":9}").RootElement.Clone();
+            JsonElement changed = JsonDocument.Parse("{\"home\":[{\"deviceId\":\"1\"}],\"lastUpdateTimeMS\":9}").RootElement.Clone();
+
+            Assert.True(LocationModeSettingsRoundTrip.Same(before, stamped));
+            Assert.False(LocationModeSettingsRoundTrip.Same(before, changed));
+        }
+
+        [Fact]
         public void Same_TrueForIdenticalDocuments_FalseWhenAFieldIsMissing()
         {
             JsonElement before = JsonDocument.Parse(SettingsWithUnmodelledField).RootElement.Clone();
