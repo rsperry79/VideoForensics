@@ -209,6 +209,8 @@ namespace VideoForensics.Client.WebApp.Api
 
             // Every content request is audited, including range requests: a client that skipped the
             // audit for non-zero ranges could read a whole clip in ranges with no audit trail.
+            // The write uses no request token: a client that aborts the request (seek, stop, next
+            // range) would otherwise cancel its own audit row and fail the clip with a 500.
             try
             {
                 _ = await auditLog.RecordAccessAsync(
@@ -217,7 +219,7 @@ namespace VideoForensics.Client.WebApp.Api
                     "View",
                     tierResolver.ResolveClientIp(context),
                     "In-app media view",
-                    ct);
+                    CancellationToken.None);
             }
             catch (Exception ex)
             {
