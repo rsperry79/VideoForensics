@@ -26,6 +26,7 @@ interface Window {
     };
     vfViewport: {
         getIsMobile(): boolean;
+        getSize(): { width: number; height: number };
         watchViewport(dotNetRef: DotNetObjectReference): void;
     };
     // Set by startLiveView so that addIceCandidate can reach the connection it created.
