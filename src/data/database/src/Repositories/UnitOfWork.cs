@@ -217,7 +217,9 @@ namespace VideoForensics.Data.Database.Repositories
             long finishMs = (long)(finished - worked).TotalMilliseconds;
             long totalMs = (long)finished.TotalMilliseconds;
 
-            if (finished >= _slowTransactionThreshold)
+            // Why: time spent waiting for the write gate is in begin and is already logged by EnterGateAsync when it is slow.
+            // The warning is for work that holds the gate, so it counts only from begin to finish.
+            if (finished - begun >= _slowTransactionThreshold)
             {
                 _logger.LogWarning(
                     "Slow unit of work {Caller} {Outcome} in {TotalMs} ms (begin {BeginMs} ms, work {WorkMs} ms, finish {FinishMs} ms)",
