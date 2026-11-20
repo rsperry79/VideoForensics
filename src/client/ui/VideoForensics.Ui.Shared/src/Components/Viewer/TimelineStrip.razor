@@ -92,7 +92,8 @@ else
         index < 0 || count <= 1 ? "3.5rem" : $"calc(3.5rem + (100% - 3.5rem) * {(index / (double)count).ToString("0.######", CultureInfo.InvariantCulture)})";
 
     private static string LaneWidth(int count) =>
-        count <= 1 ? "calc(100% - 3.5rem - 2px)" : $"calc((100% - 3.5rem) / {count.ToString(CultureInfo.InvariantCulture)} - 2px)";
+        // Each lane is narrower than its share by 8px, so a visible gap separates one camera's clips from the next.
+        count <= 1 ? "calc(100% - 3.5rem - 2px)" : $"calc((100% - 3.5rem) / {count.ToString(CultureInfo.InvariantCulture)} - 8px)";
 
     /// <summary>The colour class for a clip kind: Motion, Timelapse, Missing, Doorbell or Case.</summary>
     private static string KindClass(string? kind) => "review-timeline-kind-" + (kind ?? "Motion").ToLowerInvariant();

@@ -2,9 +2,16 @@
    line sits under the player. */
 
 .review-timeline-tab {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
     max-width: 100%;
     overflow-wrap: anywhere;
+}
+
+/* The grid's transport bar sits at the foot of the tab, under the cameras, never under the first camera's clip. */
+.review-transport-dock {
+    margin-top: auto;
 }
 
 /* Same box as ReviewPlayer's stage (16:9, at most 62% of the viewport), so states never move the page. */
