@@ -1353,7 +1353,9 @@ namespace VideoForensics.Providers.Ring.Services
                             AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
                         };
 
-                        (string Json, string Hash) = SerializeMetadata(new { eventId = snapshotEventId, type = "snapshot", deviceId, timestamp = DateTime.UtcNow });
+                        // eventId is the DownloadEvent's ProviderEventId, deviceId is MediaItem.DeviceId and the timestamp is RecordedAtUtc:
+                        // only the app marker stays in the JSON.
+                        (string Json, string Hash) = SerializeMetadata(new { type = "snapshot" });
                         var mediaItem = new MediaItem
                         {
                             Id = mediaItemId,

@@ -37,6 +37,12 @@ namespace VideoForensics.Data.Common.Entities
         public string? PreviewPath { get; set; }
 
         /// <summary>
+        /// Where the item came from, as a typed value: <c>capture</c> for an app snapshot, or the provider's own
+        /// source value. Was the <c>source</c> key of <see cref="MetadataJson"/>.
+        /// </summary>
+        public string? Source { get; set; }
+
+        /// <summary>
         /// Only what has no structured home: keys the provider mapper does not store, or an app marker such as
         /// <c>{"type":"snapshot"}</c> or the snapshot roll-up marker (found by text lookups, so keep them byte-for-byte).
         /// The raw provider payload is NOT stored here (it is in the typed provider tables), so <see cref="ApiSourceHash"/>
