@@ -381,6 +381,22 @@ public abstract class ReviewTestContext : BunitContext
         Services.GetRequiredService<NavigationManager>().NavigateTo(uri);
     }
 
-    /// <summary>The fake browser's current absolute URI.</summary>
-    protected string CurrentUri => Services.GetRequiredService<NavigationManager>().Uri;
+    /// <summary>
+    /// The address bar's absolute URI. The page writes it with history.replaceState (a JS call), which leaves the fake
+    /// NavigationManager unchanged, so the last replaced URL wins; before any write, the navigation URI is the address.
+    /// </summary>
+    protected string CurrentUri
+    {
+        get
+        {
+            var navigation = Services.GetRequiredService<NavigationManager>();
+            var writes = JSInterop.Invocations.Where(i => i.Identifier == "vfHistory.replaceUrl").ToList();
+            if (writes.Count == 0)
+            {
+                return navigation.Uri;
+            }
+
+            return new Uri(new Uri(navigation.Uri), (string)writes[^1].Arguments[0]!).ToString();
+        }
+    }
 }
