@@ -116,6 +116,9 @@ namespace VideoForensics.Utils.SelfTest
             VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
             VideoForensics.Core.Helpers.Platform.DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
 
+            // Same as WebApp: the saved storage locations (Keys folder, default root) must be known before the key ring loads.
+            SavedStorageLocations.Apply(new StorageSettingsBootstrap(new StorageLocationProvider()).Read());
+
             (CliOptions? options, string? parseError) = CliOptions.Parse(args);
             if (parseError != null)
             {

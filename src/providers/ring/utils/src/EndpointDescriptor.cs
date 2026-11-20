@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace VideoForensics.Providers.Ring
@@ -550,17 +551,57 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
-                Key = "set-motion-zones",
-                DisplayName = "Set motion zones",
-                Description = "Overwrites a doorbot's motion zone configuration. Requires a full zone payload this CLI cannot safely generate - always skipped. Included for completeness/discoverability only; use the client library directly if you need this.",
-                SessionMethod = "Session.SetMotionZones(doorbotId, zones)",
+                Key = "probe-pir-zone-sensitivity",
+                DisplayName = "Probe PIR zone sensitivity PATCH",
+                Description = "Test-cam probe: changes advanced_pir_motion_zones.zone1_sensitivity with a partial PATCH, then restores the captured value. Shows whether a partial body merges.",
+                SessionMethod = "Session.PatchDeviceSettingsRaw(doorbotId, body)",
                 HttpMethod = "PATCH",
-                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}/motion_zones",
+                ApiPath = "https://api.ring.com/devices/v1/devices/{doorbotId}/settings",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
-                NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
-                Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-motion-zones is not executable through the tester: it would overwrite the doorbot's entire motion zone configuration with an empty/placeholder payload, which is a real data loss risk. Use Ring.Ring.Api directly with a deliberately constructed zone payload instead.")
+                Invoke = async (session, target) =>
+                {
+                    long doorbotId = target.DoorbotId!.Value;
+                    System.Text.Json.JsonElement settings = await session.GetDeviceSettings(doorbotId);
+                    int current = PirZoneProbe.ReadZone1(settings);
+                    PirZoneProbe.Captured[doorbotId] = current;
+                    await session.PatchDeviceSettingsRaw(doorbotId, PirZoneProbe.Body(PirZoneProbe.Probe(current)));
+                },
+                PrepareRestore = target =>
+                {
+                    long doorbotId = target.DoorbotId!.Value;
+                    bool captured = PirZoneProbe.Captured.TryGetValue(doorbotId, out int value);
+                    return captured
+                        ? new RestorePlan($"zone1_sensitivity={value}", true, session => session.PatchDeviceSettingsRaw(doorbotId, PirZoneProbe.Body(value)))
+                        : new RestorePlan("unknown (zone 1 sensitivity was not captured) - nothing restored", false, _ => Task.CompletedTask);
+                }
+            },
+            new()
+            {
+                Key = "set-motion-zones",
+                DisplayName = "Set motion zones",
+                Description = "Writes a doorbot's motion zones under advanced_motion_settings (zone_1..zone_3), the keys the Ring app writes. Captures the zones first and writes the same document back, then restores it. Changes no zone shape.",
+                SessionMethod = "Session.PatchDeviceSettingsRaw(doorbotId, advanced_motion_settings body)",
+                HttpMethod = "PATCH",
+                ApiPath = "https://api.ring.com/devices/v1/devices/{doorbotId}/settings",
+                Scope = EndpointScope.PerDoorbot,
+                Destructive = true,
+                Invoke = async (session, target) =>
+                {
+                    long doorbotId = target.DoorbotId!.Value;
+                    System.Text.Json.JsonElement settings = await session.GetDeviceSettings(doorbotId);
+                    System.Text.Json.JsonElement advanced = settings.GetProperty("advanced_motion_settings");
+                    MotionZoneCaptures.Captured[doorbotId] = advanced;
+                    await session.PatchDeviceSettingsRaw(doorbotId, MotionZoneBody.Wrap(advanced));
+                },
+                PrepareRestore = target =>
+                {
+                    long doorbotId = target.DoorbotId!.Value;
+                    bool captured = MotionZoneCaptures.Captured.TryGetValue(doorbotId, out System.Text.Json.JsonElement value);
+                    return captured
+                        ? new RestorePlan("advanced_motion_settings (zone_1..zone_3)", true, session => session.PatchDeviceSettingsRaw(doorbotId, MotionZoneBody.Wrap(value)))
+                        : new RestorePlan("unknown (advanced_motion_settings was not captured) - nothing restored", false, _ => Task.CompletedTask);
+                }
             },
             new()
             {
@@ -670,9 +711,29 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
-                NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
-                Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-location-mode-settings is not executable through the tester: it would overwrite the location's entire mode settings with an empty/placeholder payload. Use Ring.Ring.Api directly with a deliberately constructed payload instead.")
+                Invoke = async (session, target) =>
+                {
+                    Guid locationId = target.LocationId!.Value;
+                    JsonElement before = await session.GetLocationModeSettingsRaw(locationId);
+                    LocationModeSettingsRoundTrip.Captured[locationId] = before;
+
+                    // Writes back the exact document read above, so nothing the typed model lacks can be lost.
+                    await session.SetLocationModeSettings(locationId, before.GetRawText());
+
+                    JsonElement after = await session.GetLocationModeSettingsRaw(locationId);
+                    if (!LocationModeSettingsRoundTrip.Same(before, after))
+                    {
+                        throw new InvalidOperationException("set-location-mode-settings: the settings read back differ from the ones written; check the location in the Ring app.");
+                    }
+                },
+                PrepareRestore = target =>
+                {
+                    Guid locationId = target.LocationId!.Value;
+                    bool captured = LocationModeSettingsRoundTrip.Captured.TryGetValue(locationId, out JsonElement value);
+                    return captured
+                        ? new RestorePlan("the raw location mode settings document", true, session => session.SetLocationModeSettings(locationId, value.GetRawText()))
+                        : new RestorePlan("unknown (no settings were captured) - nothing restored", false, _ => Task.CompletedTask);
+                }
             },
             new()
             {
@@ -684,9 +745,26 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/sharing",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
-                NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
-                Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-location-mode-sharing is not executable through the tester: it would overwrite the location's entire mode sharing configuration with an empty/placeholder payload. Use Ring.Ring.Api directly with a deliberately constructed payload instead.")
+                Invoke = async (session, target) =>
+                {
+                    Guid locationId = target.LocationId!.Value;
+                    Entities.LocationModeSharingResponse current = await session.GetLocationModeSharing(locationId);
+                    if (current.SharedUsersEnabled is not bool captured)
+                    {
+                        throw new InvalidOperationException("set-location-mode-sharing: the sharing read has no sharedUsersEnabled value, so it cannot be changed and restored safely.");
+                    }
+
+                    LocationModeSharingEdit.Captured[locationId] = captured;
+                    await session.SetLocationModeSharing(locationId, LocationModeSharingEdit.Body(LocationModeSharingEdit.Toggled(captured)));
+                },
+                PrepareRestore = target =>
+                {
+                    Guid locationId = target.LocationId!.Value;
+                    bool captured = LocationModeSharingEdit.Captured.TryGetValue(locationId, out bool value);
+                    return captured
+                        ? new RestorePlan($"sharedUsersEnabled={value}", true, session => session.SetLocationModeSharing(locationId, LocationModeSharingEdit.Body(value)))
+                        : new RestorePlan("unknown (no sharing value was captured) - nothing restored", false, _ => Task.CompletedTask);
+                }
             },
             new()
             {
