@@ -179,8 +179,9 @@ namespace VideoForensics.Data.Database.Repositories
             TimeSpan worked = begun;
 
             // Standalone appends made inside the work use this context, so they join this transaction.
-            VideoForensicsDbContext? outerDb = AmbientUnitOfWork.DbContext;
-            AmbientUnitOfWork.DbContext = db;
+            AmbientUnitOfWork.AmbientScope scope = new(db);
+            AmbientUnitOfWork.AmbientScope? outerScope = AmbientUnitOfWork.Scope;
+            AmbientUnitOfWork.Scope = scope;
             try
             {
                 var context = new UnitOfWorkContext(db, _logger);
@@ -202,7 +203,9 @@ namespace VideoForensics.Data.Database.Repositories
             }
             finally
             {
-                AmbientUnitOfWork.DbContext = outerDb;
+                // Close before the context is disposed, so a background read that copied this scope cannot use it.
+                scope.Close();
+                AmbientUnitOfWork.Scope = outerScope;
             }
         }
 

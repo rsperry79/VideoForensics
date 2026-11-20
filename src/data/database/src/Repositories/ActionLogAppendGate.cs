@@ -8,15 +8,37 @@ namespace VideoForensics.Data.Database.Repositories
     /// The context of the unit of work running in this async flow, if any. A standalone append made from inside a unit
     /// writes on this context, so it joins the unit's transaction. A second connection would wait on the unit's write lock.
     /// </summary>
+    /// <remarks>
+    /// A background task started inside a unit copies this flow's values, so it can outlive the unit. The unit closes its
+    /// scope when it ends, which stops that task from reusing a context that is already disposed.
+    /// </remarks>
     internal static class AmbientUnitOfWork
     {
-        private static readonly AsyncLocal<VideoForensicsDbContext?> Current = new();
+        private static readonly AsyncLocal<AmbientScope?> Current = new();
 
         /// <summary>The open unit's context in this flow, or null when none is open.</summary>
-        public static VideoForensicsDbContext? DbContext
+        public static VideoForensicsDbContext? DbContext => Current.Value?.Db;
+
+        /// <summary>The scope of the unit running in this flow, or null when none is open.</summary>
+        public static AmbientScope? Scope
         {
             get => Current.Value;
             set => Current.Value = value;
+        }
+
+        /// <summary>One unit's context, shared by every async flow it started. Closing it ends the sharing for all of them.</summary>
+        public sealed class AmbientScope(VideoForensicsDbContext db)
+        {
+            private VideoForensicsDbContext? _db = db;
+
+            /// <summary>The context while the unit is open; null once it has closed.</summary>
+            public VideoForensicsDbContext? Db => _db;
+
+            /// <summary>Ends the unit: no flow can reach its context after this.</summary>
+            public void Close()
+            {
+                _db = null;
+            }
         }
     }
 
