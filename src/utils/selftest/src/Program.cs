@@ -167,6 +167,16 @@ namespace VideoForensics.Utils.SelfTest
             EndpointRegistry.DndSeconds = options.DndSeconds;
             EndpointRegistry.LocationModeValue = options.LocationModeValue;
             EndpointRegistry.DingId = options.DingId;
+
+            // No --ding-id: use the newest ready ding stored for the doorbot under test, so the ding-id endpoints run for real.
+            if (EndpointRegistry.DingId is null && options.DoorbotId.HasValue)
+            {
+                string dbPath = options.DbPath ?? CliOptions.DefaultDatabasePath();
+                if (File.Exists(dbPath))
+                {
+                    EndpointRegistry.DingId = LatestDing.Find(dbPath, options.DoorbotId.Value);
+                }
+            }
             EndpointRegistry.AssetUuid = options.AssetUuid;
             EndpointRegistry.PushToken = options.PushToken;
 
