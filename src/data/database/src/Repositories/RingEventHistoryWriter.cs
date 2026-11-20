@@ -89,6 +89,18 @@ namespace VideoForensics.Data.Database.Repositories
             }, ct);
         }
 
+        /// <inheritdoc />
+        public async Task RunInBatchAsync(Func<Task> writes, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(writes);
+
+            _ = await _unitOfWork.ExecuteAsync<object?>(async _ =>
+            {
+                await writes();
+                return null;
+            }, ct);
+        }
+
         public Task ReplaceLocationHistoryEventAsync(RingLocationHistoryEvent evt, RingEventDetails details, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(evt);
