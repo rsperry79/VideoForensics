@@ -1,3 +1,4 @@
+@using System.Globalization
 @using VideoForensics.Client.Common.Viewer
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.AspNetCore.Components.Web
@@ -8,6 +9,7 @@
 @if (Orientation == TimelineOrientation.Vertical)
 {
     const double length = 100; // percent of the strip: positions scale with it, so no resize re-render is needed
+    List<string> lanes = Lanes();
     <div class="review-timeline review-timeline-vertical" data-testid="timeline-strip" role="slider" tabindex="0" aria-label="@Label" aria-valuetext="@ValueText" style="@RootStyle" @ref="_root" @onclick="HandleClick" @onkeydown="HandleKeyDown" @onpointerdown="HandlePointerDown" @onpointermove="HandlePointerMove" @onpointerup="HandlePointerUp" @onpointerleave="HandlePointerLeave">
         @foreach (ClipWindow clip in Clips)
         {
@@ -19,13 +21,16 @@
             {
                 style += ";" + background;
             }
-            <div class="review-timeline-segment" data-testid="timeline-segment" style="@style"></div>
+            int lane = lanes.IndexOf(clip.LaneId ?? string.Empty);
+            style += $";left:{LaneLeft(lane, lanes.Count)};width:{LaneWidth(lanes.Count)}";
+            <div class="review-timeline-segment @KindClass(clip.Kind)" data-testid="timeline-segment" style="@style"></div>
         }
         @foreach (ClipWindow gap in UnavailableClips)
         {
             double top = VerticalY(gap.StartUtc.AddSeconds(gap.DurationSeconds), length);
             double bottom = VerticalY(gap.StartUtc, length);
-            <div class="review-timeline-segment review-timeline-unavailable" data-testid="timeline-unavailable" style="top:@(Pct(top))%;height:@(Pct(Math.Max(0.1, bottom - top)))%"></div>
+            int lane = lanes.IndexOf(gap.LaneId ?? string.Empty);
+            <div class="review-timeline-segment @KindClass(gap.Kind)" data-testid="timeline-unavailable" style="top:@(Pct(top))%;height:@(Pct(Math.Max(0.1, bottom - top)))%;left:@(LaneLeft(lane, lanes.Count));width:@(LaneWidth(lanes.Count))"></div>
         }
         @foreach (DateTime tick in HourTicks())
         {
@@ -39,7 +44,13 @@
         }
         @if (_hoverUtc is DateTime hover)
         {
-            <div class="review-timeline-hover" data-testid="timeline-hover" style="top:@(Pct(VerticalY(hover, length)))%">@ZoneOrLocal.Format(hover, "HH:mm:ss")</div>
+            <div class="review-timeline-hover" data-testid="timeline-hover" style="top:@(Pct(VerticalY(hover, length)))%">
+                <div>@ZoneOrLocal.Format(hover, "HH:mm:ss")</div>
+                @foreach (string eventType in HoverEventTypes(hover))
+                {
+                    <div class="review-timeline-hover-event" data-testid="timeline-hover-event">@eventType</div>
+                }
+            </div>
         }
     </div>
 }
@@ -72,6 +83,24 @@ else
 }
 
 @code {
+    /// <summary>One lane per camera, in a stable order. A clip with no lane goes in the empty-named lane.</summary>
+    private List<string> Lanes() =>
+        Clips.Concat(UnavailableClips).Select(c => c.LaneId ?? string.Empty).Distinct(StringComparer.Ordinal).OrderBy(id => id, StringComparer.Ordinal).ToList();
+
+    /// <summary>The left edge of one lane, past the tick labels. Lanes share the width after the labels.</summary>
+    private static string LaneLeft(int index, int count) =>
+        index < 0 || count <= 1 ? "3.5rem" : $"calc(3.5rem + (100% - 3.5rem) * {(index / (double)count).ToString("0.######", CultureInfo.InvariantCulture)})";
+
+    private static string LaneWidth(int count) =>
+        // Each lane is narrower than its share by 8px, so a visible gap separates one camera's clips from the next.
+        count <= 1 ? "calc(100% - 3.5rem - 2px)" : $"calc((100% - 3.5rem) / {count.ToString(CultureInfo.InvariantCulture)} - 8px)";
+
+    /// <summary>The colour class for a clip kind: Motion, Timelapse, Missing, Doorbell or Case.</summary>
+    private static string KindClass(string? kind) => "review-timeline-kind-" + (kind ?? "Motion").ToLowerInvariant();
+
+    /// <summary>The specific event names on the clips covering a time, for the hover tooltip.</summary>
+    private IEnumerable<string> HoverEventTypes(DateTime at) =>
+        Clips.Concat(UnavailableClips).Where(c => at >= c.StartUtc && at <= c.StartUtc.AddSeconds(c.DurationSeconds)).SelectMany(c => c.EventTypes ?? []).Distinct(StringComparer.Ordinal);
     /// <summary>Length used by the vertical strip when <see cref="LengthPx"/> is not set.</summary>
     private const int DefaultLengthPx = 600;
 

@@ -1,5 +1,34 @@
 /* The main player sits above a horizontally scrolling strip of preview tiles. Every tile is a fixed 160px wide. */
 
+/* The main video is sized to leave room for the header, the preview strip and the transport bar, plus a little padding,
+   so the media view does not need scroll bars. */
+/* The stage is a 16:9 box no wider than the column and no taller than the space left under the header, the controls and
+   the strip. The video fills the box, so the buttons below always sit under it and nothing spills over them. */
+.single-camera-stage {
+    height: min(calc(100vw * 9 / 16), calc(100vh - 16rem));
+    max-height: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    box-sizing: border-box;
+}
+
+.single-camera-stage ::deep .review-stage {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    aspect-ratio: auto;
+}
+
+.single-camera-stage ::deep .review-player {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
 .single-camera-others-caption {
     font-size: 0.85rem;
     color: var(--bs-secondary-color);

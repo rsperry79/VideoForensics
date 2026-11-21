@@ -39,7 +39,8 @@ namespace VideoForensics.Client.Hosting.Services
         internal const int DefaultIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalMinutes * 60;
 
         /// <summary>Metadata on a capture's Media row. The "snapshot" type is what the Devices tab and the roll-up look for.</summary>
-        internal const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\",\"source\":\"capture\"}";
+        /// <summary>Marker kept in MetadataJson for a capture. The capture origin is MediaKind = Snapshot, so no source key is stored.</summary>
+        internal const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\"}";
 
         /// <summary>Wait between the trigger and the read of one attempt.</summary>
         internal static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(5);

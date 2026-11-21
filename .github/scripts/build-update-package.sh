@@ -19,6 +19,8 @@ trap 'rm -rf "$WORK"' EXIT
 STAGE="$WORK/package"
 KEY="$WORK/signing-key.pem"
 mkdir -p "$STAGE" "$OUT_DIR"
+# Resolve before the cd into the stage folder, so a relative out-dir still points at the caller's folder.
+OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 cp -a "$PUBLISH_DIR"/. "$STAGE"/
 
 # The key must be the one the client embeds. Compare the public half with the constant in the client source.

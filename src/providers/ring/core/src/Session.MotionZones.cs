@@ -13,11 +13,9 @@ namespace VideoForensics.Providers.Ring
     public partial class Session
     {
         /// <summary>
-        /// Updates the motion zones configured on a camera. Neither python-ring-doorbell nor
-        /// ring-client-api implement a zone setter to confirm against, so this endpoint/body shape is
-        /// inferred from the sibling motion_detection_enabled PATCH pattern (same devices/v1/devices/{id}/settings
-        /// endpoint Ring uses for other per-device settings). Verify against a live capture
-        /// (api_raw_responses.jsonl, changing a zone through the Ring app) before relying on it.
+        /// Updates the motion zones configured on a camera. The body is advanced_motion_settings with zone_1..zone_3,
+        /// the shape a live capture showed the Ring app writing (see <see cref="MotionZoneBody"/>), sent to the
+        /// devices/v1/devices/{id}/settings endpoint.
         /// </summary>
         /// <param name="doorbotId">ID of the device to update motion zones for</param>
         /// <param name="zones">The motion zone configuration to apply</param>
@@ -35,8 +33,22 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{doorbotId}/settings");
-            string bodyContent = JsonSerializer.Serialize(new { motion_zones = zones });
+            string bodyContent = MotionZoneBody.FromZones(zones);
             await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Patch, null, bodyContent, AuthenticationToken);
+        }
+
+        /// <summary>
+        /// Sends a raw PATCH to a device's settings endpoint. Used to probe which keys Ring accepts and whether a
+        /// partial body merges or replaces the stored settings. The caller builds the whole body.
+        /// </summary>
+        /// <param name="doorbotId">ID of the device to patch</param>
+        /// <param name="bodyJson">Raw JSON body to send</param>
+        public async Task PatchDeviceSettingsRaw(long doorbotId, string bodyJson)
+        {
+            await EnsureSessionValid();
+
+            var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{doorbotId}/settings");
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Patch, null, bodyJson, AuthenticationToken);
         }
     }
 }

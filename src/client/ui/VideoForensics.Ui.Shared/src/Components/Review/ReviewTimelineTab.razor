@@ -72,8 +72,15 @@
         }
         else
         {
-            <CameraGrid Tiles="_tiles" Cursor="State.Cursor" OnSelect="OnGridSelect" />
+            <CameraGrid @ref="_grid" Tiles="_tiles" Cursor="State.Cursor" OnSelect="OnGridSelect" />
         }
+    }
+
+    @if (_loaded?.HasSelectedClips == true && State.CameraIds.Count > 1)
+    {
+        <div class="review-transport-dock">
+            <MediaTransportControls OnPlayPause="TogglePlayGridAsync" OnStep="StepGridAsync" Disabled="_grid is null" />
+        </div>
     }
 </div>
 
@@ -94,6 +101,23 @@
     /// <summary>Display name for each camera id.</summary>
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    // The multi-camera grid, which the transport bar below it drives.
+    private CameraGrid? _grid;
+
+    private Task TogglePlayGridAsync() => _grid is null ? Task.CompletedTask : _grid.TogglePlayAsync();
+
+    // Reverse and forward move the shared timeline cursor, not each player, so every camera seeks to the same recording
+    // time and stays in sync. Each tile follows the cursor.
+    private Task StepGridAsync(double seconds)
+    {
+        if (State.Cursor is DateTime now)
+        {
+            State.SetPlaybackCursor(now.AddSeconds(seconds));
+        }
+
+        return Task.CompletedTask;
+    }
 
     // The single-camera view, whose main player reads the playback position for Grab still.
     private SingleCameraView? _singleCamera;

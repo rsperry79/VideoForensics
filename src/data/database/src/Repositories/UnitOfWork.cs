@@ -157,6 +157,7 @@ namespace VideoForensics.Data.Database.Repositories
             if (!await ActionLogAppendGate.TryWaitAsync(_factory, _queueTimeout, ct))
             {
                 _logger.LogError("Write for {Caller} gave up waiting for the write queue after {TimeoutMs} ms", caller, (long)_queueTimeout.TotalMilliseconds);
+
                 throw new TimeoutException($"Write for {caller} timed out waiting for the write queue after {(long)_queueTimeout.TotalMilliseconds} ms.");
             }
 
@@ -179,8 +180,9 @@ namespace VideoForensics.Data.Database.Repositories
             TimeSpan worked = begun;
 
             // Standalone appends made inside the work use this context, so they join this transaction.
-            VideoForensicsDbContext? outerDb = AmbientUnitOfWork.DbContext;
-            AmbientUnitOfWork.DbContext = db;
+            AmbientUnitOfWork.AmbientScope scope = new(db);
+            AmbientUnitOfWork.AmbientScope? outerScope = AmbientUnitOfWork.Scope;
+            AmbientUnitOfWork.Scope = scope;
             try
             {
                 var context = new UnitOfWorkContext(db, _logger);
@@ -202,8 +204,16 @@ namespace VideoForensics.Data.Database.Repositories
             }
             finally
             {
-                AmbientUnitOfWork.DbContext = outerDb;
+                // Close before the context is disposed, so a background read that copied this scope cannot use it.
+                scope.Close();
+                AmbientUnitOfWork.Scope = outerScope;
             }
+        }
+
+        /// <summary>True when the work phase alone ran longer than the threshold. Begin and finish do not count.</summary>
+        public static bool IsSlowWork(TimeSpan begun, TimeSpan worked, TimeSpan threshold)
+        {
+            return worked - begun > threshold;
         }
 
         /// <summary>
@@ -217,7 +227,9 @@ namespace VideoForensics.Data.Database.Repositories
             long finishMs = (long)(finished - worked).TotalMilliseconds;
             long totalMs = (long)finished.TotalMilliseconds;
 
-            if (finished >= _slowTransactionThreshold)
+            // Why: the warning judges the work phase alone. Time waiting for the write gate sits in begin, which EnterGateAsync
+            // already reports, and commit time sits in finish, which SQLite spends on fsync and is not caused by the caller's work.
+            if (IsSlowWork(begun, worked, _slowTransactionThreshold))
             {
                 _logger.LogWarning(
                     "Slow unit of work {Caller} {Outcome} in {TotalMs} ms (begin {BeginMs} ms, work {WorkMs} ms, finish {FinishMs} ms)",
@@ -742,10 +754,7 @@ namespace VideoForensics.Data.Database.Repositories
             // predecessor and the chain forks (reconciliation auto-fix appends several entries in one unit of work).
             _ = await _db.SaveChangesAsync(ct);
 
-            ActionLogEntry? lastEntry = await _db.ActionLogEntries
-                .OrderByDescending(ale => ale.TimestampUtc)
-                .ThenByDescending(ale => ale.Id)
-                .FirstOrDefaultAsync(ct);
+            ActionLogEntry? lastEntry = await ActionLogTail.Latest(_db).FirstOrDefaultAsync(ct);
 
             string? previousEntryHash = lastEntry?.EntryHash;
 

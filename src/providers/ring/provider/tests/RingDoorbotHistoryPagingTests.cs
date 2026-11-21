@@ -193,6 +193,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var ids = new List<string>();
             written = ids;
             var writer = new Mock<IRingEventHistoryWriter>();
+            _ = writer.Setup(w => w.RunInBatchAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>())).Returns<Func<Task>, CancellationToken>((work, _) => work());
             _ = writer.Setup(w => w.ReplaceDoorbotHistoryEventAsync(It.IsAny<RingDoorbotHistoryEvent>(), It.IsAny<RingEventDetails>(), It.IsAny<CancellationToken>()))
                 .Callback<RingDoorbotHistoryEvent, RingEventDetails, CancellationToken>((e, _, _) => ids.Add(e.ProviderEventId!))
                 .Returns(Task.CompletedTask);

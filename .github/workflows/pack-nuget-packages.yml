@@ -16,6 +16,9 @@ on:
 jobs:
   pack-and-push:
     runs-on: ubuntu-latest
+    env:
+      # nuget.config reads the GitHub Packages credential from GITHUB_TOKEN; pack steps need it, not just the push step.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4

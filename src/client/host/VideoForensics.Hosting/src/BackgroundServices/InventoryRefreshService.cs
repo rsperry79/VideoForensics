@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Services;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -129,6 +130,15 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     if (inventorySync == null)
                     {
                         _logger.LogWarning("Inventory refresh skipped: no keyed inventory service is registered for {ProviderName}", providerName);
+                        continue;
+                    }
+
+                    // Provider sessions are in-memory: after a restart the account must be restored from its saved credentials
+                    // before discovery, or discovery fails with "Session is null". This matches the scheduled sync's restore.
+                    IProviderAuthService? authService = sp.GetKeyedService<IProviderAuthService>(key);
+                    if (authService != null && !await authService.RestoreFromSavedCredentialsAsync(account.Id, ct))
+                    {
+                        _logger.LogWarning("Inventory refresh skipped: the {ProviderName} session could not be restored from saved credentials", providerName);
                         continue;
                     }
 

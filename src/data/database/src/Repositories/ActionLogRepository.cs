@@ -60,10 +60,7 @@ namespace VideoForensics.Data.Database.Repositories
                     VideoForensicsDbContext db = context.Db();
 
                     // Read the last entry's hash atomically within this transaction
-                    ActionLogEntry? lastEntry = await db.ActionLogEntries
-                        .OrderByDescending(ale => ale.TimestampUtc)
-                        .ThenByDescending(ale => ale.Id)
-                        .FirstOrDefaultAsync(ct);
+                    ActionLogEntry? lastEntry = await ActionLogTail.Latest(db).FirstOrDefaultAsync(ct);
 
                     string? previousEntryHash = lastEntry?.EntryHash;
 

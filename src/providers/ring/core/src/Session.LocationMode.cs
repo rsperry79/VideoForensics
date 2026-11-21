@@ -75,6 +75,22 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
+        /// Returns the Location Mode settings exactly as Ring sent them, with no typed model in between.
+        /// Use this when the settings are written back: the typed model drops any field it does not carry,
+        /// so a body rebuilt from it would overwrite those fields.
+        /// </summary>
+        /// <param name="locationId">ID of the location to retrieve mode settings for</param>
+        public async Task<JsonElement> GetLocationModeSettingsRaw(Guid locationId)
+        {
+            await EnsureSessionValid();
+
+            var uri = new Uri(RingModeApiBaseUrl, $"location/{locationId:D}/settings");
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+
+            return JsonDocument.Parse(response).RootElement.Clone();
+        }
+
+        /// <summary>
         /// Overwrites the Location Mode settings for a location. Caller is responsible for
         /// constructing a valid settings payload (e.g. from a prior GetLocationModeSettings() call).
         /// </summary>

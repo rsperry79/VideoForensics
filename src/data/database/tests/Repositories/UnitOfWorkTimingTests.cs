@@ -80,14 +80,32 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             UnitOfWork unitOfWork = Build(TimeSpan.Zero);
 
-            _ = await unitOfWork.ExecuteAsync<object?>(_ => Task.FromResult<object?>(null), CancellationToken.None);
+            // The work phase must take measurable time, since the threshold is judged on work alone.
+            _ = await unitOfWork.ExecuteAsync<object?>(async _ =>
+            {
+                await Task.Delay(20);
+                return null;
+            }, CancellationToken.None);
 
             (LogLevel Level, string Message) = Assert.Single(UnitOfWorkEntries(), e => e.Level == LogLevel.Warning);
             Assert.Contains("UnitOfWorkTimingTests.ExecuteAsync_SlowTransaction_LogsWarningNamingCallerAndPhases", Message);
             Assert.Contains("committed", Message);
             Assert.Contains("begin", Message);
             Assert.Contains("work", Message);
-            Assert.Contains("commit", Message);
+            Assert.Contains("finish", Message);
+        }
+
+        [Fact]
+        public void IsSlowWork_JudgesWorkTimeAloneNotBeginOrFinish()
+        {
+            // A 1168 ms commit with 52 ms of work is not slow work.
+            Assert.False(UnitOfWork.IsSlowWork(TimeSpan.Zero, TimeSpan.FromMilliseconds(52), TimeSpan.FromSeconds(1)));
+            // A long begin does not count: the gate wait is reported by EnterGateAsync.
+            Assert.False(UnitOfWork.IsSlowWork(TimeSpan.FromMilliseconds(2500), TimeSpan.FromMilliseconds(2501), TimeSpan.FromSeconds(1)));
+            // Work over one second is slow.
+            Assert.True(UnitOfWork.IsSlowWork(TimeSpan.Zero, TimeSpan.FromMilliseconds(1200), TimeSpan.FromSeconds(1)));
+            // Exactly the threshold is not over it.
+            Assert.False(UnitOfWork.IsSlowWork(TimeSpan.Zero, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)));
         }
 
         [Fact]
