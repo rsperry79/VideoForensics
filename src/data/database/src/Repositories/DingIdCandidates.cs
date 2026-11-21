@@ -35,9 +35,12 @@ namespace VideoForensics.Data.Database.Repositories
                 .Where(e => e.DoorbotId == doorbotId && e.DingIdString != null)
                 .Select(e => e.DingIdString!)
                 .ToList();
-            var searchDings = db.RingVideoSearchEvents.AsNoTracking()
-                .Where(v => v.ProviderEventId != null && db.RingEventDoorbots.Any(x => x.Source == RingEventSources.VideoSearch && x.SourceRowId == v.Id && x.DoorbotId == doorbotId))
-                .Select(v => v.ProviderEventId!)
+            // Why: start from this doorbot's links and join to the video rows. A correlated Any over every video row
+            // scanned the whole table, which took seconds while a write held the database.
+            var searchDings = (from x in db.RingEventDoorbots.AsNoTracking()
+                               join v in db.RingVideoSearchEvents.AsNoTracking() on x.SourceRowId equals v.Id
+                               where x.Source == RingEventSources.VideoSearch && x.DoorbotId == doorbotId && v.ProviderEventId != null
+                               select v.ProviderEventId!)
                 .ToList();
 
             return locationDings.Concat(searchDings).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToList();

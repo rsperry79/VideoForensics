@@ -15,11 +15,11 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Items per pass. Keeps one pass short; the next pass takes the next batch.</summary>
         public const int BatchSize = 50;
 
-        private readonly IMediaItemRepository _items;
+        private readonly IMediaItemWriteRepository _items;
         private readonly IMediaAnalysisService _analysis;
         private readonly ILogger<JammingAnalysisBackfill> _logger;
 
-        public JammingAnalysisBackfill(IMediaItemRepository items, IMediaAnalysisService analysis, ILogger<JammingAnalysisBackfill> logger)
+        public JammingAnalysisBackfill(IMediaItemWriteRepository items, IMediaAnalysisService analysis, ILogger<JammingAnalysisBackfill> logger)
         {
             _items = items;
             _analysis = analysis;

@@ -1,7 +1,6 @@
 using System.Globalization;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 
 using VideoForensics.Data.Common.Contracts;
@@ -18,11 +17,11 @@ namespace VideoForensics.Data.Database.Repositories
     /// </summary>
     public class RingEventHistoryWriter : IRingEventHistoryWriter
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public RingEventHistoryWriter(IDbContextFactory<VideoForensicsDbContext> factory)
+        public RingEventHistoryWriter(IUnitOfWork unitOfWork)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
         }
 
         public Task ReplaceVideoSearchEventAsync(Guid ringAccountId, RingVideoSearchEvent evt, RingEventDetails details, CancellationToken ct)
@@ -90,6 +89,18 @@ namespace VideoForensics.Data.Database.Repositories
             }, ct);
         }
 
+        /// <inheritdoc />
+        public async Task RunInBatchAsync(Func<Task> writes, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(writes);
+
+            _ = await _unitOfWork.ExecuteAsync<object?>(async _ =>
+            {
+                await writes();
+                return null;
+            }, ct);
+        }
+
         public Task ReplaceLocationHistoryEventAsync(RingLocationHistoryEvent evt, RingEventDetails details, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(evt);
@@ -138,7 +149,7 @@ namespace VideoForensics.Data.Database.Repositories
                     }
 
                     // Why: with no device to scope by, a link is carried only when every matching row agrees on it.
-                    List<Guid?> links = await carried.Distinct().Take(2).ToListAsync(token);
+                    List<Guid?> links = await carried.Distinct().OrderBy(id => id).Take(2).ToListAsync(token);
                     if (links.Count == 1)
                     {
                         evt.LinkedEventId = links[0];
@@ -152,6 +163,7 @@ namespace VideoForensics.Data.Database.Repositories
                     List<Guid> matches = await db.Events
                         .Where(e => e.ProviderEventId == evt.ProviderEventId && db.Devices.Any(d => d.Id == e.DeviceId && d.ProviderDeviceId == doorbotDeviceId))
                         .Select(e => e.Id)
+                        .OrderBy(id => id)
                         .Take(2)
                         .ToListAsync(token);
                     if (matches.Count == 1)
@@ -188,10 +200,11 @@ namespace VideoForensics.Data.Database.Repositories
 
         private async Task ReplaceAsync(Func<VideoForensicsDbContext, CancellationToken, Task> replace, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            await using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
-            await replace(db, ct);
-            await transaction.CommitAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                await replace(context.Db(), ct);
+                return null;
+            }, ct);
         }
 
         /// <summary>Deletes the nested object rows of the given event rows, for every nested table of the feed.</summary>

@@ -24,9 +24,9 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
 {
     private static readonly DateTime ClipStart = FixedNowUtc.AddHours(-1);
 
-    private static MediaItem Clip(Guid device, DateTime startUtc, bool withPreview = false)
+    private static MediaItemDto Clip(Guid device, DateTime startUtc, bool withPreview = false)
     {
-        return new()
+        return new MediaItem
         {
             Id = Guid.NewGuid(),
             DeviceId = device,
@@ -37,7 +37,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
             DurationSeconds = 120,
             Sha256Hash = "hash",
             PreviewPath = withPreview ? "preview.mp4" : null,
-        };
+        }.ToDto();
     }
 
     /// <summary>Gives every requested camera one clip at <see cref="ClipStart"/>.</summary>
@@ -113,6 +113,42 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewTimelineTab_GridPreviewClicked_OpensThatCameraAsTheSingleView()
+    {
+        // Arrange
+        AddDevices(2);
+        ReviewState.SetCameras(Devices.Select(d => d.Id));
+        ServeOneClipPerCamera();
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindAll("[data-testid='camera-tile-preview']")));
+
+        // Act
+        cut.Find("[data-testid='camera-tile-preview']").Click();
+
+        // Assert
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<SingleCameraView>()));
+        Assert.Equal([Devices[1].Id], ReviewState.CameraIds);
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_OneCameraSelected_ShowAllCamerasReturnsToTheGrid()
+    {
+        // Arrange: one camera is open as the single view, with the other cameras in its strip.
+        AddDevices(3);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ServeOneClipPerCamera();
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<SingleCameraView>()));
+
+        // Act
+        cut.Find("[data-testid='review-show-all-cameras']").Click();
+
+        // Assert: back to the multi-camera grid with every camera selected.
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<CameraGrid>()));
+        Assert.Equal(Devices.Select(d => d.Id), ReviewState.CameraIds);
+    }
+
+    [Fact]
     public void ReviewTimelineTab_NoCamerasSelected_ShowsTheEmptyStateAndDoesNotLoad()
     {
         // Arrange
@@ -124,6 +160,19 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         // Assert
         Assert.Equal(L["NoCamerasSelected"].Value, cut.Find("[data-testid='review-timeline-no-cameras']").TextContent);
         Assert.Empty(ClipLoader.Calls);
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_NoCamerasSelected_RendersInAStagePlaceholder()
+    {
+        // Arrange
+        AddDevices(2);
+
+        // Act
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+
+        // Assert: the message sits in a box the size of the player stage, so the page does not jump when clips arrive
+        Assert.True(cut.Find("[data-testid='review-timeline-no-cameras']").ParentElement!.ClassList.Contains("review-stage--message"));
     }
 
     [Fact]
@@ -439,11 +488,11 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     /// <summary>Serves and publishes one clip for the single primary camera, so the selection sees a clip at the cursor.</summary>
-    private MediaItem ServeAndPublishOneClip()
+    private MediaItemDto ServeAndPublishOneClip()
     {
         AddDevices(1);
         ReviewState.SetCameras([Devices[0].Id]);
-        MediaItem clip = Clip(Devices[0].Id, ClipStart, withPreview: true);
+        MediaItemDto clip = Clip(Devices[0].Id, ClipStart, withPreview: true);
         ClipLoader.Responder = (_, _) => Task.FromResult(new ReviewClipSet([clip], false));
         TimelineModel.Publish(ReviewClipBuilder.BuildClips([clip], Devices[0].Id), ReviewState.FromUtc, ReviewState.ToUtc);
         return clip;
@@ -545,7 +594,7 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     {
         // Arrange
         Guid operatorId = await SignInOperatorAsAsync("Review");
-        MediaItem clip = ServeAndPublishOneClip();
+        MediaItemDto clip = ServeAndPublishOneClip();
         SetupPlayerPosition(4200.0);
         SetupCaptureReturns(MediaStillCaptureResult.Ok(StillInfo(Guid.NewGuid())));
         IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
@@ -681,8 +730,8 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         // Arrange: two clips on the primary camera, the cursor on the first
         AddDevices(1);
         ReviewState.SetCameras([Devices[0].Id]);
-        MediaItem first = Clip(Devices[0].Id, ClipStart, withPreview: true);
-        MediaItem second = Clip(Devices[0].Id, ClipStart.AddMinutes(10), withPreview: true);
+        MediaItemDto first = Clip(Devices[0].Id, ClipStart, withPreview: true);
+        MediaItemDto second = Clip(Devices[0].Id, ClipStart.AddMinutes(10), withPreview: true);
         ClipLoader.Responder = (_, _) => Task.FromResult(new ReviewClipSet([first, second], false));
         TimelineModel.Publish(ReviewClipBuilder.BuildClips([first, second], Devices[0].Id), ReviewState.FromUtc, ReviewState.ToUtc);
         ReviewState.SetCursor(ClipStart.AddSeconds(5));

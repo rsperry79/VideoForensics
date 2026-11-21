@@ -12,13 +12,13 @@ namespace VideoForensics.Data.Core.Tests.Services
 {
     public class WatermarkServiceTests
     {
-        private readonly Mock<IDeviceRepository> _mockDeviceRepository;
+        private readonly Mock<IDeviceWriteRepository> _mockDeviceRepository;
         private readonly Mock<ILogger<WatermarkService>> _mockLogger;
         private readonly WatermarkService _watermarkService;
 
         public WatermarkServiceTests()
         {
-            _mockDeviceRepository = new Mock<IDeviceRepository>();
+            _mockDeviceRepository = new Mock<IDeviceWriteRepository>();
             _mockLogger = new Mock<ILogger<WatermarkService>>();
             _watermarkService = new WatermarkService(_mockDeviceRepository.Object, _mockLogger.Object);
         }

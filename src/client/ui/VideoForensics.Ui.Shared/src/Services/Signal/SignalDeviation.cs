@@ -47,6 +47,39 @@ public static class SignalDeviation
     }
 
     /// <summary>
+    /// How many std devs a box's mean sits from the all-time mean. Null for an empty box, or when the all-time figures
+    /// have no spread to measure against.
+    /// </summary>
+    public static double? DeviationSigma(double? boxMean, double allTimeMean, double? allTimeStdDev)
+    {
+        if (boxMean is not double mean || allTimeStdDev is not double stdDev || stdDev <= 0)
+        {
+            return null;
+        }
+
+        return Math.Abs(mean - allTimeMean) / stdDev;
+    }
+
+    /// <summary>
+    /// The colour of a calendar box: "green" under one std dev, "yellow" from one up to two, "red" at two or more. Null
+    /// when the box is empty or there is no spread. Built on <see cref="DeviationSigma"/> so the two always agree.
+    /// </summary>
+    public static string? ClassifyBox(double? boxMean, double allTimeMean, double? allTimeStdDev)
+    {
+        if (DeviationSigma(boxMean, allTimeMean, allTimeStdDev) is not double sigma)
+        {
+            return null;
+        }
+
+        if (sigma >= AlertSigma)
+        {
+            return "red";
+        }
+
+        return sigma >= FlagSigma ? "yellow" : "green";
+    }
+
+    /// <summary>
     /// The hours that hold a flagged reading, earliest first. Readings are measured against the baseline's all-time mean
     /// and std dev. Returns nothing when the baseline has no spread.
     /// </summary>

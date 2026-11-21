@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Maintenance;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -69,10 +70,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 return;
             }
 
+            bool itemFailed = false;
             ICameraBitrateBaselineRepository baselineRepo = sp.GetRequiredService<ICameraBitrateBaselineRepository>();
             ILiveViewSessionService sessionService = sp.GetRequiredService<ILiveViewSessionService>();
             IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
 
             // Fetch buckets that need calibration (undersampled or stale)
             IReadOnlyList<(Guid DeviceId, int HourOfDay, bool IsWeekend)> bucketsNeedingCalibration;
@@ -86,11 +88,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Bitrate calibration tick: failed to list buckets needing calibration; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 
             if (bucketsNeedingCalibration.Count == 0)
             {
+                if (itemFailed) { _heartbeats?.RecordError(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow); }
                 return;
             }
 
@@ -103,11 +107,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError("Bitrate calibration tick: failed to list devices; skipping this tick: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+                _heartbeats?.RecordError(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, "run failed");
                 return;
             }
 
             if (devices.Count == 0)
             {
+                if (itemFailed) { _heartbeats?.RecordError(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow); }
                 return;
             }
 
@@ -123,6 +129,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (currentHourBuckets.Count == 0)
             {
+                if (itemFailed) { _heartbeats?.RecordError(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow); }
                 return;
             }
 
@@ -138,7 +145,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 try
                 {
                     // Skip if device already has an active session (any reason)
-                    LiveViewSession? activeSession = await sessionService.GetActiveSessionAsync(deviceId, ct);
+                    LiveViewSessionDto? activeSession = await sessionService.GetActiveSessionAsync(deviceId, ct);
                     if (activeSession != null)
                     {
                         _logger.LogDebug("Bitrate calibration tick: device {DeviceName} has active session; skipping calibration", device.Name);
@@ -157,15 +164,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
 
                     // Start a calibration session
-                    _ = await sessionService.StartAsync(deviceId, LiveViewTriggerReason.Calibration, null, ct);
+                    _ = await sessionService.StartAsync(deviceId, LiveViewTriggerReasonDto.Calibration, null, ct);
                     _logger.LogDebug("Bitrate calibration tick: started calibration session for device {DeviceName}", device.Name);
                 }
                 catch (Exception ex)
                 {
                     // One device's failure must not stop others - each device gets its own try/catch
+                    itemFailed = true;
                     _logger.LogWarning("Bitrate calibration tick: device {DeviceName} failed (non-critical): {Message} ({ErrorType})", device.Name, ex.Message, ex.GetType().Name);
                 }
             }
+            if (itemFailed) { _heartbeats?.RecordError(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow, "run failed"); } else { _heartbeats?.RecordRun(nameof(CameraBitrateCalibrationService), DateTimeOffset.UtcNow); }
         }
     }
 }

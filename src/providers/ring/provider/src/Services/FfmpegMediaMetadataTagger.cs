@@ -54,8 +54,8 @@ namespace VideoForensics.Providers.Ring.Services
                     return false;
                 }
 
-                File.Delete(mediaFilePath);
-                File.Move(tmpPath, mediaFilePath);
+                // Why: one overwrite move. Deleting the original first lost the evidence file when the move then failed.
+                File.Move(tmpPath, mediaFilePath, overwrite: true);
                 return true;
             }
             catch (Exception ex)
@@ -132,7 +132,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildFfprobeOptions(), ct);
+                IMediaAnalysis analysis = await FFProbe.AnalyseAsync(mediaFilePath, BuildFfprobeOptions(), null, ct);
                 return analysis.Format.Tags is null || !analysis.Format.Tags.TryGetValue("comment", out string? comment)
                     ? null
                     : comment.StartsWith(CommentPrefix, StringComparison.Ordinal) &&

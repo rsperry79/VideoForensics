@@ -15,6 +15,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
     public class UserRepositoryTests : IAsyncLifetime
     {
         private SqliteInMemoryFixture _fixture = null!;
+        private UnitOfWork _unitOfWork = null!;
         private UserRepository _repository = null!;
 
         public async ValueTask InitializeAsync()
@@ -22,7 +23,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            _repository = new UserRepository(_fixture.Factory, loggerFactory.CreateLogger<UserRepository>());
+            var serviceProvider = new TestServiceProvider(_fixture, loggerFactory);
+            _unitOfWork = new UnitOfWork(_fixture.Factory, serviceProvider, loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new UserRepository(_unitOfWork, loggerFactory.CreateLogger<UserRepository>());
+        }
+
+        [Fact]
+        public async Task UserRepository_WriteInsideUnitOfWork_RollsBackWithIt()
+        {
+            // Red until the repository joins the ambient transaction: a write made inside a unit of work must roll back with it.
+            User user = TestDataBuilder.BuildUser("provider_key_2", "Jane Doe", "jane@example.com");
+
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                await _repository.AddAsync(user, CancellationToken.None);
+                throw new InvalidOperationException("roll back");
+            }, CancellationToken.None));
+
+            Assert.Null(await _repository.GetAsync(user.Id, CancellationToken.None));
         }
 
         public async ValueTask DisposeAsync()
@@ -109,7 +127,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None);
             UserRepository repositoryWithMockedLogger = new(
-                _fixture.Factory,
+                _unitOfWork,
                 mockLogger.Object
             );
 

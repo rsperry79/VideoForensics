@@ -196,6 +196,20 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
+        /// <summary>True when the battery entry carries a real reading. A wired device's entry has every reading null.</summary>
+        private static bool ReportsBattery(JsonElement item)
+        {
+            foreach (string name in new[] { "battery_percentage", "battery_voltage", "battery_present", "battery_charging", "battery_id" })
+            {
+                if (item.TryGetProperty(name, out JsonElement value) && value.ValueKind != JsonValueKind.Null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static void ParseBatteries(JsonElement list, List<DeviceReportedBattery> batteries, List<string> notes)
         {
             if (list.ValueKind != JsonValueKind.Array)
@@ -219,8 +233,15 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 var b = new DeviceReportedBattery { Position = position };
+                bool reportsBattery = ReportsBattery(item);
                 foreach (JsonProperty p in item.EnumerateObject())
                 {
+                    // A wired device reports no battery, so its null battery fields are expected and not logged.
+                    if (p.Value.ValueKind == JsonValueKind.Null && !reportsBattery)
+                    {
+                        continue;
+                    }
+
                     if (p.Name == "battery_temp" && ApplyBattery(p.Name, p.Value, b))
                     {
                         b.BatteryTempCelsius = ConvertTemp(b.Temp, $"health.batteries[{position}].battery_temp", notes);

@@ -45,6 +45,12 @@ namespace VideoForensics.Data.Core.Contracts
         /// along with any related detection metadata. Call once when an event is discovered, and again
         /// once it's downloaded/hashed to enrich it.
         /// </summary>
+        /// <summary>
+        /// Runs the writes made inside <paramref name="writes"/> in one transaction, so a page of events commits once instead
+        /// of once per event. Single-event writes made inside join this transaction.
+        /// </summary>
+        Task RunInBatchAsync(Func<Task> writes, CancellationToken ct);
+
         Task<Event> UpsertEventAsync(
             Event evt,
             CancellationToken ct,
@@ -59,6 +65,12 @@ namespace VideoForensics.Data.Core.Contracts
 
         /// <summary>Links the doorbot history row with the given numeric id to the Events row for its ding.</summary>
         Task LinkDoorbotHistoryEventAsync(string doorbotHistoryProviderEventId, Guid eventId, CancellationToken ct);
+
+        /// <summary>Returns the Events row a doorbot history row links to, or null when it is not linked.</summary>
+        Task<Event?> GetLinkedEventAsync(string doorbotHistoryProviderEventId, CancellationToken ct);
+
+        /// <summary>Changes an existing Events row's provider event id to its string ding id, when no other row of the device holds it.</summary>
+        Task RekeyLinkedEventAsync(Guid eventId, string newProviderEventId, CancellationToken ct);
 
         /// <summary>Resolves the effective start date for a download window, considering the watermark.</summary>
         Task<DateTime> GetWatermarkAsync(Guid deviceId, DateTime requestedStartDate, bool force, CancellationToken ct);

@@ -1,9 +1,37 @@
-/* The timeline tab stays within its container. The Grab still bar and its status line sit above the player. */
+/* The timeline tab stays within its container. Messages sit in a box the size of the player stage; the Grab still status
+   line sits under the player. */
 
 .review-timeline-tab {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
     max-width: 100%;
     overflow-wrap: anywhere;
+}
+
+/* The grid's transport bar sits at the foot of the tab, under the cameras, never under the first camera's clip. */
+.review-transport-dock {
+    margin-top: auto;
+}
+
+/* Same box as ReviewPlayer's stage (16:9, at most 62% of the viewport), so states never move the page. */
+.review-stage--message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    max-height: var(--review-media-height, 62vh);
+    aspect-ratio: 16 / 9;
+    background: #000;
+    color: #fff;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.review-stage--message .review-timeline-message {
+    margin: 0;
+    text-align: center;
 }
 
 .review-grab-still-bar {
@@ -12,5 +40,6 @@
     align-items: center;
     gap: 0.5rem;
     max-width: 100%;
+    margin-top: 0.5rem;
     margin-bottom: 0.5rem;
 }

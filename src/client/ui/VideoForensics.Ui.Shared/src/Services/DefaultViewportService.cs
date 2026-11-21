@@ -25,8 +25,14 @@ namespace VideoForensics.Client.Ui.Shared.Services
         /// </summary>
         public bool IsMobile { get; private set; }
 
+        /// <summary>The measured window width in CSS pixels. Zero until reported.</summary>
+        public double WidthPx { get; private set; }
+
+        /// <summary>The measured window height in CSS pixels. Zero until reported.</summary>
+        public double HeightPx { get; private set; }
+
         /// <summary>
-        /// Fired when the viewport form factor changes (IsMobile value changed).
+        /// Fired when the form factor changes (IsMobile value changed) or the window size changes.
         /// </summary>
         public event Action? OnChange;
 
@@ -47,6 +53,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             {
                 // Get initial viewport state
                 IsMobile = await _js.InvokeAsync<bool>("vfViewport.getIsMobile");
+                ApplySize(await _js.InvokeAsync<ViewportSize>("vfViewport.getSize"));
 
                 // Create a reference to this service for JS callbacks
                 _selfRef = DotNetObjectReference.Create(this);
@@ -73,6 +80,37 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 OnChange?.Invoke();
             }
         }
+
+        /// <summary>
+        /// Called from JavaScript when the window is resized (throttled to one call per animation frame).
+        /// Fires OnChange only when the measured size actually changed.
+        /// </summary>
+        [JSInvokable]
+        public void OnViewportSizeChanged(double width, double height)
+        {
+            ApplySize(new ViewportSize(width, height));
+        }
+
+        private void ApplySize(ViewportSize size)
+        {
+            // Ignore a size the browser has not measured (a zero or negative edge during a pre-render pass).
+            if (size.Width <= 0 || size.Height <= 0)
+            {
+                return;
+            }
+
+            if (WidthPx == size.Width && HeightPx == size.Height)
+            {
+                return;
+            }
+
+            WidthPx = size.Width;
+            HeightPx = size.Height;
+            OnChange?.Invoke();
+        }
+
+        /// <summary>A window size reported by the browser, in CSS pixels.</summary>
+        public sealed record ViewportSize(double Width, double Height);
 
         /// <summary>
         /// Pure helper function to determine if a given width (in pixels) is mobile.

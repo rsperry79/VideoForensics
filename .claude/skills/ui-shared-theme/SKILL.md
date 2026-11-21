@@ -5,6 +5,8 @@ description: Ui.Shared theme colors and Syncfusion dropdown binding gotchas. Use
 
 # Ui.Shared theme and dropdowns
 
+Paths below are relative to `src/client/ui/VideoForensics.Ui.Shared/src/`.
+
 ## Theme colors
 
 - Text color in Ui.Shared CSS uses only Bootstrap 5.3 text variables (e.g. `--bs-secondary-color`).

@@ -9,7 +9,7 @@ using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
-    /// <summary>ListAsync fills Device.ProviderName from the provider account that is linked to the device's location.</summary>
+    /// <summary>Every device read fills Device.ProviderName from the provider account that is linked to the device's location.</summary>
     public class DeviceRepositoryProviderNameTests : IAsyncLifetime
     {
         private SqliteInMemoryFixture _fixture = null!;
@@ -20,7 +20,7 @@ namespace VideoForensics.Data.Database.Tests
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            _repository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
+            _repository = new DeviceRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<DeviceRepository>());
         }
 
         public async ValueTask DisposeAsync()
@@ -50,6 +50,50 @@ namespace VideoForensics.Data.Database.Tests
 
             Device listed = Assert.Single(devices, d => d.Id == device.Id);
             Assert.Null(listed.ProviderName);
+        }
+
+        [Fact]
+        public async Task DeviceRepository_GetByLocationIdAsync_LinkedLocation_SetsProviderNameFromAccount()
+        {
+            Guid accountId = await SeedAccountAsync("Ring");
+            Device device = await SeedDeviceAtLinkedLocationAsync(accountId);
+
+            IReadOnlyList<Device> devices = await _repository.GetByLocationIdAsync(device.LocationId, CancellationToken.None);
+
+            Assert.Equal("Ring", Assert.Single(devices).ProviderName);
+        }
+
+        [Fact]
+        public async Task DeviceRepository_GetAsync_LinkedLocation_SetsProviderNameFromAccount()
+        {
+            Guid accountId = await SeedAccountAsync("Ring");
+            Device device = await SeedDeviceAtLinkedLocationAsync(accountId);
+
+            Device? found = await _repository.GetAsync(device.Id, CancellationToken.None);
+
+            Assert.Equal("Ring", found?.ProviderName);
+        }
+
+        [Fact]
+        public async Task DeviceRepository_GetByProviderDeviceIdAsync_LinkedLocation_SetsProviderNameFromAccount()
+        {
+            Guid accountId = await SeedAccountAsync("Ring");
+            Device device = await SeedDeviceAtLinkedLocationAsync(accountId);
+
+            Device? found = await _repository.GetByProviderDeviceIdAsync(device.LocationId, device.ProviderDeviceId, CancellationToken.None);
+
+            Assert.Equal("Ring", found?.ProviderName);
+        }
+
+        [Fact]
+        public async Task DeviceRepository_GetAsync_UnlinkedLocation_LeavesProviderNameNull()
+        {
+            Device device = await SeedDeviceWithoutLinkAsync();
+
+            Device? found = await _repository.GetAsync(device.Id, CancellationToken.None);
+
+            Assert.NotNull(found);
+            Assert.Null(found.ProviderName);
         }
 
         private async Task<Guid> SeedAccountAsync(string providerName)

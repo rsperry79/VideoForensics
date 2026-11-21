@@ -28,31 +28,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             return nowUtc.AddMinutes(Math.Max(schedule.EventPollIntervalMinutes, SyncSchedule.MinimumPollIntervalMinutes));
         }
 
-        /// <summary>True when the snapshot/RSSI poll has never run or its stored next run is at or before <paramref name="nowUtc"/>.</summary>
-        public static bool IsSnapshotDue(SyncSchedule schedule, DateTime nowUtc)
-        {
-            return schedule.SnapshotNextRunUtc is null || schedule.SnapshotNextRunUtc.Value <= nowUtc;
-        }
-
         /// <summary>
-        /// True when a roll-up is due: never rolled up, or the roll-up interval has passed since the last one.
-        /// The first roll-up covers the last interval, so it runs one interval after the schedule starts rolling up.
-        /// </summary>
-        public static bool IsRollupDue(SyncSchedule schedule, DateTime nowUtc)
-        {
-            return schedule.LastRollupUtc is null
-                || nowUtc - schedule.LastRollupUtc.Value >= TimeSpan.FromMinutes(schedule.SnapshotRollupIntervalMinutes);
-        }
-
-        /// <summary>Next snapshot/RSSI run: now plus the currently effective interval, in seconds.</summary>
-        /// <param name="timeZone">Zone used to evaluate jamming windows; null means the server's local zone.</param>
-        public static DateTime NextSnapshotRunUtc(SyncSchedule schedule, DateTime nowUtc, TimeZoneInfo? timeZone = null)
-        {
-            return nowUtc.AddSeconds(EffectiveSnapshotIntervalSeconds(schedule, nowUtc, timeZone));
-        }
-
-        /// <summary>
-        /// The snapshot/RSSI interval in effect at <paramref name="nowUtc"/>: SnapshotRssiIntervalSeconds unless
+        /// The snapshot/RSSI interval in effect at <paramref name="nowUtc"/>, in seconds: SnapshotRssiIntervalMinutes unless
         /// UseAdvancedJammingSchedule is set and at least one window applies (smallest wins). Always clamped to the minimum.
         /// </summary>
         /// <param name="timeZone">Zone used to evaluate jamming windows; null means the server's local zone.</param>

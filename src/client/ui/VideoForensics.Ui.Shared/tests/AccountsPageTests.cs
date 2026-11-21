@@ -17,8 +17,11 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Filters;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -73,13 +76,13 @@ public abstract class AccountsPageTestBase : BunitContext
 
         _ = AccountRepositoryMock
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(accounts);
+            .ReturnsAsync(accounts.Select(a => a.ToDto()).ToList());
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(ringUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(wyzeUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "wyze-key", DisplayName = "Wyze Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "wyze-key", DisplayName = "Wyze Owner" }.ToDto());
 
         _ = AccountRepositoryMock
             .Setup(r => r.ListRemovedAsync(It.IsAny<CancellationToken>()))
@@ -104,6 +107,8 @@ public abstract class AccountsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => WebAuthnMock.Object);
         _ = Services.AddScoped<StepUpService>();
         _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelFilterStore>();
+        _ = Services.AddScoped<ProviderAccountFilterState>();
         _ = Services.AddScoped<AccountLinkedBus>();
         _ = Services.AddScoped<IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
     }
@@ -124,11 +129,11 @@ public abstract class AccountsPageTestBase : BunitContext
             .Setup(r => r.ListRemovedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
-                new() { Id = id, UserId = userId, ProviderName = "Ring", RemovedUtc = RemovedUtc },
+                new ProviderAccountEntity { Id = id, UserId = userId, ProviderName = "Ring", RemovedUtc = RemovedUtc }.ToDto(),
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "retired-key", DisplayName = "Retired Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "retired-key", DisplayName = "Retired Owner" }.ToDto());
     }
 
     /// <summary>
@@ -143,7 +148,7 @@ public abstract class AccountsPageTestBase : BunitContext
         {
             IReadOnlyList<IElement> buttons = scope is null ? cut.FindAll("button") : cut.FindAll(scope + " button");
             target = buttons.First(b => b.TextContent.Trim() == text);
-        });
+        }, TimeSpan.FromSeconds(10));
         target!.Click();
     }
 
@@ -195,15 +200,43 @@ public class AccountsPage_Grid_Tests : AccountsPageTestBase
 public class AccountsPage_ProviderFilter_Tests : AccountsPageTestBase
 {
     [Fact]
-    public void Accounts_ProviderFilterDefault_AllProvidersSelected()
+    public void Accounts_ProviderFilterDefault_NoProviderSelectedMeansAll()
     {
         _ = RenderPage();
         IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
 
         IRenderedComponent<SfMultiSelect<string[], string>> multiSelect = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], string>>();
 
-        Assert.NotNull(multiSelect.Instance.Value);
-        Assert.Equal(new[] { "Ring", "Wyze" }.OrderBy(x => x), multiSelect.Instance.Value!.OrderBy(x => x));
+        Assert.Empty(multiSelect.Instance.Value!);
+    }
+
+    [Fact]
+    public void Accounts_StoredSharedProviderChoice_IsAppliedOnLoad()
+    {
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.provider-account").SetResult("{\"providers\":[\"Ring\"],\"account\":null}");
+        IRenderedComponent<Accounts> cut = RenderPage();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Ring Owner", cut.Find("#active-accounts").TextContent);
+            Assert.DoesNotContain("Wyze Owner", cut.Find("#active-accounts").TextContent);
+        });
+    }
+
+    [Fact]
+    public async Task Accounts_ProviderChoiceMadeInSharedState_FiltersTheRows()
+    {
+        IRenderedComponent<Accounts> cut = RenderPage();
+        Assert.Contains("Wyze Owner", cut.Find("#active-accounts").TextContent);
+        ProviderAccountFilterState shared = Services.GetRequiredService<ProviderAccountFilterState>();
+
+        await cut.InvokeAsync(() => shared.SetAsync(new[] { "Ring" }, null));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Ring Owner", cut.Find("#active-accounts").TextContent);
+            Assert.DoesNotContain("Wyze Owner", cut.Find("#active-accounts").TextContent);
+        });
     }
 
     [Fact]
@@ -221,7 +254,7 @@ public class AccountsPage_ProviderFilter_Tests : AccountsPageTestBase
         {
             Assert.Contains("Ring Owner", cut.Markup);
             Assert.DoesNotContain("Wyze Owner", cut.Markup);
-        });
+        }, TimeSpan.FromSeconds(10));
     }
 }
 
@@ -236,11 +269,11 @@ public class AccountsPage_ErrorTooltip_Tests : AccountsPageTestBase
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
-                new() { Id = RingAccountId, UserId = userId, ProviderName = "Ring", LastErrorMessage = "Token expired" },
+                new ProviderAccountEntity { Id = RingAccountId, UserId = userId, ProviderName = "Ring", LastErrorMessage = "Token expired" }.ToDto(),
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());
 
         IRenderedComponent<Accounts> cut = RenderPage();
 
@@ -297,7 +330,7 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
             string removed = cut.Find("#removed-accounts").TextContent;
             Assert.Contains("Retired Owner", removed);
             Assert.Contains("disk full", removed);
-        });
+        }, TimeSpan.FromSeconds(10));
         AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 

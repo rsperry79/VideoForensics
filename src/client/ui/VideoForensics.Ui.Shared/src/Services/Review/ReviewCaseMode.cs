@@ -1,6 +1,6 @@
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
 /// <summary>
@@ -26,8 +26,8 @@ public sealed class ReviewCaseMode
     private readonly IMediaItemRepository _mediaItems;
     private readonly IEventRepository _events;
 
-    private List<MediaItem> _mediaList = [];
-    private List<Event> _eventList = [];
+    private List<MediaItemDto> _mediaList = [];
+    private List<EventDto> _eventList = [];
     private List<Guid> _deviceIds = [];
 
     /// <summary>Creates the case view over the case and row repositories. It starts inactive.</summary>
@@ -57,10 +57,10 @@ public sealed class ReviewCaseMode
     public IReadOnlySet<Guid> MediaItemIds { get; private set; } = new HashSet<Guid>();
 
     /// <summary>The pinned media items, oldest recording first.</summary>
-    public IReadOnlyList<MediaItem> MediaItems => _mediaList;
+    public IReadOnlyList<MediaItemDto> MediaItems => _mediaList;
 
     /// <summary>The pinned events, newest first.</summary>
-    public IReadOnlyList<Event> Events => _eventList;
+    public IReadOnlyList<EventDto> Events => _eventList;
 
     /// <summary>The distinct devices of the pinned items, in the order the case lists them.</summary>
     public IReadOnlyList<Guid> DeviceIds => _deviceIds;
@@ -84,7 +84,7 @@ public sealed class ReviewCaseMode
     /// </remarks>
     public async Task<bool> EnterAsync(Guid caseId, CancellationToken ct)
     {
-        ForensicCase? forensicCase = await _cases.GetAsync(caseId, ct);
+        ForensicCaseDto? forensicCase = await _cases.GetAsync(caseId, ct);
         if (forensicCase is null)
         {
             if (Clear())
@@ -95,30 +95,30 @@ public sealed class ReviewCaseMode
             return false;
         }
 
-        IReadOnlyList<CaseItem> pins = await _cases.ListItemsAsync(caseId, false, ct);
+        IReadOnlyList<CaseItemDto> pins = await _cases.ListItemsAsync(caseId, false, ct);
         var activePins = pins.Where(pin => pin.RemovedAtUtc is null).ToList();
 
-        var mediaPins = activePins.Where(pin => pin.Kind == CaseItemKind.Media && pin.MediaItemId is not null).ToList();
-        var eventPins = activePins.Where(pin => pin.Kind == CaseItemKind.Event && pin.EventId is not null).ToList();
+        var mediaPins = activePins.Where(pin => pin.Kind == CaseItemKindDto.Media.ToString()).ToList();
+        var eventPins = activePins.Where(pin => pin.Kind == CaseItemKindDto.Event.ToString()).ToList();
         bool truncated = mediaPins.Count > MaxItemsPerKind || eventPins.Count > MaxItemsPerKind;
 
-        var keptMedia = mediaPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.MediaItemId!.Value).ToHashSet();
-        var keptEvents = eventPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.EventId!.Value).ToHashSet();
+        var keptMedia = mediaPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.TargetId).ToHashSet();
+        var keptEvents = eventPins.OrderByDescending(pin => pin.AddedAtUtc).Take(MaxItemsPerKind).Select(pin => pin.TargetId).ToHashSet();
 
-        var mediaById = new Dictionary<Guid, MediaItem>();
-        foreach (Guid id in mediaPins.Select(pin => pin.MediaItemId!.Value).Where(keptMedia.Contains))
+        var mediaById = new Dictionary<Guid, MediaItemDto>();
+        foreach (Guid id in mediaPins.Select(pin => pin.TargetId).Where(keptMedia.Contains))
         {
-            MediaItem? item = await _mediaItems.GetAsync(id, ct);
+            MediaItemDto? item = await _mediaItems.GetAsync(id, ct);
             if (item is not null)
             {
                 mediaById[id] = item;
             }
         }
 
-        var eventById = new Dictionary<Guid, Event>();
-        foreach (Guid id in eventPins.Select(pin => pin.EventId!.Value).Where(keptEvents.Contains))
+        var eventById = new Dictionary<Guid, EventDto>();
+        foreach (Guid id in eventPins.Select(pin => pin.TargetId).Where(keptEvents.Contains))
         {
-            Event? evt = await _events.GetAsync(id, ct);
+            EventDto? evt = await _events.GetAsync(id, ct);
             if (evt is not null)
             {
                 eventById[id] = evt;
@@ -171,17 +171,17 @@ public sealed class ReviewCaseMode
     /// Only pins whose rows were loaded count, so a dropped pin never adds a device.
     /// </summary>
     private static List<Guid> DistinctDevicesInPinOrder(
-        IEnumerable<CaseItem> pins,
-        IReadOnlyDictionary<Guid, MediaItem> mediaById,
-        IReadOnlyDictionary<Guid, Event> eventById)
+        IEnumerable<CaseItemDto> pins,
+        IReadOnlyDictionary<Guid, MediaItemDto> mediaById,
+        IReadOnlyDictionary<Guid, EventDto> eventById)
     {
         var devices = new List<Guid>();
         var seen = new HashSet<Guid>();
-        foreach (CaseItem pin in pins)
+        foreach (CaseItemDto pin in pins)
         {
-            Guid? device = pin.Kind == CaseItemKind.Media && pin.MediaItemId is Guid mediaId && mediaById.TryGetValue(mediaId, out MediaItem? item)
+            Guid? device = pin.Kind == CaseItemKindDto.Media.ToString() && mediaById.TryGetValue(pin.TargetId, out MediaItemDto? item)
                 ? item.DeviceId
-                : pin.Kind == CaseItemKind.Event && pin.EventId is Guid eventId && eventById.TryGetValue(eventId, out Event? evt)
+                : pin.Kind == CaseItemKindDto.Event.ToString() && eventById.TryGetValue(pin.TargetId, out EventDto? evt)
                     ? evt.DeviceId
                     : null;
 

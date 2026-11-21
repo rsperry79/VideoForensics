@@ -1,6 +1,6 @@
 @page "/settings/passkeys"
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
@@ -69,19 +69,19 @@ else if (_credentials is null || _credentials.Count == 0)
 }
 else
 {
-    <SfGrid TValue="OperatorCredential" DataSource="@_credentials" AllowSorting="true" AllowPaging="true" AllowResizing="true">
+    <SfGrid TValue="OperatorCredentialDto" DataSource="@_credentials" AllowSorting="true" AllowPaging="true" AllowResizing="true">
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(OperatorCredential.Label)" HeaderText="@L["ColLabel"]" MinWidth="100" />
-            <GridColumn Field="@nameof(OperatorCredential.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100">
+            <GridColumn Field="@nameof(OperatorCredentialDto.Label)" HeaderText="@L["ColLabel"]" MinWidth="100" />
+            <GridColumn Field="@nameof(OperatorCredentialDto.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100">
                 <Template>
-                    <LocalTimeText Value="@((context as OperatorCredential)!.CreatedAtUtc)" />
+                    <LocalTimeText Value="@((context as OperatorCredentialDto)!.CreatedAtUtc)" />
                 </Template>
             </GridColumn>
             <GridColumn HeaderText="@L["ColStatus"]" AllowSorting="false" MinWidth="100">
                 <Template>
                     @{
-                        var cred = (OperatorCredential)context;
+                        var cred = (OperatorCredentialDto)context;
                         @if (cred.RevokedAtUtc.HasValue)
                         {
                             <span style="color: var(--bs-danger);">@L["StatusRevoked"]</span>
@@ -100,7 +100,7 @@ else
             <GridColumn HeaderText="@L["ColLastUsedAt"]" MinWidth="100">
                 <Template>
                     @{
-                        var cred = (OperatorCredential)context;
+                        var cred = (OperatorCredentialDto)context;
                         <LocalTimeText Value="@cred.LastUsedAtUtc" Fallback="@L["NotAvailable"].Value" />
                     }
                 </Template>
@@ -108,7 +108,7 @@ else
             <GridColumn HeaderText="" AllowSorting="false" MinWidth="100">
                 <Template>
                     @{
-                        var cred = (OperatorCredential)context;
+                        var cred = (OperatorCredentialDto)context;
                         @if (!cred.RevokedAtUtc.HasValue)
                         {
                             <SfButton Content="@L["RevokeButton"]" OnClick="() => BeginRevoke(cred.Id)" CssClass="e-danger" />
@@ -139,7 +139,7 @@ else
     public bool Setup { get; set; }
 
     private bool _isLoading = true;
-    private List<OperatorCredential>? _credentials = new();
+    private List<OperatorCredentialDto>? _credentials = new();
     private string? _authError;
     private string? _loadError;
     private string? _revokeError;
@@ -214,7 +214,7 @@ else
             }
 
             response.EnsureSuccessStatusCode();
-            _credentials = await response.Content.ReadFromJsonAsync<List<OperatorCredential>>(JsonOptions);
+            _credentials = await response.Content.ReadFromJsonAsync<List<OperatorCredentialDto>>(JsonOptions);
         }
         catch (Exception ex)
         {

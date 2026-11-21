@@ -18,9 +18,17 @@ namespace VideoForensics.Providers.Ring.Tests.Services
     /// </summary>
     public class RingMediaDownloadServiceTests
     {
+        /// <summary>The download service records each page's events through RunInBatchAsync. A loose mock would skip the writes, so run them inline.</summary>
+        private static void RunBatchesInline(Mock<IVideoForensicsDataClient> mock)
+        {
+            _ = mock.Setup(d => d.RunInBatchAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>()))
+                .Returns<Func<Task>, CancellationToken>((writes, _) => writes());
+        }
+
         private static IVideoForensicsDataClient CreateMockDataClient()
         {
             var mock = new Mock<IVideoForensicsDataClient>();
+            RunBatchesInline(mock);
             // For tests that don't actually call DB methods, this mock will suffice.
             // Real integration tests would set up more specific behaviors.
             return mock.Object;
@@ -348,6 +356,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
             ILogger logger = new Mock<ILogger>().Object;
             var dataClientMock = new Mock<IVideoForensicsDataClient>();
+            RunBatchesInline(dataClientMock);
             _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
             _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
@@ -379,7 +388,8 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             }
         }
 
-        private const string VideoEventCreatedAt = "2026-10-17T12:00:00Z";
+        // Relative to now: the download window is the last 30 days, so a fixed date ages out and the event is never considered.
+        private static readonly string VideoEventCreatedAt = DateTime.UtcNow.AddDays(-1).ToString("O", System.Globalization.CultureInfo.InvariantCulture);
 
         private sealed class StubVideoHistoryHandler : HttpMessageHandler
         {
@@ -445,6 +455,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
             ILogger logger = new Mock<ILogger>().Object;
             var dataClientMock = new Mock<IVideoForensicsDataClient>();
+            RunBatchesInline(dataClientMock);
             _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
             _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
@@ -516,6 +527,73 @@ namespace VideoForensics.Providers.Ring.Tests.Services
                 Assert.True(result.Success, result.ErrorMessage);
                 Assert.Equal([storedFile], Directory.GetFiles(folder, "*.mp4"));
                 Assert.Equal(storedBytes, await File.ReadAllBytesAsync(storedFile));
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_UnmatchedEvent_StoresEventRowKeyedByDoorbotId()
+        {
+            // Arrange - no string ding id exists yet, so the event cannot be downloaded, but it must still be stored
+            var stored = new List<Data.Common.Entities.Event>();
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vunmatched_" + Guid.NewGuid().ToString("N"));
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync(configureDataClient: dc =>
+            {
+                _ = dc.Setup(d => d.GetDingIdCandidatesAsync(12345, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<string>());
+                _ = dc.Setup(d => d.UpsertEventAsync(
+                        It.IsAny<Data.Common.Entities.Event>(), It.IsAny<CancellationToken>(), It.IsAny<Data.Common.Entities.EventDetection?>(),
+                        It.IsAny<List<Data.Common.Entities.EventDetectionZone>?>(), It.IsAny<List<Data.Common.Entities.EventSecurityAlert>?>(),
+                        It.IsAny<List<Data.Common.Entities.EventDetectedPerson>?>(), It.IsAny<List<Data.Common.Entities.EventDetectionTypeOccurrence>?>()))
+                    .Callback<Data.Common.Entities.Event, CancellationToken, Data.Common.Entities.EventDetection?, List<Data.Common.Entities.EventDetectionZone>?,
+                        List<Data.Common.Entities.EventSecurityAlert>?, List<Data.Common.Entities.EventDetectedPerson>?, List<Data.Common.Entities.EventDetectionTypeOccurrence>?>(
+                        (evt, _, _, _, _, _, _) => stored.Add(evt))
+                    .ReturnsAsync((Data.Common.Entities.Event evt, CancellationToken _, Data.Common.Entities.EventDetection? _, List<Data.Common.Entities.EventDetectionZone>? _,
+                        List<Data.Common.Entities.EventSecurityAlert>? _, List<Data.Common.Entities.EventDetectedPerson>? _, List<Data.Common.Entities.EventDetectionTypeOccurrence>? _) => evt);
+            });
+
+            // Act
+            DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+            // Assert - the row is keyed by the doorbot id, still NotAttempted, and nothing was downloaded
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Contains(stored, e => e.ProviderEventId == "987654" && e.DownloadStatus == Data.Common.Entities.EventDownloadStatus.NotAttempted);
+            Assert.Contains(stored, e => e.ProviderEventId == "987654" && e.AwaitingDingId);
+            Assert.False(Directory.Exists(folder) && Directory.GetFiles(folder, "*.mp4").Length > 0);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_MatchedEventLinkedToUnmatchedRow_RekeysThatRowInsteadOfAddingOne()
+        {
+            // Arrange - the row was stored under the doorbot id before its ding id existed; the ding id has now arrived
+            Mock<IVideoForensicsDataClient>? client = null;
+            var linkedId = Guid.NewGuid();
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vrekey_" + Guid.NewGuid().ToString("N"));
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync(configureDataClient: dc =>
+            {
+                client = dc;
+                _ = dc.Setup(d => d.GetLinkedEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(new Data.Common.Entities.Event
+                {
+                    Id = linkedId,
+                    DeviceId = Guid.NewGuid(),
+                    ProviderEventId = "987000",
+                    EventType = "motion",
+                    OccurredAtUtc = DateTime.UtcNow,
+                    DiscoveredAtUtc = DateTime.UtcNow,
+                });
+            });
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - the stored row takes the ding id; no second row is created under it
+                Assert.True(result.Success, result.ErrorMessage);
+                Assert.NotNull(client);
+                client!.Verify(d => d.RekeyLinkedEventAsync(linkedId, "987654", It.IsAny<CancellationToken>()), Times.Once);
             }
             finally
             {
@@ -1226,6 +1304,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
 
             var dataClient = new Mock<IVideoForensicsDataClient>();
+            RunBatchesInline(dataClient);
             _ = dataClient.Setup(d => d.EnsureLocationAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<CancellationToken>()))

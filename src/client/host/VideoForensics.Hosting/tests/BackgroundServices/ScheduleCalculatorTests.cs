@@ -8,21 +8,21 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         // 2026-05-04 is a Monday (DayOfWeek 1).
         private static readonly DateTime Now = new(2026, 5, 4, 12, 0, 0, DateTimeKind.Utc);
 
-        private static SyncSchedule Build(int eventMinutes = 30, int snapshotSeconds = 60, bool advanced = false)
+        private static SyncSchedule Build(int eventMinutes = 30, int snapshotMinutes = 2, bool advanced = false)
         {
             return new SyncSchedule
             {
                 ProviderAccountId = Guid.NewGuid(),
                 IsEnabled = true,
                 EventPollIntervalMinutes = eventMinutes,
-                SnapshotRssiIntervalSeconds = snapshotSeconds,
+                SnapshotRssiIntervalMinutes = snapshotMinutes,
                 UseAdvancedJammingSchedule = advanced
             };
         }
 
-        private static JammingScheduleWindow Window(int day, int start, int end, int interval)
+        private static JammingScheduleWindow Window(int day, int start, int end, int intervalMinutes)
         {
-            return new JammingScheduleWindow { DayOfWeek = day, StartMinuteOfDay = start, EndMinuteOfDay = end, SnapshotRssiIntervalSeconds = interval };
+            return new JammingScheduleWindow { DayOfWeek = day, StartMinuteOfDay = start, EndMinuteOfDay = end, SnapshotRssiIntervalMinutes = intervalMinutes };
         }
 
         [Fact]
@@ -80,97 +80,106 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         }
 
         [Fact]
+        public void NewLinkedAccount_SnapshotIntervalDefaultsToFiveMinutes()
+        {
+            SyncSchedule created = SyncSchedule.CreateDefault(Guid.NewGuid());
+
+            Assert.Equal(5, created.SnapshotRssiIntervalMinutes);
+            Assert.Equal(300, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(created, Now, TimeZoneInfo.Utc));
+        }
+
+        [Fact]
         public void EffectiveSnapshotIntervalSeconds_NoWindows_ReturnsDefault()
         {
-            Assert.Equal(60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(Build(snapshotSeconds: 60), Now, TimeZoneInfo.Utc));
+            Assert.Equal(120, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(Build(snapshotMinutes: 2), Now, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_AdvancedDisabled_IgnoresMatchingWindow()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: false);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: false);
             s.JammingWindows.Add(Window(1, 11 * 60, 13 * 60, 5));
-            Assert.Equal(60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
+            Assert.Equal(120, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_AdvancedWithMatchingWindow_ReturnsWindowInterval()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(1, 11 * 60, 13 * 60, 5));
-            Assert.Equal(5, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
+            Assert.Equal(300, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_WindowOnOtherDay_ReturnsDefault()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(2, 11 * 60, 13 * 60, 5));
-            Assert.Equal(60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
+            Assert.Equal(120, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_StartIsInclusiveEndIsExclusive()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(1, 12 * 60, 13 * 60, 5));
-            Assert.Equal(5, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
-            Assert.Equal(60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now.AddHours(1), TimeZoneInfo.Utc));
+            Assert.Equal(300, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
+            Assert.Equal(120, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now.AddHours(1), TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_OverlappingWindows_ReturnsSmallestInterval()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(1, 0, 24 * 60, 20));
             s.JammingWindows.Add(Window(1, 11 * 60, 13 * 60, 7));
-            Assert.Equal(7, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
+            Assert.Equal(420, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_WindowIntervalBelowMinimum_ClampsToMinimum()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(1, 0, 24 * 60, 0));
-            Assert.Equal(SyncSchedule.MinimumSnapshotIntervalSeconds, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
+            Assert.Equal(SyncSchedule.MinimumSnapshotIntervalMinutes * 60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_OvernightWindowBeforeMidnight_Applies()
         {
             // Monday 22:00 -> Tuesday 06:00 (End <= Start means "wraps past midnight").
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(1, 22 * 60, 6 * 60, 3));
             var mondayNight = new DateTime(2026, 5, 4, 23, 0, 0, DateTimeKind.Utc);
-            Assert.Equal(3, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, mondayNight, TimeZoneInfo.Utc));
+            Assert.Equal(180, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, mondayNight, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_OvernightWindowAfterMidnight_AppliesOnNextDay()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(1, 22 * 60, 6 * 60, 3));
             var tuesdayEarly = new DateTime(2026, 5, 5, 5, 45, 0, DateTimeKind.Utc);
             var tuesdayAfter = new DateTime(2026, 5, 5, 6, 0, 0, DateTimeKind.Utc);
-            Assert.Equal(3, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, tuesdayEarly, TimeZoneInfo.Utc));
-            Assert.Equal(60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, tuesdayAfter, TimeZoneInfo.Utc));
+            Assert.Equal(180, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, tuesdayEarly, TimeZoneInfo.Utc));
+            Assert.Equal(120, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, tuesdayAfter, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_OvernightWindowSundayWrapsToMonday_Applies()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(6, 23 * 60, 1 * 60, 4)); // Saturday 23:00 -> Sunday 01:00
             var sundayEarly = new DateTime(2026, 5, 10, 0, 30, 0, DateTimeKind.Utc); // Sunday
-            Assert.Equal(4, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, sundayEarly, TimeZoneInfo.Utc));
+            Assert.Equal(240, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, sundayEarly, TimeZoneInfo.Utc));
         }
 
         [Fact]
         public void EffectiveSnapshotIntervalSeconds_OvernightWindowBeforeStartTime_ReturnsDefault()
         {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
             s.JammingWindows.Add(Window(1, 22 * 60, 6 * 60, 3));
-            Assert.Equal(60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
+            Assert.Equal(120, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
         }
 
         [Fact]
@@ -178,41 +187,11 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         {
             // 12:00 UTC is 05:00 in a UTC-7 zone; a Monday 04:00-06:00 window matches only in that zone.
             var minus7 = TimeZoneInfo.CreateCustomTimeZone("test-7", TimeSpan.FromHours(-7), "test-7", "test-7");
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
-            s.JammingWindows.Add(Window(1, 4 * 60, 6 * 60, 2));
-            Assert.Equal(2, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, minus7));
-            Assert.Equal(60, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
+            SyncSchedule s = Build(snapshotMinutes: 2, advanced: true);
+            s.JammingWindows.Add(Window(1, 4 * 60, 6 * 60, 3));
+            Assert.Equal(180, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, minus7));
+            Assert.Equal(120, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, TimeZoneInfo.Utc));
         }
 
-        [Fact]
-        public void IsSnapshotDue_NextRunNullOrPast_ReturnsTrueAndFutureReturnsFalse()
-        {
-            SyncSchedule s = Build();
-            Assert.True(ScheduleCalculator.IsSnapshotDue(s, Now));
-            s.SnapshotNextRunUtc = Now.AddMinutes(-1);
-            Assert.True(ScheduleCalculator.IsSnapshotDue(s, Now));
-            s.SnapshotNextRunUtc = Now.AddMinutes(1);
-            Assert.False(ScheduleCalculator.IsSnapshotDue(s, Now));
-        }
-
-        [Fact]
-        public void NextSnapshotRunUtc_WithActiveWindow_UsesWindowInterval()
-        {
-            SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
-            s.JammingWindows.Add(Window(1, 11 * 60, 13 * 60, 5));
-            Assert.Equal(Now.AddSeconds(5), ScheduleCalculator.NextSnapshotRunUtc(s, Now, TimeZoneInfo.Utc));
-        }
-
-        [Fact]
-        public void NextSnapshotRunUtc_WithoutWindow_UsesDefaultInterval()
-        {
-            Assert.Equal(Now.AddSeconds(60), ScheduleCalculator.NextSnapshotRunUtc(Build(snapshotSeconds: 60), Now, TimeZoneInfo.Utc));
-        }
-
-        [Fact]
-        public void NextSnapshotRunUtc_DefaultIntervalBelowMinimum_ClampsToMinimum()
-        {
-            Assert.Equal(Now.AddSeconds(SyncSchedule.MinimumSnapshotIntervalSeconds), ScheduleCalculator.NextSnapshotRunUtc(Build(snapshotSeconds: 0), Now, TimeZoneInfo.Utc));
-        }
     }
 }

@@ -487,7 +487,8 @@ namespace VideoForensics.Providers.Ring
             }
 
             string responseText = await response.Content.ReadAsStringAsync();
-            ApiRawLogger.Raise(request.Method.Method, url.ToString(), (int)response.StatusCode, responseText);
+            // Why: the body holds access and refresh tokens, and the raw log is written to disk. Log only the status.
+            ApiRawLogger.Raise(request.Method.Method, url.ToString(), (int)response.StatusCode, "<authentication response redacted>");
 
             switch (response.StatusCode)
             {

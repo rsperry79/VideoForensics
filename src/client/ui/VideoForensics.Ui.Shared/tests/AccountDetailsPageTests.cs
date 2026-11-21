@@ -17,7 +17,9 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Filters;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -90,7 +92,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
 
-    protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+    protected Mock<VideoForensics.Core.Api.Contracts.Repositories.IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
 
     protected Mock<ISyncScheduleRepository> SyncScheduleRepositoryMock { get; } = new();
 
@@ -128,18 +130,18 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         var accountRepository = new Mock<IProviderAccountRepository>();
         _ = accountRepository
             .Setup(r => r.GetAsync(AccountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(account);
+            .ReturnsAsync(() => account.ToDto());
         _ = accountRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([account]);
+            .ReturnsAsync(() => [account.ToDto()]);
         _ = accountRepository
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([account]);
+            .ReturnsAsync(() => [account.ToDto()]);
 
         var userRepository = new Mock<IUserRepository>();
         _ = userRepository
             .Setup(r => r.GetAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "ring-key", DisplayName = "Ring Owner" }.ToDto());
 
         _ = AuthServiceMock
             .Setup(a => a.RestoreFromSavedCredentialsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
@@ -147,6 +149,8 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
         _ = Services.AddScoped(_ => accountRepository.Object);
         _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelFilterStore>();
+        _ = Services.AddScoped<ProviderAccountFilterState>();
         _ = Services.AddScoped(_ => userRepository.Object);
         _ = Services.AddScoped(_ => AuthServiceMock.Object);
         _ = Services.AddScoped(_ => MultiProviderAuthServiceMock.Object);

@@ -306,7 +306,7 @@ namespace VideoForensics.Providers.Ring
             {
                 testCallCount = raw.Count;
                 record.Success = false;
-                record.Error = ex is System.Reflection.TargetInvocationException tie ? tie.InnerException?.Message ?? ex.Message : ex.Message;
+                record.Error = ErrorText(ex);
                 Narrate($"   FAILED: {record.Error}");
             }
 
@@ -381,6 +381,22 @@ namespace VideoForensics.Providers.Ring
             record.Status = CallStatusClassifier.Classify(descriptor, record.Success, raw.Select(r => (r.StatusCode, Body: (string?)r.Body)));
 
             return (record, invokeResult);
+        }
+
+        /// <summary>
+        /// The text recorded for a failed call. A Ring error response body is appended when there is one, since the
+        /// status code alone (422, 500) does not say which field Ring rejected.
+        /// </summary>
+        internal static string ErrorText(Exception ex)
+        {
+            Exception inner = ex is System.Reflection.TargetInvocationException tie && tie.InnerException is not null ? tie.InnerException : ex;
+            string text = inner.Message;
+            if (inner is Exceptions.UnexpectedOutcomeException outcome && !string.IsNullOrWhiteSpace(outcome.ResponseBody))
+            {
+                text += " | Ring said: " + outcome.ResponseBody;
+            }
+
+            return text;
         }
 
         private static string DescribeTarget(TargetRecord? t)

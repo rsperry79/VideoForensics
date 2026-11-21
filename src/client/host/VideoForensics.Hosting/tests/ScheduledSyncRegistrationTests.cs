@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
 
@@ -32,7 +33,7 @@ namespace VideoForensics.Client.Hosting.Tests
         {
             var services = new ServiceCollection();
 
-            _ = services.AddVideoForensicsScheduledSync(Config(("ScheduledTasks:TickSeconds", "30")));
+            _ = services.AddVideoForensicsScheduledSync(Config());
 
             Assert.DoesNotContain(services, d => d.ServiceType == typeof(IHostedService));
             Assert.DoesNotContain(services, d => d.ServiceType == typeof(IEventAndConfigService));
@@ -74,29 +75,27 @@ namespace VideoForensics.Client.Hosting.Tests
         }
 
         [Fact]
-        public void AddVideoForensicsScheduledSync_RingConfigured_BuildsWithScopeAndBuildValidationAndBindsOptions()
+        public void AddVideoForensicsScheduledSync_RingConfigured_BuildsWithScopeAndReadsTickFromConfiguration()
         {
             var services = new ServiceCollection();
             _ = services.AddLogging();
-            _ = services.AddVideoForensicsScheduledSync(Config(
-                ("ScheduledTasks:EnabledProviders:0", "Ring"),
-                ("ScheduledTasks:TickSeconds", "15")));
+            _ = services.AddSingleton<IForensicsConfiguration>(new ForensicsConfiguration { ScheduledSyncTickSeconds = 15 });
+            _ = services.AddVideoForensicsScheduledSync(Config(("ScheduledTasks:EnabledProviders:0", "Ring")));
 
             using ServiceProvider sp = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
             ScheduledTasksOptions options = sp.GetRequiredService<IOptionsMonitor<ScheduledTasksOptions>>().CurrentValue;
             Assert.Equal(["Ring"], options.EnabledProviders);
-            Assert.Equal(15, options.TickSeconds);
-            Assert.Contains(sp.GetServices<IHostedService>(), s => s is ScheduledSyncService);
+            ScheduledSyncService service = sp.GetServices<IHostedService>().OfType<ScheduledSyncService>().Single();
+            Assert.Equal(TimeSpan.FromSeconds(15), service.CurrentTickInterval);
         }
 
         [Fact]
-        public void ScheduledTasksOptions_Defaults_AreDisabledWithSixtySecondTick()
+        public void ScheduledTasksOptions_Defaults_AreDisabled()
         {
             var options = new ScheduledTasksOptions();
 
             Assert.Empty(options.EnabledProviders);
-            Assert.Equal(60, options.TickSeconds);
         }
 
         private sealed class FixedTimeProvider : TimeProvider

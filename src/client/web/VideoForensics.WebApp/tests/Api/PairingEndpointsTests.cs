@@ -28,7 +28,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task CheckPasskeyEnabledAsync_PasskeyDisabledNonSetup_Returns403Forbidden()
         {
             // Arrange
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.IsEmptyAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);  // Not setup phase
 
@@ -59,7 +59,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task CheckPasskeyEnabledAsync_PasskeyDisabledSetupPhase_ReturnsNull()
         {
             // Arrange - setup phase (operators table empty)
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.IsEmptyAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);  // Setup phase - should bypass the disabled check
 
@@ -88,7 +88,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task CheckPasskeyEnabledAsync_PasskeyEnabled_ReturnsNullAndNoAudit()
         {
             // Arrange
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             _ = operators.Setup(r => r.IsEmptyAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);  // Not setup phase
 

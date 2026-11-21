@@ -57,6 +57,37 @@ namespace VideoForensics.Data.Database.Tests.DependencyInjection
             }
         }
 
+        [Fact]
+        public void AddVideoForensicsDatabase_TimelapseGapQueries_ResolvesSuccessfully()
+        {
+            // The scheduler's time-lapse check needs these queries; without the registration every check fails.
+            var services = new ServiceCollection();
+            _ = services.AddLogging();
+            var connection = new SqliteConnection("DataSource=:memory:");
+            connection.Open();
+
+            try
+            {
+                DbContextOptions<VideoForensicsDbContext> options = new DbContextOptionsBuilder<VideoForensicsDbContext>()
+                    .UseSqlite(connection)
+                    .Options;
+
+                _ = services.AddSingleton<IDbContextFactory<VideoForensicsDbContext>>(new TestDbContextFactory(options));
+                _ = services.AddVideoForensicsDatabase();
+                ServiceProvider provider = services.BuildServiceProvider(validateScopes: true);
+
+                using IServiceScope scope = provider.CreateScope();
+                ITimelapseGapQueries queries = scope.ServiceProvider.GetRequiredService<ITimelapseGapQueries>();
+
+                Assert.NotNull(queries);
+                provider.Dispose();
+            }
+            finally
+            {
+                connection.Dispose();
+            }
+        }
+
         /// <summary>Simple test factory implementation that reuses a shared connection.</summary>
         private class TestDbContextFactory : IDbContextFactory<VideoForensicsDbContext>
         {

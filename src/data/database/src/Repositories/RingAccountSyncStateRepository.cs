@@ -15,21 +15,20 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Interval used when the account row does not exist yet.</summary>
         private const int DefaultIntervalHours = 24;
 
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public RingAccountSyncStateRepository(IDbContextFactory<VideoForensicsDbContext> factory)
+        public RingAccountSyncStateRepository(IUnitOfWork unitOfWork)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<RingConfigSyncState> GetConfigSyncStateAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            var row = await db.RingAccounts
+            var row = await _unitOfWork.ReadAsync(context => context.Db().RingAccounts
                 .AsNoTracking()
                 .Where(a => a.ProviderAccountId == providerAccountId)
                 .Select(a => new { a.ConfigSyncIntervalHours, a.LastConfigSyncUtc })
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(ct), ct);
 
             return row is null
                 ? new RingConfigSyncState(DefaultIntervalHours, null)
@@ -38,31 +37,38 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task MarkConfigSyncCompletedAsync(Guid providerAccountId, DateTime utcNow, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            RingAccount? account = await db.RingAccounts
-                .FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct);
-            if (account is null)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                return;
-            }
+                VideoForensicsDbContext db = context.Db();
+                RingAccount? account = await db.RingAccounts
+                    .FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct);
+                if (account is null)
+                {
+                    return null;
+                }
 
-            account.LastConfigSyncUtc = utcNow;
-            _ = await db.SaveChangesAsync(ct);
+                account.LastConfigSyncUtc = utcNow;
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
 
-        public async Task<bool> SetConfigIntervalHoursAsync(Guid providerAccountId, int hours, CancellationToken ct)
+        public Task<bool> SetConfigIntervalHoursAsync(Guid providerAccountId, int hours, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            RingAccount? account = await db.RingAccounts
-                .FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct);
-            if (account is null)
+            return _unitOfWork.ExecuteAsync(async context =>
             {
-                return false;
-            }
+                VideoForensicsDbContext db = context.Db();
+                RingAccount? account = await db.RingAccounts
+                    .FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct);
+                if (account is null)
+                {
+                    return false;
+                }
 
-            account.ConfigSyncIntervalHours = hours;
-            _ = await db.SaveChangesAsync(ct);
-            return true;
+                account.ConfigSyncIntervalHours = hours;
+                _ = await db.SaveChangesAsync(ct);
+                return true;
+            }, ct);
         }
     }
 }

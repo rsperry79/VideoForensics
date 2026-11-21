@@ -7,17 +7,19 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 
 using Xunit;
 
-using Device = VideoForensics.Data.Common.Entities.Device;
+using Device = VideoForensics.Core.Api.Contracts.DeviceDto;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Filtering to several devices yields one combined audit list and one verdict covering all of them.</summary>
@@ -63,8 +65,8 @@ public class ChainOfCustody_Combined_Tests : BunitContext
         var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var frontLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "F", Name = "Front" };
         var backLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "B", Name = "Back" };
-        var front = new Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" };
-        var back = new Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" };
+        var front = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" }.ToDto();
+        var back = new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" }.ToDto();
 
         _ = _deviceRepository
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
@@ -72,13 +74,13 @@ public class ChainOfCustody_Combined_Tests : BunitContext
         // The page first loads the unfiltered whole-database report before the filter is applied.
         _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = true });
+            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], true, null));
         _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(front.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = false, ChainVerificationStatus = "hash mismatch" });
+            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, "hash mismatch"));
         _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(back.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = false, ChainVerificationStatus = "hash mismatch" });
+            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, "hash mismatch"));
 
         ScopeOwnershipTestDoubles.Register(
             Services,
@@ -116,15 +118,7 @@ public class ChainOfCustody_Combined_Tests : BunitContext
             .ReturnsAsync([]);
         _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReport
-            {
-                ChainIntegrityVerified = false,
-                ChainVerificationStatus = "Chain integrity check failed",
-                ChainBreak = ChainBreakKind.EntryHashMismatch,
-                ChainEntriesChecked = 4,
-                ChainFailedEntryId = failedId,
-                ChainFailedAtUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
-            });
+            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, "Chain integrity check failed", 4, ChainBreakKindDto.EntryHashMismatch, failedId, new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc)));
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
 
         IRenderedComponent<ChainOfCustody> page = Render<ChainOfCustody>();
@@ -143,7 +137,7 @@ public class ChainOfCustody_Combined_Tests : BunitContext
             .ReturnsAsync([]);
         _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = false, ChainBreak = ChainBreakKind.PreviousHashMismatch });
+            .ReturnsAsync(new ChainOfCustodyReportDto(default, default, default, [], false, null, ChainBreak: ChainBreakKindDto.PreviousHashMismatch));
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
 
         IRenderedComponent<ChainOfCustody> page = Render<ChainOfCustody>();

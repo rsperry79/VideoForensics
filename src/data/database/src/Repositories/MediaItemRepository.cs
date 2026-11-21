@@ -8,57 +8,43 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for MediaItem entities.</summary>
-    public class MediaItemRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<MediaItemRepository> logger) : IMediaItemRepository
+    public class MediaItemRepository(IUnitOfWork unitOfWork, ILogger<MediaItemRepository> logger) : IMediaItemWriteRepository
     {
         /// <summary>Gets a media item by ID.</summary>
         public async Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems.FirstOrDefaultAsync(m => m.Id == mediaItemId, ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ById(context.Db(), mediaItemId).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>Gets media items by device ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems.Where(m => m.DeviceId == deviceId).ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDevice(context.Db(), deviceId).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<string>> GetDistinctVideoResolutionsAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             // Distinct strings only, so the set stays small; the largest is chosen by pixel count in the caller.
-            return await db.MediaItems
+            return await unitOfWork.ReadAsync(context => context.Db().MediaItems
                 .Where(m => m.DeviceId == deviceId
                     && m.Resolution != null
                     && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
                 .Select(m => m.Resolution!)
                 .Distinct()
-                .ToListAsync(ct);
+                .ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
         public async Task<MediaItem?> GetLatestRollupLoopAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "mp4"
-                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot-rollup\""))
-                .OrderByDescending(m => m.RecordedAtUtc)
-                .FirstOrDefaultAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.LatestRollupLoop(context.Db(), deviceId)
+                .FirstOrDefaultAsync(ct), ct);
         }
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .AsNoTracking()
-                .Where(m => m.DeviceId == deviceId)
-                .OrderByDescending(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.RecentByDevice(context.Db(), deviceId, limit).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -73,56 +59,40 @@ namespace VideoForensics.Data.Database.Repositories
             // Materialize the ids once so EF translates a plain IN list rather than re-enumerating the caller's collection.
             Guid[] ids = deviceIds.ToArray();
 
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            IQueryable<MediaItem> matches = db.MediaItems
-                .AsNoTracking()
-                .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
-            if (videoOnly)
+            return await unitOfWork.ReadAsync<MediaItemPage>(async context =>
             {
-                matches = matches.Where(m => m.MediaFormat != null && (m.MediaFormat.Contains("mp4") || m.MediaFormat.Contains("video")));
-            }
+                IQueryable<MediaItem> matches = MediaItemQueries.PageMatches(context.Db(), ids, fromUtc, toUtc, videoOnly);
 
-            int total = await matches.CountAsync(ct);
-            List<MediaItem> items = await matches
-                .OrderBy(m => m.RecordedAtUtc)
-                .ThenBy(m => m.Id)
-                .Skip(skip)
-                .Take(take)
-                .ToListAsync(ct);
+                int total = await matches.CountAsync(ct);
+                List<MediaItem> items = await matches
+                    .OrderBy(m => m.RecordedAtUtc)
+                    .ThenBy(m => m.Id)
+                    .Skip(skip)
+                    .Take(take)
+                    .ToListAsync(ct);
 
-            return new MediaItemPage(items, total);
+                return new MediaItemPage(items, total);
+            }, ct);
         }
 
         /// <summary>Gets media items by device ID within a date range.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc)
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDeviceAndDateRange(context.Db(), deviceId, fromUtc, toUtc)
+                .ToListAsync(ct), ct);
         }
 
         /// <summary>Oldest non-purged media with no video codec recorded. Rows the codec backfill has already tried and failed on are skipped by the caller.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListMissingCodecAsync(int limit, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .Where(m => !m.IsPurged && m.VideoCodec == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.MissingCodec(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>Oldest media that analysis has never run on. Analysis sets BaselineVersion on every result, so null means not yet analysed.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .Where(m => !m.IsPurged && m.BaselineVersion == null)
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.Unanalyzed(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>
@@ -131,14 +101,8 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .Where(m => m.DeviceId == deviceId
-                    && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
-                    && m.MediaFormat == "jpg"
-                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot\""))
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.SnapshotsByDeviceAndDateRange(context.Db(), deviceId, fromUtc, toUtc)
+                .ToListAsync(ct), ct);
         }
 
         /// <summary>
@@ -147,20 +111,29 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .Where(m => m.DeviceId == deviceId && m.VideoBitrateBps != null && m.BitrateEstimated != true
-                    && (m.MetadataJson == null || !m.MetadataJson.Contains("\"type\":\"snapshot-rollup\"")))
-                .OrderBy(m => m.RecordedAtUtc)
-                .Select(m => new MeasuredBitrate(m.RecordedAtUtc, m.VideoBitrateBps!.Value, m.LightingMode, m.RedFlags, m.Id))
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.MeasuredBitrates(context.Db(), deviceId).ToListAsync(ct), ct);
+        }
+
+        /// <summary>
+        /// A device's all-time bit rate baseline over the same rows as <see cref="GetMeasuredBitrateByDeviceAsync"/>, with no
+        /// date window. The count, sum and sum of squares run as one SQL aggregate. The sums are cast to double, since SQLite
+        /// sums of 64-bit integers overflow for squared bitrates. The mean and sample std dev are computed from those three
+        /// values in C#, so only one scalar row is read.
+        /// </summary>
+        public async Task<AllTimeBitrateBaseline> GetBitrateBaselineByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            MediaItemQueries.BitrateTotals? totals = await unitOfWork.ReadAsync(context => MediaItemQueries.BitrateTotalsByDevice(context.Db(), deviceId)
+                .FirstOrDefaultAsync(ct), ct);
+
+            return totals is null
+                ? AllTimeBitrateBaseline.FromTotals(0, 0, 0)
+                : AllTimeBitrateBaseline.FromTotals(totals.Count, totals.Sum, totals.SumOfSquares);
         }
 
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems.FirstOrDefaultAsync(m => m.Sha256Hash == sha256Hash, ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByHash(context.Db(), sha256Hash).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>
@@ -169,33 +142,25 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public async Task<IReadOnlyList<MediaItem>> ListFlaggedSinceAsync(DateTime sinceUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .AsNoTracking()
-                .Where(m => m.RecordedAtUtc >= sinceUtc && m.RedFlags != null && m.RedFlags.Contains("BitrateCollapse"))
-                .OrderBy(m => m.RecordedAtUtc)
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.FlaggedSince(context.Db(), sinceUtc).ToListAsync(ct), ct);
         }
 
         /// <summary>Gets a media item by API source hash for deduplication.</summary>
         public async Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems.FirstOrDefaultAsync(m => m.ApiSourceHash == apiSourceHash, ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByApiSourceHash(context.Db(), apiSourceHash).FirstOrDefaultAsync(ct), ct);
         }
 
         /// <summary>Gets media items by download event ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems.Where(m => m.DownloadEventId == downloadEventId).ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.ByDownloadEventId(context.Db(), downloadEventId).ToListAsync(ct), ct);
         }
 
         /// <summary>Lists all media items.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems.ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.All(context.Db()).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -205,13 +170,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </remarks>
         public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .AsNoTracking()
-                .Where(m => !m.IsPurged
-                    && m.ThumbnailPath == null
-                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.VideosWithoutThumbnail(context.Db()).ToListAsync(ct), ct);
         }
 
         /// <inheritdoc />
@@ -221,30 +180,27 @@ namespace VideoForensics.Data.Database.Repositories
         /// </remarks>
         public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
-            return await db.MediaItems
-                .AsNoTracking()
-                .Where(m => !m.IsPurged
-                    && m.PreviewPath == null
-                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
-                .OrderBy(m => m.RecordedAtUtc)
-                .Take(limit)
-                .ToListAsync(ct);
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.VideosWithoutPreview(context.Db(), limit).ToListAsync(ct), ct);
         }
 
         /// <summary>Adds a new media item.</summary>
         public async Task AddAsync(MediaItem mediaItem, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.MediaItems.Add(mediaItem);
-                _ = await db.SaveChangesAsync(ct);
-                // Guard: the sanitized name is only worth computing when debug logging is on.
-                if (logger.IsEnabled(LogLevel.Debug))
+                _ = await unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    logger.LogDebug("Media item added: {FileName}", SanitizeForLog(mediaItem.FileName));
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.MediaItems.Add(mediaItem);
+                    _ = await db.SaveChangesAsync(ct);
+                    // Guard: the sanitized name is only worth computing when debug logging is on.
+                    if (logger.IsEnabled(LogLevel.Debug))
+                    {
+                        logger.LogDebug("Media item added: {FileName}", SanitizeForLog(mediaItem.FileName));
+                    }
+
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -256,16 +212,21 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Updates an existing media item.</summary>
         public async Task UpdateAsync(MediaItem mediaItem, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             try
             {
-                _ = db.MediaItems.Update(mediaItem);
-                _ = await db.SaveChangesAsync(ct);
-                // Guard: the sanitized name is only worth computing when debug logging is on.
-                if (logger.IsEnabled(LogLevel.Debug))
+                _ = await unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    logger.LogDebug("Media item updated: {FileName}", SanitizeForLog(mediaItem.FileName));
-                }
+                    VideoForensicsDbContext db = context.Db();
+                    _ = db.MediaItems.Update(mediaItem);
+                    _ = await db.SaveChangesAsync(ct);
+                    // Guard: the sanitized name is only worth computing when debug logging is on.
+                    if (logger.IsEnabled(LogLevel.Debug))
+                    {
+                        logger.LogDebug("Media item updated: {FileName}", SanitizeForLog(mediaItem.FileName));
+                    }
+
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {
@@ -277,20 +238,25 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes a media item.</summary>
         public async Task DeleteAsync(Guid mediaItemId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             try
             {
-                MediaItem? mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == mediaItemId, ct);
-                if (mediaItem != null)
+                _ = await unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    _ = db.MediaItems.Remove(mediaItem);
-                    _ = await db.SaveChangesAsync(ct);
-                    // Guard: keeps the debug log call off the hot path when debug logging is off.
-                    if (logger.IsEnabled(LogLevel.Debug))
+                    VideoForensicsDbContext db = context.Db();
+                    MediaItem? mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == mediaItemId, ct);
+                    if (mediaItem != null)
                     {
-                        logger.LogDebug("Media item deleted: {MediaItemId}", mediaItemId);
+                        _ = db.MediaItems.Remove(mediaItem);
+                        _ = await db.SaveChangesAsync(ct);
+                        // Guard: keeps the debug log call off the hot path when debug logging is off.
+                        if (logger.IsEnabled(LogLevel.Debug))
+                        {
+                            logger.LogDebug("Media item deleted: {MediaItemId}", mediaItemId);
+                        }
                     }
-                }
+
+                    return null;
+                }, ct);
             }
             catch (Exception ex)
             {

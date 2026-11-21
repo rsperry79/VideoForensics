@@ -20,8 +20,8 @@
 
     <ItemGroup>
         <PackageReference Include="BlazorLocalTime" Version="2.1.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.14" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.12.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.15" />
         <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.14" />
         <PackageReference Include="System.Reactive" Version="7.0.0" />
         <PackageReference Include="Syncfusion.Blazor.Core" Version="35.1.43" />
@@ -42,7 +42,7 @@
 
     <ItemGroup>
         <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
-        <ProjectReference Include="../../../core/VideoForensics.Client.Core/src/VideoForensics.Client.Core.csproj" />
+        <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
     </ItemGroup>
 
 </Project>

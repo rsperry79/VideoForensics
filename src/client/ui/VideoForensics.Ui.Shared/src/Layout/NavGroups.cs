@@ -1,6 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
 {
@@ -35,12 +34,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     public sealed record NavSection(string? Title, IReadOnlyList<NavItem> Items);
 
     /// <summary>Role/session state needed to evaluate nav and page access.</summary>
-    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false, RestrictedSettings OpenToAdmin = RestrictedSettings.None)
+    public sealed record NavContext(bool IsSignedIn, OperatorRoleDto? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false, RestrictedSettings OpenToAdmin = RestrictedSettings.None)
     {
         /// <summary>Builds the access context for the current circuit's session, using the server-reported tier.</summary>
         public static NavContext FromSession(PairedSessionState session, bool appLockSupported)
         {
-            OperatorRole? role = session.Role is not null && Enum.TryParse<OperatorRole>(session.Role, out OperatorRole parsed)
+            OperatorRoleDto? role = session.Role is not null && Enum.TryParse<OperatorRoleDto>(session.Role, out OperatorRoleDto parsed)
                 ? parsed
                 : null;
 
@@ -54,7 +53,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         }
 
         /// <summary>True when signed in with a role at or above <paramref name="minimum"/>.</summary>
-        public bool HasRole(OperatorRole minimum)
+        public bool HasRole(OperatorRoleDto minimum)
         {
             return IsSignedIn && Role is not null && Role >= minimum;
         }
@@ -69,12 +68,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
-            // The review views are ordinary menu items. The review page follows the ?tab= value, so a click on the same page switches the view.
+            // The review tabs (Timeline, Events, Detail) live in the review page header. Only Live stays in the menu.
             new("media", "Media", "/media",
             [
-                new("Timeline", "/media"),
-                new("Events", "/media?tab=Events"),
-                new("Detail", "/media?tab=Detail"),
                 new("Live", "/live-view")
             ], Visible: ctx => ctx.IsSignedIn),
 
@@ -101,8 +97,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             [
                 new("General", "/settings", Section: "General"),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported, Section: "General"),
-                new("Notifications", "/settings/notifications", Section: "General"),
-                new("Reports", "/settings/reports", Section: "General"),
+                new("My Notifications", "/settings/my-notifications", Section: "General"),
 
                 new("Provider Accounts", "/accounts", Section: "Sources"),
                 new("Manual Sync", "/accounts/manual-sync", Section: "Sources"),
@@ -112,14 +107,14 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("Infrastructure", "/settings/infrastructure", Section: "System & Network"),
                 new("Database", "/settings/database", Section: "System & Network"),
                 new("Services", "/settings/services", Section: "System & Network"),
+                new("Notifications", "/settings/notifications", Section: "System & Network"),
+                new("Reports", "/settings/reports", Section: "System & Network"),
 
                 new("Storage", "/settings/storage", Section: "Storage & Data"),
-                new("Import / Export", "/tools/import-export", Section: "Storage & Data"),
 
                 new("LLM API", "/settings/llm", Section: "Integrations"),
                 new("Email", "/settings/integrations/email", Section: "Integrations"),
 
-                new("Pending Approvals", "/admin/pending-credentials", Section: "Security"),
                 new("Operators", "/settings/operators", Section: "Security"),
                 new("Login Methods", "/settings/auth-methods", Section: "Security"),
                 new("Permissions", "/settings/permissions", Section: "Security"),
@@ -129,6 +124,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
                 new("Server Logs", "/settings/logs", Section: "Diagnostics & Updates"),
                 new("App Update", "/settings/update-check", Section: "Diagnostics & Updates"),
+            ]),
+
+            // Tools holds one-off utilities that are not admin settings, such as backup export and import.
+            new("tools", "Tools", "/tools/import-export",
+            [
+                new("Import / Export", "/tools/import-export"),
             ])
         ];
 

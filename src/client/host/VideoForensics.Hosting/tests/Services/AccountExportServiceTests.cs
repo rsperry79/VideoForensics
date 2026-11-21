@@ -15,12 +15,12 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private const string SecretValue = "SUPER-SECRET-TOKEN-VALUE-42";
 
         private readonly string _root = Path.Combine(Path.GetTempPath(), "vf-export-" + Guid.NewGuid().ToString("N"));
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<ICredentialRepository> _credentials = new();
-        private readonly Mock<ILocationRepository> _locations = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
-        private readonly Mock<IEventRepository> _events = new();
-        private readonly Mock<IMediaItemRepository> _media = new();
+        private readonly Mock<ILocationWriteRepository> _locations = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
+        private readonly Mock<IEventWriteRepository> _events = new();
+        private readonly Mock<IMediaItemWriteRepository> _media = new();
         private readonly Mock<IDownloadEventRepository> _downloads = new();
         private readonly Mock<IProviderSyncRunRepository> _syncRuns = new();
         private readonly ProviderAccount _account;

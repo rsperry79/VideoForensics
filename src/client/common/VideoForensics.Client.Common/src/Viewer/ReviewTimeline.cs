@@ -2,7 +2,11 @@ namespace VideoForensics.Client.Common.Viewer
 {
     /// <summary>A clip on the review timeline: its id, when it starts (UTC), how long it runs, and an optional thumbnail.</summary>
     /// <param name="ThumbnailUrl">Image shown behind the clip's timeline segment. Null or empty draws a plain segment.</param>
-    public sealed record ClipWindow(string Id, DateTime StartUtc, double DurationSeconds, string? ThumbnailUrl = null);
+    /// <param name="IsUnavailable">True for an event with no playable media. It is drawn on the timeline but never played.</param>
+    /// <param name="LaneId">The camera this clip belongs to. The timeline draws one lane per camera. Null draws a single lane.</param>
+    /// <param name="Kind">Colour class: Motion, Timelapse, Missing, Doorbell or Case.</param>
+    /// <param name="EventTypes">Specific event names on this clip, such as person, for the hover tooltip.</param>
+    public sealed record ClipWindow(string Id, DateTime StartUtc, double DurationSeconds, string? ThumbnailUrl = null, bool IsUnavailable = false, string? LaneId = null, string Kind = "Motion", IReadOnlyList<string>? EventTypes = null);
 
     /// <summary>The clip that covers a time, and how far into that clip the time falls.</summary>
     public sealed record ClipSelection(string ClipId, double OffsetSeconds);

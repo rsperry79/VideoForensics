@@ -40,12 +40,16 @@ namespace VideoForensics.Client.WebApp.Api
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1");
 
-            _ = group.MapGet("/devices", async (IDeviceRepository devices, CancellationToken ct) =>
+            _ = group.MapGet("/devices", async (IDeviceWriteRepository devices, CancellationToken ct) =>
                 Results.Ok((await devices.ListAsync(ct)).Select(x => x.ToDto())))
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
             _ = group.MapGet("/media-items", ListMediaItemsAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/media-items/snapshots", ListSnapshotsAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
@@ -161,22 +165,22 @@ namespace VideoForensics.Client.WebApp.Api
         /// 2. Per-item ticket query parameter (for img/video tags)
         ///
         /// Both paths validate the operator's Active/IsApproved status before serving.
-        /// Records access in the audit log unless the request includes a Range header not starting at byte 0.
+        /// Records access in the audit log for every request, including range requests.
         /// Returns 500 if the audit write fails (evidence access must be logged).
         /// </summary>
         public static async Task<IResult> GetContentAsync(
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
-            IOperatorRepository operators,
+            IMediaItemWriteRepository mediaItems,
+            IOperatorWriteRepository operators,
             IMediaStorageProvider storage,
             IAccessAuditLogRepository auditLog,
             INetworkTierResolver tierResolver,
             ILogger<Program> logger,
             INotificationDispatcher dispatcher,
-            INoticeRepository notices,
-            IDeviceRepository devices,
+            INoticeWriteRepository notices,
+            IDeviceWriteRepository devices,
             IEvidenceValidationJobs validationJobs,
             HttpContext context,
             CancellationToken ct)
@@ -203,36 +207,24 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.NotFound();
             }
 
-            // Determine if we should audit this request
-            // Skip auditing range requests unless they start at byte 0
-            bool shouldAudit = true;
-            if (context.Request.Headers.TryGetValue("Range", out StringValues rangeValue))
+            // Every content request is audited, including range requests: a client that skipped the
+            // audit for non-zero ranges could read a whole clip in ranges with no audit trail.
+            // The write uses no request token: a client that aborts the request (seek, stop, next
+            // range) would otherwise cancel its own audit row and fail the clip with a 500.
+            try
             {
-                string? rangeHeader = rangeValue.FirstOrDefault();
-                if (!string.IsNullOrEmpty(rangeHeader) && !rangeHeader.StartsWith("bytes=0-", StringComparison.OrdinalIgnoreCase))
-                {
-                    shouldAudit = false;
-                }
+                _ = await auditLog.RecordAccessAsync(
+                    id,
+                    operatorId.Value.ToString(),
+                    "View",
+                    tierResolver.ResolveClientIp(context),
+                    "In-app media view",
+                    CancellationToken.None);
             }
-
-            // Record access in audit log if required
-            if (shouldAudit)
+            catch (Exception ex)
             {
-                try
-                {
-                    _ = await auditLog.RecordAccessAsync(
-                        id,
-                        operatorId.Value.ToString(),
-                        "View",
-                        tierResolver.ResolveClientIp(context),
-                        "In-app media view",
-                        ct);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError("Failed to record access audit for media item {MediaItemId} by operator {OperatorId}: {Message} ({ErrorType})", id, operatorId, ex.Message, ex.GetType().Name);
-                    return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
-                }
+                logger.LogError("Failed to record access audit for media item {MediaItemId} by operator {OperatorId}: {Message} ({ErrorType})", id, operatorId, ex.Message, ex.GetType().Name);
+                return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
             }
 
             // Stream the content
@@ -256,8 +248,8 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task RaiseMissingClipAlertAsync(
             MediaItem item,
             INotificationDispatcher dispatcher,
-            INoticeRepository notices,
-            IDeviceRepository devices,
+            INoticeWriteRepository notices,
+            IDeviceWriteRepository devices,
             IEvidenceValidationJobs validationJobs,
             ILogger<Program> logger,
             CancellationToken ct)
@@ -325,8 +317,8 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
-            IOperatorRepository operators,
+            IMediaItemWriteRepository mediaItems,
+            IOperatorWriteRepository operators,
             IMediaStorageProvider storage,
             ILogger<Program> logger,
             HttpContext context,
@@ -364,8 +356,8 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IMediaItemRepository mediaItems,
-            IOperatorRepository operators,
+            IMediaItemWriteRepository mediaItems,
+            IOperatorWriteRepository operators,
             IMediaStorageProvider storage,
             IMediaThumbnailService thumbnails,
             HttpContext context,
@@ -413,7 +405,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             string? ticket,
             IMediaAccessTicketService ticketService,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             HttpContext context,
             CancellationToken ct)
         {
@@ -456,6 +448,25 @@ namespace VideoForensics.Client.WebApp.Api
         }
 
         /// <summary>
+        /// Lists a device's snapshot JPEGs in a date range, oldest first. The filter runs in SQL, so clients get only snapshots.
+        /// </summary>
+        public static async Task<IResult> ListSnapshotsAsync(
+            Guid deviceId,
+            DateTime from,
+            DateTime to,
+            IMediaItemWriteRepository mediaItems,
+            CancellationToken ct)
+        {
+            if (from > to)
+            {
+                return Results.BadRequest();
+            }
+
+            IReadOnlyList<MediaItem> snapshots = await mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, from, to, ct);
+            return Results.Ok(snapshots.Select(x => x.ToDto()));
+        }
+
+        /// <summary>
         /// Lists media items, optionally filtered by device ID and date range.
         /// Semantics:
         /// - deviceId + from + to → GetByDeviceAndDateRangeAsync
@@ -468,7 +479,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid? deviceId,
             DateTime? from,
             DateTime? to,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             // Validate: from/to require deviceId
@@ -514,7 +525,7 @@ namespace VideoForensics.Client.WebApp.Api
             int? skip,
             int? take,
             bool? videoOnly,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             const int MaxDevices = 64;
@@ -550,7 +561,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         public static async Task<IResult> GetMediaItemAsync(
             Guid id,
-            IMediaItemRepository mediaItems,
+            IMediaItemWriteRepository mediaItems,
             CancellationToken ct)
         {
             MediaItem? item = await mediaItems.GetAsync(id, ct);
@@ -568,7 +579,7 @@ namespace VideoForensics.Client.WebApp.Api
             Guid id,
             DateTime? from,
             DateTime? to,
-            IDeviceHealthRepository deviceHealth,
+            IDeviceHealthWriteRepository deviceHealth,
             CancellationToken ct)
         {
             if (!from.HasValue || !to.HasValue)

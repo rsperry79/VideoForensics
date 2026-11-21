@@ -117,14 +117,13 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         {
             // Arrange
             string outputDir = Path.Combine(_tempDirectory, "export-zip");
-            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            byte[] zipContent = CreateBackupZip();
             string fileName = "backup-20240101-120000.zip";
 
             var handler = new FakeHttpMessageHandler(request =>
             {
                 Assert.Equal(HttpMethod.Post, request.Method);
                 Assert.Equal("/api/v1/backup/export", request.RequestUri?.AbsolutePath);
-                Assert.NotNull(request.Content);
 
                 var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
@@ -156,11 +155,45 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
+        public async Task ExportBackupAsync_WithZipResponse_ReportsCountsFromManifest()
+        {
+            // Arrange
+            string outputDir = Path.Combine(_tempDirectory, "export-zip-counts");
+            byte[] zipContent = CreateBackupZip(
+                """{"ExportedAtUtc":"2026-01-01T00:00:00Z","AppVersion":"1.0.0","DownloadLocationRoot":"","Counts":{"ProviderAccounts":2,"Locations":3,"Devices":4,"Events":5,"DownloadEvents":6,"MediaItems":7}}""");
+
+            var handler = new FakeHttpMessageHandler(request =>
+            {
+                var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(zipContent)
+                };
+                response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
+                return response;
+            });
+
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
+            var service = new RemoteBackupExportService(httpClient);
+
+            // Act
+            BackupExportResult result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
+
+            // Assert
+            Assert.True(result.Success);
+            Assert.Equal(2, result.ProviderAccountCount);
+            Assert.Equal(3, result.LocationCount);
+            Assert.Equal(4, result.DeviceCount);
+            Assert.Equal(5, result.EventCount);
+            Assert.Equal(6, result.DownloadEventCount);
+            Assert.Equal(7, result.MediaItemCount);
+        }
+
+        [Fact]
         public async Task ExportBackupAsync_WithZipResponseAndNoFileName_UsesDefaultFileName()
         {
             // Arrange
             string outputDir = Path.Combine(_tempDirectory, "export-zip-default");
-            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            byte[] zipContent = CreateBackupZip();
 
             var handler = new FakeHttpMessageHandler(request =>
             {
@@ -248,7 +281,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             string outputDir = Path.Combine(_tempDirectory, "deeply", "nested", "path");
             Assert.False(Directory.Exists(outputDir));
 
-            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            byte[] zipContent = CreateBackupZip();
 
             var handler = new FakeHttpMessageHandler(request =>
             {
@@ -325,17 +358,15 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
-        public async Task ExportBackupAsync_SendsCorrectJsonRequest()
+        public async Task ExportBackupAsync_PostsWithoutBody()
         {
             // Arrange
             string outputDir = Path.Combine(_tempDirectory, "export-request-check");
-            ExportBackupRequest? capturedRequest = null;
+            HttpRequestMessage? capturedRequest = null;
 
-            var handler = new FakeHttpMessageHandler(async request =>
+            var handler = new FakeHttpMessageHandler(request =>
             {
-                Assert.NotNull(request.Content);
-                string content = await request.Content!.ReadAsStringAsync();
-                capturedRequest = JsonSerializer.Deserialize<ExportBackupRequest>(content);
+                capturedRequest = request;
 
                 var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
@@ -356,7 +387,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                         "application/json")
                 };
 
-                return response;
+                return Task.FromResult(response);
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
@@ -367,7 +398,10 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
 
             // Assert
             Assert.NotNull(capturedRequest);
-            Assert.Equal(outputDir, capturedRequest!.OutputDirectory);
+            Assert.Equal(HttpMethod.Post, capturedRequest!.Method);
+            Assert.Equal("/api/v1/backup/export", capturedRequest.RequestUri!.AbsolutePath);
+            // The server picks the destination from its saved Backup folder, so no client path is sent.
+            Assert.Null(capturedRequest.Content);
         }
 
         [Fact]
@@ -375,7 +409,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         {
             // Arrange
             string outputDir = Path.Combine(_tempDirectory, "export-path-traversal");
-            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            byte[] zipContent = CreateBackupZip();
             string maliciousFileName = "../../../../etc/passwd.zip"; // Path traversal attempt
 
             var handler = new FakeHttpMessageHandler(request =>
@@ -402,6 +436,21 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Contains("escapes the intended output directory", ex.Message);
         }
 
+        /// <summary>Builds a zip archive holding a manifest.json entry, the shape the server's export archive uses.</summary>
+        /// <param name="manifestJson">The manifest.json content, including its Counts object.</param>
+        private static byte[] CreateBackupZip(string manifestJson = """{"Counts":{"ProviderAccounts":0,"Locations":0,"Devices":0,"Events":0,"DownloadEvents":0,"MediaItems":0}}""")
+        {
+            using var buffer = new MemoryStream();
+            using (var archive = new System.IO.Compression.ZipArchive(buffer, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+            {
+                System.IO.Compression.ZipArchiveEntry entry = archive.CreateEntry("manifest.json");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write(manifestJson);
+            }
+
+            return buffer.ToArray();
+        }
+
         /// <summary>
         /// Fake HTTP message handler that executes a delegate to generate responses for testing.
         /// </summary>
@@ -426,7 +475,4 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             }
         }
     }
-
-    /// <summary>This type is mirrored from RemoteBackupExportService for testing purposes.</summary>
-    internal record ExportBackupRequest(string OutputDirectory);
 }

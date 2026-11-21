@@ -84,7 +84,7 @@ public class ReviewPersistence_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_CaseEntered_WritesTheCaseToTheAddressBar()
+    public async Task ReviewPage_CaseEntered_WritesTheCaseToTheAddressBar()
     {
         // Arrange
         AddDevices(1);
@@ -93,7 +93,7 @@ public class ReviewPersistence_Tests : ReviewTestContext
         _ = Render<ReviewPage>();
 
         // Act
-        _ = CaseMode.EnterAsync(caseId, CancellationToken.None).GetAwaiter().GetResult();
+        _ = await CaseMode.EnterAsync(caseId, CancellationToken.None);
 
         // Assert
         Assert.Contains("reviewcase=" + caseId.ToString("D"), CurrentUri);

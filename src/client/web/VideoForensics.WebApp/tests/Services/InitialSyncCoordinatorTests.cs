@@ -14,7 +14,7 @@ public class InitialSyncCoordinatorTests
 {
     private readonly Guid _accountId = Guid.NewGuid();
     private readonly Mock<IAccountSyncRunner> _runner = new();
-    private readonly Mock<IProviderAccountRepository> _accounts = new();
+    private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
     private readonly Mock<IAccountDeviceRepository> _accountDevices = new();
     private readonly Mock<IEvidenceValidationService> _validation = new();
     private readonly ProviderAccount _account;
@@ -101,7 +101,7 @@ public class InitialSyncCoordinatorTests
         var validation = new BulkValidationService(
             Microsoft.Extensions.Logging.Abstractions.NullLogger<BulkValidationService>.Instance,
             _validation.Object,
-            new Mock<IDeviceRepository>().Object);
+            new Mock<IDeviceWriteRepository>().Object);
 
         return new InitialSyncCoordinator(
             _runner.Object,
@@ -109,7 +109,7 @@ public class InitialSyncCoordinatorTests
             _accountDevices.Object,
             validation,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<InitialSyncCoordinator>.Instance,
-            new SyncActivityLog());
+            new SyncActivityLog(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance));
     }
 
     private static Device CreateDevice(string providerDeviceId)

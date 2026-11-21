@@ -22,13 +22,13 @@ public class BitrateAnalysisServiceTests
 
     private static BitrateAnalysisService Create(Device[] devices, Dictionary<Guid, MeasuredBitrate[]> history, MediaFlag[]? flags = null)
     {
-        var deviceRepo = new Mock<IDeviceRepository>();
+        var deviceRepo = new Mock<IDeviceWriteRepository>();
         _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(devices);
-        var media = new Mock<IMediaItemRepository>();
+        var media = new Mock<IMediaItemWriteRepository>();
         _ = media
             .Setup(r => r.GetMeasuredBitrateByDeviceAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => history.TryGetValue(id, out MeasuredBitrate[]? rows) ? rows : []);
-        var flagRepo = new Mock<IMediaFlagRepository>();
+        var flagRepo = new Mock<IMediaFlagWriteRepository>();
         _ = flagRepo
             .Setup(r => r.ListPageAsync(It.IsAny<MediaFlagFilter>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MediaFlagPage(flags ?? [], flags?.Length ?? 0));
@@ -142,5 +142,26 @@ public class BitrateAnalysisServiceTests
         BitrateAnalysis result = await service.AnalyzeAsync([id], From, To, CancellationToken.None);
 
         Assert.Contains("1234", result.Devices[0].Name);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_ReadingOutsideRange_IsLeftOutOfCellsButKeepsAllTimeHourProfile()
+    {
+        var id = Guid.NewGuid();
+        // Sunday 14:00 is before the window, so the 14:00 Sunday cell is empty. Monday 09:00 is inside the window.
+        MeasuredBitrate[] rows =
+        [
+            Row(From.AddDays(-1).AddHours(14), 2_000_000),
+            Row(From.AddHours(9), 1_000_000, "Day"),
+        ];
+        BitrateAnalysisService service = Create([Camera(id)], new() { [id] = rows });
+
+        BitrateAnalysis result = await service.AnalyzeAsync([id], From, To, CancellationToken.None);
+
+        SignalCalendar calendar = Assert.Single(result.Devices).Calendar;
+        Assert.Equal(0, calendar.Cell(6, 14).Count);
+        Assert.Equal(1, calendar.HourOfDay(14).Count);
+        Assert.Equal(1, calendar.Cell(0, 9).Count);
+        Assert.Equal(1, calendar.HourOfDay(9).Count);
     }
 }

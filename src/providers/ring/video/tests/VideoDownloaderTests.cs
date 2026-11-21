@@ -74,6 +74,34 @@ namespace VideoForensics.Providers.Ring.Video.Tests
         }
 
         [Fact]
+        public async Task DownloadToFileAsync_BodyShorterThanContentLength_ThrowsAndLeavesNoFile()
+        {
+            // A dropped connection must not leave a truncated clip where evidence is expected.
+            string dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(dir);
+            string target = Path.Combine(dir, "clip.mp4");
+            try
+            {
+                var handler = new FakeHttpMessageHandler(_ =>
+                {
+                    var content = new StreamContent(new MemoryStream(new byte[10]));
+                    content.Headers.ContentLength = 100;
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+                });
+                VideoDownloader downloader = CreateDownloader(handler);
+
+                _ = await Assert.ThrowsAsync<IOException>(() => downloader.DownloadToFileAsync("https://example.com/clip.mp4", target));
+
+                Assert.False(File.Exists(target));
+                Assert.Empty(Directory.GetFiles(dir));
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
         public async Task OpenStreamAsync_InvalidUrl_ThrowsArgumentException()
         {
             var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));

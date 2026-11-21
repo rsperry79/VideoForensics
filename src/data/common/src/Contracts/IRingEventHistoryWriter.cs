@@ -22,6 +22,12 @@ namespace VideoForensics.Data.Common.Contracts
         Task ReplaceLocationHistoryPageAsync(RingLocationHistoryPage page, CancellationToken ct);
 
         /// <summary>Replaces an evm location history entry, keyed by <see cref="RingLocationHistoryEvent.ProviderEventId"/>.</summary>
+        /// <summary>
+        /// Runs the writes in <paramref name="writes"/> inside one transaction. Single-event writes made inside it join that transaction,
+        /// so a page of events commits once instead of once per event.
+        /// </summary>
+        Task RunInBatchAsync(Func<Task> writes, CancellationToken ct);
+
         Task ReplaceLocationHistoryEventAsync(RingLocationHistoryEvent evt, RingEventDetails details, CancellationToken ct);
 
         /// <summary>Replaces a doorbot history event, keyed by <see cref="RingDoorbotHistoryEvent.ProviderEventId"/>.</summary>

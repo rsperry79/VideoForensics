@@ -30,7 +30,7 @@ namespace VideoForensics.Client.WebApp.Tests.Hubs
             (LiveViewTelemetryBroadcastService service, Mock<IHubClients> clients, _) = Build();
             var session = new LiveViewSession { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid() };
 
-            await service.PublishSessionChangedAsync(session, CancellationToken.None);
+            await service.PublishSessionChangedAsync(session.ToDto(), CancellationToken.None);
 
             clients.Verify(c => c.Group(LiveHubMethods.LiveViewGroup(session.Id)), Times.Once);
             clients.Verify(c => c.All, Times.Never);
@@ -46,7 +46,7 @@ namespace VideoForensics.Client.WebApp.Tests.Hubs
                 .Callback<string, object?[], CancellationToken>((_, args, _) => sent = args[0] as LiveViewSessionDto)
                 .Returns(Task.CompletedTask);
 
-            await service.PublishSessionChangedAsync(session, CancellationToken.None);
+            await service.PublishSessionChangedAsync(session.ToDto(), CancellationToken.None);
 
             Assert.NotNull(sent);
             Assert.Equal(session.ToDto(), sent);
@@ -59,7 +59,7 @@ namespace VideoForensics.Client.WebApp.Tests.Hubs
             (LiveViewTelemetryBroadcastService service, Mock<IHubClients> clients, _) = Build();
             var sample = new LiveViewTelemetrySample { Id = Guid.NewGuid(), SessionId = Guid.NewGuid(), CapturedAtUtc = DateTime.UtcNow };
 
-            await service.PublishSampleAsync(sample, CancellationToken.None);
+            await service.PublishSampleAsync(sample.ToDto(), CancellationToken.None);
 
             clients.Verify(c => c.Group(LiveHubMethods.LiveViewGroup(sample.SessionId)), Times.Once);
             clients.Verify(c => c.All, Times.Never);
@@ -80,7 +80,7 @@ namespace VideoForensics.Client.WebApp.Tests.Hubs
                 })
                 .Returns(Task.CompletedTask);
 
-            await service.PublishSampleAsync(sample, CancellationToken.None);
+            await service.PublishSampleAsync(sample.ToDto(), CancellationToken.None);
 
             Assert.Equal(LiveHubMethods.LiveViewTelemetry, sentMethod);
             LiveViewTelemetrySampleDto dto = Assert.IsType<LiveViewTelemetrySampleDto>(sentPayload);

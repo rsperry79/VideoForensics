@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Media review (`/media`): the tabs, time range, camera selector and pending tags moved from the page header to the right sidebar, the left navigation collapses on the page, and the vertical timeline fills its column, follows playback, shows the time under the pointer and seeks when a drag ends. The Filters button is gone. `?tab=` links still work.
+
+### Removed
+
+- Unused Evidence view code (the device time grid, snapshot strip, RSSI plot, evidence loader and view model, time-lapse coverage helper) and the unlinked `/media/dates-filter` page, with their tests.
+
 ### Added
 
 - GitHub Actions CI pipeline running build and test on every pull request and push to `main`, `dev`, and `wip` branches.

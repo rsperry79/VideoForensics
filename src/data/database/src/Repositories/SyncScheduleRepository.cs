@@ -8,25 +8,27 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for SyncSchedule entities.</summary>
-    public class SyncScheduleRepository : ISyncScheduleRepository
+    public class SyncScheduleRepository : ISyncScheduleWriteRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<SyncScheduleRepository> _logger;
 
         /// <summary>Initializes a new instance of the SyncScheduleRepository.</summary>
-        public SyncScheduleRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<SyncScheduleRepository> logger)
+        public SyncScheduleRepository(IUnitOfWork unitOfWork, ILogger<SyncScheduleRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         /// <summary>Gets a sync schedule by provider account ID (includes JammingWindows).</summary>
         public async Task<SyncSchedule?> GetByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.SyncSchedules
-                .Include(ss => ss.JammingWindows)
-                .FirstOrDefaultAsync(ss => ss.ProviderAccountId == providerAccountId, ct);
+            return await _unitOfWork.ReadAsync<SyncSchedule?>(async context =>
+            {
+                return await context.Db().SyncSchedules
+                    .Include(ss => ss.JammingWindows)
+                    .FirstOrDefaultAsync(ss => ss.ProviderAccountId == providerAccountId, ct);
+            }, ct);
         }
 
         /// <summary>Adds or updates a sync schedule. Validates that intervals meet minimum thresholds and jamming windows are well-formed.</summary>
@@ -40,17 +42,10 @@ namespace VideoForensics.Data.Database.Repositories
                     nameof(schedule));
             }
 
-            if (schedule.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
+            if (schedule.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumSnapshotIntervalMinutes)
             {
                 throw new ArgumentException(
-                    $"SnapshotRssiIntervalSeconds ({schedule.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
-                    nameof(schedule));
-            }
-
-            if (schedule.SnapshotRollupIntervalMinutes < SyncSchedule.MinimumSnapshotRollupIntervalMinutes)
-            {
-                throw new ArgumentException(
-                    $"SnapshotRollupIntervalMinutes ({schedule.SnapshotRollupIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotRollupIntervalMinutes}",
+                    $"SnapshotRssiIntervalMinutes ({schedule.SnapshotRssiIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotIntervalMinutes}",
                     nameof(schedule));
             }
 
@@ -87,152 +82,153 @@ namespace VideoForensics.Data.Database.Repositories
                             nameof(schedule));
                     }
 
-                    if (window.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
+                    if (window.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumSnapshotIntervalMinutes)
                     {
                         throw new ArgumentException(
-                            $"Window SnapshotRssiIntervalSeconds ({window.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                            $"Window SnapshotRssiIntervalMinutes ({window.SnapshotRssiIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotIntervalMinutes}",
                             nameof(schedule));
                     }
                 }
             }
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            try
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                SyncSchedule? existing = await db.SyncSchedules
-                    .Include(ss => ss.JammingWindows)
-                    .FirstOrDefaultAsync(ss => ss.ProviderAccountId == schedule.ProviderAccountId, ct);
-
-                if (existing != null)
+                VideoForensicsDbContext db = context.Db();
+                try
                 {
-                    existing.EventPollIntervalMinutes = schedule.EventPollIntervalMinutes;
-                    existing.SnapshotRssiIntervalSeconds = schedule.SnapshotRssiIntervalSeconds;
-                    existing.SnapshotRollupIntervalMinutes = schedule.SnapshotRollupIntervalMinutes;
-                    existing.IsEnabled = schedule.IsEnabled;
-                    existing.UseAdvancedJammingSchedule = schedule.UseAdvancedJammingSchedule;
-                    existing.EventNextRunUtc = schedule.EventNextRunUtc;
-                    existing.EventLastRunUtc = schedule.EventLastRunUtc;
-                    existing.SnapshotNextRunUtc = schedule.SnapshotNextRunUtc;
-                    existing.SnapshotLastRunUtc = schedule.SnapshotLastRunUtc;
+                    SyncSchedule? existing = await db.SyncSchedules
+                        .Include(ss => ss.JammingWindows)
+                        .FirstOrDefaultAsync(ss => ss.ProviderAccountId == schedule.ProviderAccountId, ct);
 
-                    // Update jamming windows: remove all old ones and add new ones
-                    existing.JammingWindows.Clear();
-                    if (schedule.JammingWindows != null)
+                    if (existing != null)
                     {
-                        foreach (JammingScheduleWindow window in schedule.JammingWindows)
+                        existing.EventPollIntervalMinutes = schedule.EventPollIntervalMinutes;
+                        existing.SnapshotRssiIntervalMinutes = schedule.SnapshotRssiIntervalMinutes;
+                        existing.IsEnabled = schedule.IsEnabled;
+                        existing.UseAdvancedJammingSchedule = schedule.UseAdvancedJammingSchedule;
+                        existing.EventNextRunUtc = schedule.EventNextRunUtc;
+                        existing.EventLastRunUtc = schedule.EventLastRunUtc;
+
+                        // Update jamming windows: remove all old ones and add new ones
+                        existing.JammingWindows.Clear();
+                        if (schedule.JammingWindows != null)
                         {
-                            existing.JammingWindows.Add(window);
+                            foreach (JammingScheduleWindow window in schedule.JammingWindows)
+                            {
+                                existing.JammingWindows.Add(window);
+                            }
                         }
+
+                        _ = db.SyncSchedules.Update(existing);
+                    }
+                    else
+                    {
+                        _ = db.SyncSchedules.Add(schedule);
                     }
 
-                    _ = db.SyncSchedules.Update(existing);
+                    _ = await db.SaveChangesAsync(ct);
+                    ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
+                    _logger.LogDebug("Sync schedule upserted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
+                    return null;
                 }
-                else
+                catch (Exception ex)
                 {
-                    _ = db.SyncSchedules.Add(schedule);
+                    ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
+                    _logger.LogError("Error upserting sync schedule for provider account: {ProviderName}: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
+                    throw;
                 }
-
-                _ = await db.SaveChangesAsync(ct);
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
-                _logger.LogDebug("Sync schedule upserted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
-            }
-            catch (Exception ex)
-            {
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
-                _logger.LogError("Error upserting sync schedule for provider account: {ProviderName}: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
-                throw;
-            }
+            }, ct);
         }
 
         /// <summary>Deletes a sync schedule by provider account ID.</summary>
         public async Task DeleteAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            try
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                SyncSchedule? schedule = await db.SyncSchedules.FirstOrDefaultAsync(ss => ss.ProviderAccountId == providerAccountId, ct);
-                if (schedule != null)
+                VideoForensicsDbContext db = context.Db();
+                try
                 {
-                    _ = db.SyncSchedules.Remove(schedule);
-                    _ = await db.SaveChangesAsync(ct);
-                    ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                    _logger.LogDebug("Sync schedule deleted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
+                    SyncSchedule? schedule = await db.SyncSchedules.FirstOrDefaultAsync(ss => ss.ProviderAccountId == providerAccountId, ct);
+                    if (schedule != null)
+                    {
+                        _ = db.SyncSchedules.Remove(schedule);
+                        _ = await db.SaveChangesAsync(ct);
+                        ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                        _logger.LogDebug("Sync schedule deleted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
+                    }
+
+                    return null;
                 }
-            }
-            catch (Exception ex)
-            {
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogError("Error deleting sync schedule for provider account: {ProviderName}: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
-                throw;
-            }
+                catch (Exception ex)
+                {
+                    ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                    _logger.LogError("Error deleting sync schedule for provider account: {ProviderName}: {Message} ({ErrorType})", account?.ProviderName ?? "unknown", ex.Message, ex.GetType().Name);
+                    throw;
+                }
+            }, ct);
         }
 
         /// <summary>Lists every enabled sync schedule with its JammingWindows, ordered by ProviderAccountId.</summary>
         public async Task<IReadOnlyList<SyncSchedule>> ListEnabledAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.SyncSchedules
-                .AsNoTracking()
-                .Include(ss => ss.JammingWindows)
-                .Where(ss => ss.IsEnabled)
-                .OrderBy(ss => ss.ProviderAccountId)
-                .ToListAsync(ct);
+            return await _unitOfWork.ReadAsync<IReadOnlyList<SyncSchedule>>(async context =>
+            {
+                return await context.Db().SyncSchedules
+                    .AsNoTracking()
+                    .Include(ss => ss.JammingWindows)
+                    .Where(ss => ss.IsEnabled)
+                    .OrderBy(ss => ss.ProviderAccountId)
+                    .ToListAsync(ct);
+            }, ct);
         }
 
         /// <summary>Updates only EventLastRunUtc/EventNextRunUtc; a vanished row is a no-op.</summary>
         public async Task RecordEventRunAsync(Guid providerAccountId, DateTime ranAtUtc, DateTime nextRunUtc, CancellationToken ct)
         {
             // Set-based update (no entity load) so a concurrent edit of intervals/IsEnabled is never overwritten.
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = await db.SyncSchedules
-                .Where(ss => ss.ProviderAccountId == providerAccountId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(ss => ss.EventLastRunUtc, ranAtUtc)
-                    .SetProperty(ss => ss.EventNextRunUtc, nextRunUtc), ct);
-        }
-
-        /// <summary>Updates only SnapshotLastRunUtc/SnapshotNextRunUtc; a vanished row is a no-op.</summary>
-        public async Task RecordSnapshotRunAsync(Guid providerAccountId, DateTime ranAtUtc, DateTime nextRunUtc, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = await db.SyncSchedules
-                .Where(ss => ss.ProviderAccountId == providerAccountId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(ss => ss.SnapshotLastRunUtc, ranAtUtc)
-                    .SetProperty(ss => ss.SnapshotNextRunUtc, nextRunUtc), ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                _ = await db.SyncSchedules
+                    .Where(ss => ss.ProviderAccountId == providerAccountId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(ss => ss.EventLastRunUtc, ranAtUtc)
+                        .SetProperty(ss => ss.EventNextRunUtc, nextRunUtc), ct);
+                return null;
+            }, ct);
         }
 
         /// <summary>Updates only BackfillCursorUtc; a vanished row is a no-op.</summary>
         public async Task RecordBackfillCursorAsync(Guid providerAccountId, DateTime? cursorUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = await db.SyncSchedules
-                .Where(ss => ss.ProviderAccountId == providerAccountId)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(ss => ss.BackfillCursorUtc, cursorUtc), ct);
-        }
-
-        /// <summary>Updates only LastRollupUtc; a vanished row is a no-op. Never touches the form-edited interval.</summary>
-        public async Task RecordRollupAsync(Guid providerAccountId, DateTime rolledUpAtUtc, CancellationToken ct)
-        {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = await db.SyncSchedules
-                .Where(ss => ss.ProviderAccountId == providerAccountId)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(ss => ss.LastRollupUtc, rolledUpAtUtc), ct);
-        }
-
-        /// <summary>Updates only SnapshotIntervalSeconds; a vanished row is a no-op.</summary>
-        public async Task SetSnapshotIntervalSecondsAsync(Guid providerAccountId, int seconds, CancellationToken ct)
-        {
-            if (seconds < 1)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                throw new ArgumentOutOfRangeException(nameof(seconds), seconds, "SnapshotIntervalSeconds must be at least 1.");
+                VideoForensicsDbContext db = context.Db();
+                _ = await db.SyncSchedules
+                    .Where(ss => ss.ProviderAccountId == providerAccountId)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(ss => ss.BackfillCursorUtc, cursorUtc), ct);
+                return null;
+            }, ct);
+        }
+
+
+        /// <summary>Updates only SnapshotIntervalMinutes; a vanished row is a no-op.</summary>
+        public async Task SetSnapshotIntervalMinutesAsync(Guid providerAccountId, int minutes, CancellationToken ct)
+        {
+            if (minutes < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minutes), minutes, "SnapshotIntervalMinutes must be at least 1.");
             }
 
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = await db.SyncSchedules
-                .Where(ss => ss.ProviderAccountId == providerAccountId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(ss => ss.SnapshotIntervalSeconds, seconds), ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                _ = await db.SyncSchedules
+                    .Where(ss => ss.ProviderAccountId == providerAccountId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(ss => ss.SnapshotIntervalMinutes, minutes), ct);
+                return null;
+            }, ct);
         }
     }
 }

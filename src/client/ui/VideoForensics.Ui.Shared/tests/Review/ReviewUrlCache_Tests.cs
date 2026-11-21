@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Client.Ui.Shared.Services.Review;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Utils.Testing;
 
@@ -17,9 +17,9 @@ public class ReviewUrlCache_Tests
         return new(_provider, _time);
     }
 
-    private static MediaItem Item(bool withPreview)
+    private static MediaItemDto Item(bool withPreview)
     {
-        return new()
+        return new MediaItem
         {
             Id = Guid.NewGuid(),
             DeviceId = Guid.NewGuid(),
@@ -28,7 +28,7 @@ public class ReviewUrlCache_Tests
             MediaFormat = "mp4",
             Sha256Hash = "hash",
             PreviewPath = withPreview ? "preview.mp4" : null,
-        };
+        }.ToDto();
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class ReviewUrlCache_Tests
     {
         // Arrange
         ReviewUrlCache cache = CreateCache();
-        MediaItem item = Item(false);
+        MediaItemDto item = Item(false);
         await cache.EnsureAsync([item], CancellationToken.None);
 
         // Act
@@ -77,7 +77,7 @@ public class ReviewUrlCache_Tests
     {
         // Arrange
         ReviewUrlCache cache = CreateCache();
-        MediaItem item = Item(false);
+        MediaItemDto item = Item(false);
         await cache.EnsureAsync([item], CancellationToken.None);
         string firstUrl = cache.ContentUrl(item.Id)!;
 
@@ -99,8 +99,8 @@ public class ReviewUrlCache_Tests
     {
         // Arrange
         ReviewUrlCache cache = CreateCache();
-        MediaItem withPreview = Item(true);
-        MediaItem withoutPreview = Item(false);
+        MediaItemDto withPreview = Item(true);
+        MediaItemDto withoutPreview = Item(false);
 
         // Act
         await cache.EnsureAsync([withPreview, withoutPreview], CancellationToken.None);
@@ -119,7 +119,7 @@ public class ReviewUrlCache_Tests
     {
         // Arrange
         ReviewUrlCache cache = CreateCache();
-        MediaItem item = Item(false);
+        MediaItemDto item = Item(false);
         _ = _provider.Omitted.Add(item.Id);
 
         // Act

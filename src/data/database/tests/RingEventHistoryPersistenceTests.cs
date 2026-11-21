@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -25,7 +26,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _writer = new RingEventHistoryWriter(_fixture.Factory);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _writer = new RingEventHistoryWriter(unitOfWork);
         }
 
         public async ValueTask DisposeAsync()
@@ -497,6 +500,49 @@ namespace VideoForensics.Data.Database.Tests
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
             Assert.Equal(eventRow.Id, (await db.RingDoorbotHistoryEvents.SingleAsync()).LinkedEventId);
         }
+        [Fact]
+        public async Task RingEventHistoryWriter_RunInBatch_CommitsEveryWriteTogether()
+        {
+            Device device = TestDataBuilder.BuildDevice(providerDeviceId: "12345");
+            await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
+            {
+                _ = seed.Devices.Add(device);
+                _ = await seed.SaveChangesAsync();
+            }
+
+            var first = new RingDoorbotHistoryEvent { Id = Guid.NewGuid(), ProviderEventId = "1111111111111111111", Duration = 1 };
+            var second = new RingDoorbotHistoryEvent { Id = Guid.NewGuid(), ProviderEventId = "2222222222222222222", Duration = 2 };
+            await _writer.RunInBatchAsync(async () =>
+            {
+                await _writer.ReplaceDoorbotHistoryEventAsync(first, BuildDoorbotHistoryDetails(first.Id, 12345), CancellationToken.None);
+                await _writer.ReplaceDoorbotHistoryEventAsync(second, BuildDoorbotHistoryDetails(second.Id, 12345), CancellationToken.None);
+            }, CancellationToken.None);
+
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Assert.Equal(2, await db.RingDoorbotHistoryEvents.CountAsync());
+        }
+
+        [Fact]
+        public async Task RingEventHistoryWriter_RunInBatch_FailedWriteRollsBackTheWholeBatch()
+        {
+            Device device = TestDataBuilder.BuildDevice(providerDeviceId: "12345");
+            await using (VideoForensicsDbContext seed = _fixture.Factory.CreateDbContext())
+            {
+                _ = seed.Devices.Add(device);
+                _ = await seed.SaveChangesAsync();
+            }
+
+            var first = new RingDoorbotHistoryEvent { Id = Guid.NewGuid(), ProviderEventId = "1111111111111111111", Duration = 1 };
+            await Assert.ThrowsAnyAsync<Exception>(() => _writer.RunInBatchAsync(async () =>
+            {
+                await _writer.ReplaceDoorbotHistoryEventAsync(first, BuildDoorbotHistoryDetails(first.Id, 12345), CancellationToken.None);
+                throw new InvalidOperationException("second write failed");
+            }, CancellationToken.None));
+
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Assert.Equal(0, await db.RingDoorbotHistoryEvents.CountAsync());
+        }
+
 
         [Fact]
         public async Task RingEventHistoryWriter_DoorbotHistoryWithNoEventRow_LeavesLinkNull()

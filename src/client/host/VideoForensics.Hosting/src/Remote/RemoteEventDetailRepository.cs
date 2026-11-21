@@ -2,14 +2,11 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Hosting.Remote
 {
-    /// <summary>
-    /// HTTP-backed <see cref="IEventDetailRepository"/> that calls <c>/api/v1/events/details</c> on the server, so the
-    /// MAUI client's Detail tab reads the same detection rows the server holds.
-    /// </summary>
+    /// <summary>HTTP-backed <see cref="IEventDetailRepository"/> that calls <c>/api/v1/events/details</c>.</summary>
     public class RemoteEventDetailRepository : IEventDetailRepository
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -22,8 +19,7 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
-        /// <remarks>Empty input returns empty without a request. The server enforces the 200-id limit.</remarks>
-        public async Task<IReadOnlyList<EventDetail>> GetDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
+        public async Task<IReadOnlyList<EventDetailDto>> GetDetailsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken ct)
         {
             if (eventIds.Count == 0)
             {
@@ -34,7 +30,7 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/events/details?" + query, ct);
             _ = response.EnsureSuccessStatusCode();
             List<EventDetailDto>? dtos = await response.Content.ReadFromJsonAsync<List<EventDetailDto>>(JsonOptions, ct);
-            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+            return dtos ?? [];
         }
     }
 }

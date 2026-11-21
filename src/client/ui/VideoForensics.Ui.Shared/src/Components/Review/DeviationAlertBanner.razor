@@ -1,0 +1,72 @@
+@using System.Collections.Generic
+@using System.Linq
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
+
+<div class="alert alert-danger alert-dismissible" role="alert" data-testid="@TestId">
+    <button type="button" class="btn-close" aria-label="@CloseLabel" data-testid="@DismissTestId" @onclick="() => OnDismiss.InvokeAsync()"></button>
+    <strong>@Title</strong>
+    <ul class="mb-0">
+        @foreach (string item in VisibleItems)
+        {
+            <li>@item</li>
+        }
+    </ul>
+    @if (Items.Count > Limit)
+    {
+        <a href="#" class="alert-link" data-testid="@($"{TestId}-toggle")" @onclick="Toggle" @onclick:preventDefault="true">
+            @(_expanded ? L["ShowLessAlerts"].Value : L["ShowMoreAlerts", Items.Count - Limit].Value)
+        </a>
+    }
+</div>
+
+@code {
+    /// <summary>The alert lines, already localized, in display order.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Items { get; set; } = [];
+
+    /// <summary>Identifies the current alerts. A changed signature starts the list collapsed again.</summary>
+    [Parameter, EditorRequired]
+    public string Signature { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>The banner's test ID. The show more or less link takes this ID with <c>-toggle</c> appended.</summary>
+    [Parameter, EditorRequired]
+    public string TestId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string DismissTestId { get; set; } = string.Empty;
+
+    /// <summary>The accessible name of the dismiss button.</summary>
+    [Parameter, EditorRequired]
+    public string CloseLabel { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public EventCallback OnDismiss { get; set; }
+
+    /// <summary>How many lines show while collapsed.</summary>
+    [Parameter]
+    public int Limit { get; set; } = 5;
+
+    private bool _expanded;
+    private string? _expandedFor;
+
+    private IReadOnlyList<string> VisibleItems => _expanded ? Items : Items.Take(Limit).ToList();
+
+    protected override void OnParametersSet()
+    {
+        if (_expandedFor != Signature)
+        {
+            _expanded = false;
+            _expandedFor = Signature;
+        }
+    }
+
+    private void Toggle()
+    {
+        _expanded = !_expanded;
+    }
+}

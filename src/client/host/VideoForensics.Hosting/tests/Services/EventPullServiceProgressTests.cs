@@ -17,9 +17,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly LocationEntity _location;
         private readonly DeviceEntity _device;
         private readonly Mock<IEventAndConfigService> _events = new();
-        private readonly Mock<IDeviceRepository> _deviceRepository = new();
-        private readonly Mock<ILocationRepository> _locationRepository = new();
-        private readonly Mock<IProviderAccountRepository> _accountRepository = new();
+        private readonly Mock<IDeviceWriteRepository> _deviceRepository = new();
+        private readonly Mock<ILocationWriteRepository> _locationRepository = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accountRepository = new();
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Mock<IMediaDownloadService> _media = new();
 

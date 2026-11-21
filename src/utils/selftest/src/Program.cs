@@ -116,6 +116,9 @@ namespace VideoForensics.Utils.SelfTest
             VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
             VideoForensics.Core.Helpers.Platform.DatabaseLocationPointerStore.Current = new VideoForensics.Client.Platform.Windows.RegistryDatabaseLocationPointerStore();
 
+            // Same as WebApp: the saved storage locations (Keys folder, default root) must be known before the key ring loads.
+            SavedStorageLocations.Apply(new StorageSettingsBootstrap(new StorageLocationProvider()).Read());
+
             (CliOptions? options, string? parseError) = CliOptions.Parse(args);
             if (parseError != null)
             {
@@ -164,6 +167,16 @@ namespace VideoForensics.Utils.SelfTest
             EndpointRegistry.DndSeconds = options.DndSeconds;
             EndpointRegistry.LocationModeValue = options.LocationModeValue;
             EndpointRegistry.DingId = options.DingId;
+
+            // No --ding-id: use the newest ready ding stored for the doorbot under test, so the ding-id endpoints run for real.
+            if (EndpointRegistry.DingId is null && options.DoorbotId.HasValue)
+            {
+                string dbPath = options.DbPath ?? CliOptions.DefaultDatabasePath();
+                if (File.Exists(dbPath))
+                {
+                    EndpointRegistry.DingId = LatestDing.Find(dbPath, options.DoorbotId.Value);
+                }
+            }
             EndpointRegistry.AssetUuid = options.AssetUuid;
             EndpointRegistry.PushToken = options.PushToken;
 
@@ -188,7 +201,7 @@ namespace VideoForensics.Utils.SelfTest
 
             // The selftest takes no account argument and runs against Ring, so it restores the first active Ring account.
             // Falls back to RingAuthService's most-recently-authenticated-Ring-account heuristic when none is active.
-            IProviderAccountRepository accountRepository = serviceProvider.GetRequiredService<IProviderAccountRepository>();
+            IProviderAccountWriteRepository accountRepository = serviceProvider.GetRequiredService<IProviderAccountWriteRepository>();
             Guid? activeAccountId = (await accountRepository.ListActiveAsync(CancellationToken.None))
                 .FirstOrDefault(a => string.Equals(a.ProviderName, "Ring", StringComparison.OrdinalIgnoreCase))?.Id;
 

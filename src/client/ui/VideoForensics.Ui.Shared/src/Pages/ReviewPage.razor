@@ -1,3 +1,4 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/media"
 @page "/media/review"
 @using Microsoft.Extensions.Localization
@@ -9,8 +10,7 @@
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
-@using VideoForensics.Data.Common.Contracts
-@using Device = VideoForensics.Data.Common.Entities.Device
+@using Device = VideoForensics.Core.Api.Contracts.DeviceDto
 @using VideoForensics.Client.Common.Viewer
 @implements IDisposable
 @inject ReviewSettingsStore SettingsStore
@@ -23,6 +23,8 @@
 @inject DeviceOwnershipService OwnershipService
 @inject ILogger<ReviewPage> Logger
 @inject IStringLocalizer<ReviewPage> L
+@inject IViewportService Viewport
+@inject Microsoft.JSInterop.IJSRuntime JS
 
 @if (_isLoading)
 {
@@ -37,42 +39,48 @@ else
     <ReviewTimelineFeeder />
 
     <PageRightPanelContent>
-        <ReviewTimeRange State="State" />
-        <ReviewEventFilter State="State" />
-        <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
-        <ReviewCaseSection State="State" Devices="_visibleIds" />
-        <ReviewActionsPanel State="State" />
+        <ReviewPopupHost>
+            <ReviewSidebarControls State="State" DeviceNames="_deviceNames" Devices="_visibleIds" />
+            <ReviewEventFilter State="State" />
+            <ReviewFilterPanel State="State" AllDeviceIds="_deviceIds" Ownership="_ownership" Devices="_visibleIds" DeviceNames="_deviceNames" />
+            <ReviewCaseSection State="State" Devices="_visibleIds" />
+            <ReviewActionsPanel State="State" />
+        </ReviewPopupHost>
     </PageRightPanelContent>
 
-    <ReviewTopBar State="State" DeviceNames="_deviceNames" />
+    <ReviewShell>
+        <Header>
+            <ReviewTopBar State="State" />
 
-    @if (_caseNotFound)
-    {
-        <div class="alert alert-warning" role="status" data-testid="review-case-not-found">@L["CaseNotFound"]</div>
-    }
-
-    <div class="review-body">
-        <div class="review-content">
-            @if (State.ActiveTab == ReviewTab.Timeline)
+            @if (_caseNotFound)
             {
-                <section class="review-tab-panel" data-testid="review-tab-timeline">
-                    <ReviewTimelineTab State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
-                </section>
+                <div class="alert alert-warning" role="status" data-testid="review-case-not-found">@L["CaseNotFound"]</div>
             }
-            else if (State.ActiveTab == ReviewTab.Events)
-            {
-                <ReviewEventsTab State="State" DeviceNames="_deviceNames" />
-            }
-            else
-            {
-                <ReviewDetailTab State="State" DeviceNames="_deviceNames" />
-            }
-        </div>
-
-        <aside class="review-timeline-aside">
-            <ReviewTimelinePanel />
-        </aside>
-    </div>
+        </Header>
+        <Stage>
+            <div class="review-content" style="@ReviewWindowSizing.StyleFor(Viewport.HeightPx)">
+                @if (State.ActiveTab == ReviewTab.Timeline)
+                {
+                    <section class="review-tab-panel" data-testid="review-tab-timeline">
+                        <ReviewTimelineTab State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
+                    </section>
+                }
+                else if (State.ActiveTab == ReviewTab.Events)
+                {
+                    <ReviewEventsTab State="State" DeviceNames="_deviceNames" />
+                }
+                else
+                {
+                    <ReviewDetailTab State="State" DeviceNames="_deviceNames" />
+                }
+            </div>
+        </Stage>
+        <Side>
+            <aside class="review-timeline-aside" data-testid="review-timeline-side">
+                <ReviewTimelinePanel />
+            </aside>
+        </Side>
+    </ReviewShell>
 }
 
 @code {
@@ -100,6 +108,8 @@ else
     {
         State.OnChange += OnReviewStateChanged;
         ScopeState.OnChange += OnScopeChanged;
+        Viewport.OnChange += OnViewportChanged;
+        await Viewport.InitializeAsync();
         CaseMode.OnChange += OnCaseModeChanged;
         NavigationManager.LocationChanged += OnLocationChanged;
 
@@ -130,7 +140,7 @@ else
 
             ReadUrlOnce(url);
             _urlParsed = true;
-            WriteBackUrl();
+            await WriteBackUrlAsync();
         }
 
         _isLoading = false;
@@ -290,7 +300,7 @@ else
                 ReconcileCameras();
             }
 
-            WriteBackUrl();
+            _ = WriteBackUrlAsync();
         }
 
         _ = InvokeAsync(StateHasChanged);
@@ -305,7 +315,7 @@ else
     /// Replaces the query with the current state, only when the normalised state differs from the query
     /// already in the address bar. Comparing normalised forms stops a navigation from re-triggering itself.
     /// </summary>
-    private void WriteBackUrl()
+    private async Task WriteBackUrlAsync()
     {
         var current = new ReviewUrlState(
             State.CameraIds,
@@ -322,16 +332,32 @@ else
         string target = ReviewUrl.Build(current);
         _ = SettingsStore.SaveAsync(new SavedReviewSettings(target, State.SelectedEventId));
 
+        // NavigationManager.Uri is stale after a replaceState, so the last query written is compared too.
         string existing = ReviewUrl.Build(ReviewUrl.Parse(CurrentQuery()));
-        if (target == existing)
+        if (target == existing || target == _lastWrittenQuery)
         {
             return;
         }
 
         // Stay on the route the user is on (/media or /media/review), so a write-back never moves them to another path.
         string path = new Uri(NavigationManager.Uri).AbsolutePath;
-        NavigationManager.NavigateTo(target.Length == 0 ? path : path + "?" + target, replace: true);
+        string url = target.Length == 0 ? path : path + "?" + target;
+        _lastWrittenQuery = target;
+
+        // replaceState runs in the browser and is awaited here. NavigationManager.NavigateTo hides its JS call in a
+        // fire-and-forget task: a call that was cancelled ended the circuit with an unhandled exception.
+        try
+        {
+            await JS.InvokeVoidAsync("vfHistory.replaceUrl", url);
+        }
+        catch (Exception ex) when (ex is Microsoft.JSInterop.JSException or Microsoft.JSInterop.JSDisconnectedException or OperationCanceledException)
+        {
+            _lastWrittenQuery = null;
+            Logger.LogWarning("Could not update the review address bar: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
+        }
     }
+
+    private string? _lastWrittenQuery;
 
     private string CurrentQuery()
     {
@@ -364,14 +390,18 @@ else
     {
         if (_urlParsed)
         {
-            WriteBackUrl();
+            _ = WriteBackUrlAsync();
         }
     }
+
+    // The window size changed: re-render so the media and timeline heights follow it.
+    private void OnViewportChanged() => _ = InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
         State.OnChange -= OnReviewStateChanged;
         ScopeState.OnChange -= OnScopeChanged;
+        Viewport.OnChange -= OnViewportChanged;
         CaseMode.OnChange -= OnCaseModeChanged;
         NavigationManager.LocationChanged -= OnLocationChanged;
         CaseMode.Exit();

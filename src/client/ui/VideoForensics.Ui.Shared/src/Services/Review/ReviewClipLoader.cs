@@ -1,7 +1,7 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Client.Ui.Shared.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Review;
 
 /// <summary>
@@ -24,15 +24,18 @@ public sealed class ReviewClipLoader : IReviewClipLoader
 
     private readonly IMediaItemRepository _mediaItems;
     private readonly ReviewCaseMode? _caseMode;
+    private readonly IEventRepository? _events;
 
     /// <summary>
     /// Creates the loader over the media item repository. When <paramref name="caseMode"/> is active, the loader
     /// returns the case's pinned clips instead of paging the repository. Null means the case view is never active.
+    /// <paramref name="events"/> supplies the stored events without media, shown on the timeline as unavailable.
     /// </summary>
-    public ReviewClipLoader(IMediaItemRepository mediaItems, ReviewCaseMode? caseMode = null)
+    public ReviewClipLoader(IMediaItemRepository mediaItems, ReviewCaseMode? caseMode = null, IEventRepository? events = null)
     {
         _mediaItems = mediaItems;
         _caseMode = caseMode;
+        _events = events;
     }
 
     /// <inheritdoc />
@@ -45,26 +48,45 @@ public sealed class ReviewClipLoader : IReviewClipLoader
         }
 
         var devices = deviceIds.Distinct().ToList();
-        var items = new List<MediaItem>();
+        var items = new List<MediaItemDto>();
 
         // The cap is shared across device chunks, so one chunk can stop the whole load.
-        for (int start = 0; start < devices.Count; start += MaxDevicesPerCall)
+        bool truncated = false;
+        for (int start = 0; start < devices.Count && !truncated; start += MaxDevicesPerCall)
         {
             List<Guid> chunk = devices.GetRange(start, Math.Min(MaxDevicesPerCall, devices.Count - start));
-            if (await ReadChunkAsync(chunk, fromUtc, toUtc, items, ct))
-            {
-                return new ReviewClipSet(items, true);
-            }
+            truncated = await ReadChunkAsync(chunk, fromUtc, toUtc, items, ct);
         }
 
-        return new ReviewClipSet(items, false);
+        return new ReviewClipSet(items, truncated, await ReadUnavailableEventsAsync(devices, fromUtc, toUtc, ct));
+    }
+
+    /// <summary>
+    /// Reads the stored events of the cameras in the window that have no downloaded media. Downloaded events are left out,
+    /// since their media is already in the clip list. Returns null when no event repository was given.
+    /// </summary>
+    private async Task<IReadOnlyList<EventDto>?> ReadUnavailableEventsAsync(IReadOnlyList<Guid> devices, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        if (_events is null)
+        {
+            return null;
+        }
+
+        var unavailable = new List<EventDto>();
+        foreach (Guid device in devices)
+        {
+            IReadOnlyList<EventDto> stored = await _events.ListByDeviceAndDateRangeAsync(device, fromUtc, toUtc, ct);
+            unavailable.AddRange(stored.Where(evt => evt.DownloadStatus != EventDownloadStatusDto.Downloaded));
+        }
+
+        return unavailable;
     }
 
     /// <summary>
     /// Filters the case's pinned clips to the requested devices and window, using the same inclusive bounds the
     /// repository query uses, so a case clip and a normal clip in the same window behave the same.
     /// </summary>
-    private static IReadOnlyList<MediaItem> CaseClips(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc)
+    private static IReadOnlyList<MediaItemDto> CaseClips(ReviewCaseMode caseMode, IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc)
     {
         var devices = deviceIds.ToHashSet();
         return caseMode.MediaItems
@@ -76,19 +98,19 @@ public sealed class ReviewClipLoader : IReviewClipLoader
     /// Reads one device chunk into <paramref name="items"/>. Returns true when the cap was reached while the chunk still had items.
     /// </summary>
     private async Task<bool> ReadChunkAsync(
-        IReadOnlyCollection<Guid> chunk, DateTime fromUtc, DateTime toUtc, List<MediaItem> items, CancellationToken ct)
+        IReadOnlyCollection<Guid> chunk, DateTime fromUtc, DateTime toUtc, List<MediaItemDto> items, CancellationToken ct)
     {
         // The query sorts oldest first. Learn the total, then start at the newest clips that fit the cap: the timeline
         // must cover the present, where the cursor usually sits, and the oldest clips are the ones left out.
         // Only playable video counts toward the cap; stills and snapshots are filtered in the query, not here.
-        MediaItemPage probe = await _mediaItems.GetPageByDevicesAndDateRangeAsync(chunk, fromUtc, toUtc, 0, 1, ct, videoOnly: true);
+        MediaItemPageDto probe = await _mediaItems.GetPageByDevicesAndDateRangeAsync(chunk, fromUtc, toUtc, 0, 1, ct, videoOnly: true);
         int total = probe.TotalCount;
         int remaining = MaxItems - items.Count;
         int skip = Math.Max(0, total - remaining);
 
         while (skip < total)
         {
-            MediaItemPage page = await _mediaItems.GetPageByDevicesAndDateRangeAsync(
+            MediaItemPageDto page = await _mediaItems.GetPageByDevicesAndDateRangeAsync(
                 chunk, fromUtc, toUtc, skip, Math.Min(PageSize, total - skip), ct, videoOnly: true);
             if (page.Items.Count == 0)
             {

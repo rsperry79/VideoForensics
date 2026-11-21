@@ -12,6 +12,7 @@ using System.Text.Json;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -43,7 +44,7 @@ public abstract class AccountSyncSchedulePageTestBase : BunitContext
         var scheduleRepository = new Mock<ISyncScheduleRepository>();
         _ = scheduleRepository
             .Setup(r => r.GetByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SyncSchedule?)null);
+            .ReturnsAsync((SyncScheduleDto?)null);
 
         _ = Services.AddScoped(_ => scheduleRepository.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));

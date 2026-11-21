@@ -3,8 +3,10 @@ using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
 
 using Bunit;
+using Bunit.Rendering;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 using Moq;
@@ -13,6 +15,7 @@ using System.Net;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Data.Common.Entities;
 
@@ -43,6 +46,8 @@ public abstract class SecurityEventsPageTestBase : BunitContext
 
         _ = Services.AddScoped(_ => SecurityEventsServiceMock.Object);
         _ = Services.AddScoped(_ => AdminOperatorServiceMock.Object);
+        _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelFilterStore>();
 
         _ = AdminOperatorServiceMock
             .Setup(s => s.ListOperatorsAsync(It.IsAny<CancellationToken>()))
@@ -69,12 +74,35 @@ public abstract class SecurityEventsPageTestBase : BunitContext
         Success: success,
         IpAddress: "192.168.1.1",
         OccurredAtUtc: new DateTime(2026, 9, 25, 10, 0, 0, DateTimeKind.Utc),
-        Reason: null);
+        Reason: null,
+        AttemptedUsername: null);
+    }
+
+    /// <summary>A failed login whose username matched no operator: no operator, the typed name only.</summary>
+    protected static SecurityEventSummary MakeUnknownUserEvent(string attemptedUsername)
+    {
+        return new(
+        Id: Guid.NewGuid(),
+        OperatorId: null,
+        EventType: "LoginAttemptFailure",
+        Success: false,
+        IpAddress: "192.168.1.50",
+        OccurredAtUtc: new DateTime(2026, 9, 25, 11, 0, 0, DateTimeKind.Utc),
+        Reason: "Invalid username",
+        AttemptedUsername: attemptedUsername);
     }
 
     protected IRenderedComponent<SecurityEvents> RenderPage()
     {
         return Render<SecurityEvents>();
+    }
+
+    /// <summary>Renders the right-panel fragment the page pushed (the operator picker and the unknown-login toggle).</summary>
+    protected IRenderedComponent<ContainerFragment> RenderRightPanel()
+    {
+        RightPanelContentService slot = Services.GetRequiredService<RightPanelContentService>();
+        Assert.NotNull(slot.Content);
+        return Render(slot.Content!);
     }
 }
 
@@ -86,7 +114,7 @@ public class SecurityEventsPage_OwnEvents_Tests : SecurityEventsPageTestBase
         _ = await RegisterRoleAsync(OperatorRole.Review);
 
         _ = SecurityEventsServiceMock
-            .Setup(s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
             .ReturnsAsync([MakeEvent(eventType: "LoginAttemptSuccess")]);
 
         IRenderedComponent<SecurityEvents> component = RenderPage();
@@ -99,10 +127,10 @@ public class SecurityEventsPage_OwnEvents_Tests : SecurityEventsPageTestBase
         // OnInitializedAsync and OnAfterRenderAsync loads go through. What matters here is that it was
         // called with the self-service arguments (operatorId: null, offset 0), not the exact count.
         SecurityEventsServiceMock.Verify(
-            s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()),
+            s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()),
             Times.AtLeastOnce);
 
-        Assert.Contains("LoginAttemptSuccess", component.Markup);
+        Assert.Single(component.FindAll("[data-testid='security-event-row']"));
     }
 }
 
@@ -114,7 +142,7 @@ public class SecurityEventsPage_Forbidden_Tests : SecurityEventsPageTestBase
         _ = await RegisterRoleAsync(OperatorRole.Review);
 
         _ = SecurityEventsServiceMock
-            .Setup(s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("forbidden", null, HttpStatusCode.Forbidden));
 
         IRenderedComponent<SecurityEvents> component = RenderPage();
@@ -139,25 +167,26 @@ public class SecurityEventsPage_SuperAdminOperatorPicker_Tests : SecurityEventsP
             .ReturnsAsync([new(otherOperatorId, "Jane Operator", true)]);
 
         _ = SecurityEventsServiceMock
-            .Setup(s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         _ = SecurityEventsServiceMock
-            .Setup(s => s.GetEventsAsync(otherOperatorId, 0, 25, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetEventsAsync(otherOperatorId, false, 0, 25, It.IsAny<CancellationToken>()))
             .ReturnsAsync([MakeEvent(operatorId: otherOperatorId, eventType: "LoginAttemptFailure")]);
 
         IRenderedComponent<SecurityEvents> component = RenderPage();
 
-        var picker = (IHtmlSelectElement)component.Find("[data-testid='security-events-operator-picker']");
-        Assert.Contains("Jane Operator", component.Markup);
+        IRenderedComponent<ContainerFragment> panel = RenderRightPanel();
+        var picker =(IHtmlSelectElement)panel.Find("[data-testid='security-events-operator-picker']");
+        Assert.Contains("Jane Operator", panel.Markup);
 
         picker.Change(otherOperatorId.ToString());
 
         SecurityEventsServiceMock.Verify(
-            s => s.GetEventsAsync(otherOperatorId, 0, 25, It.IsAny<CancellationToken>()),
+            s => s.GetEventsAsync(otherOperatorId, false, 0, 25, It.IsAny<CancellationToken>()),
             Times.Once);
 
-        Assert.Contains("LoginAttemptFailure", component.Markup);
+        Assert.Single(component.FindAll("[data-testid='security-event-row']"));
     }
 
     [Fact]
@@ -166,13 +195,59 @@ public class SecurityEventsPage_SuperAdminOperatorPicker_Tests : SecurityEventsP
         _ = await RegisterRoleAsync(OperatorRole.ReadOnly);
 
         _ = SecurityEventsServiceMock
-            .Setup(s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+
+        _ = RenderPage();
+
+        Assert.Empty(RenderRightPanel().FindAll("[data-testid='security-events-operator-picker']"));
+        AdminOperatorServiceMock.Verify(s => s.ListOperatorsAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+
+public class SecurityEventsPage_ColumnsAndSourceIp_Tests : SecurityEventsPageTestBase
+{
+    [Fact]
+    public async Task Table_HasNoEventTypeHeader()
+    {
+        _ = await RegisterRoleAsync(OperatorRole.Review);
+
+        _ = SecurityEventsServiceMock
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeEvent()]);
 
         IRenderedComponent<SecurityEvents> component = RenderPage();
 
-        Assert.Empty(component.FindAll("[data-testid='security-events-operator-picker']"));
-        AdminOperatorServiceMock.Verify(s => s.ListOperatorsAsync(It.IsAny<CancellationToken>()), Times.Never);
+        IStringLocalizer<SecurityEvents> localizer = Services.GetRequiredService<IStringLocalizer<SecurityEvents>>();
+        string[] expectedHeaders =
+        [
+            localizer["StatusColumn"],
+            localizer["IpAddressColumn"],
+            localizer["DateTimeColumn"],
+            localizer["ReasonColumn"],
+        ];
+        string[] headers = component.FindAll("[data-testid='security-events-table'] thead th")
+            .Select(th => th.TextContent.Trim())
+            .ToArray();
+
+        Assert.Equal(expectedHeaders, headers);
+    }
+
+    [Fact]
+    public async Task LoopbackRow_IpCellShowsLocalHostLabel()
+    {
+        _ = await RegisterRoleAsync(OperatorRole.Review);
+
+        _ = SecurityEventsServiceMock
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeEvent() with { IpAddress = "::1" }]);
+
+        IRenderedComponent<SecurityEvents> component = RenderPage();
+
+        string localHostLabel = Services.GetRequiredService<IStringLocalizer<SharedResources>>()["LocalHost"];
+        IElement ipCell = component.Find("[data-testid='security-event-ip']");
+
+        Assert.Equal(localHostLabel, ipCell.TextContent.Trim());
     }
 }
 
@@ -186,11 +261,11 @@ public class SecurityEventsPage_Pagination_Tests : SecurityEventsPageTestBase
         var firstPage = Enumerable.Range(0, 25).Select(_ => MakeEvent()).ToList();
 
         _ = SecurityEventsServiceMock
-            .Setup(s => s.GetEventsAsync(null, 0, 25, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
             .ReturnsAsync(firstPage);
 
         _ = SecurityEventsServiceMock
-            .Setup(s => s.GetEventsAsync(null, 25, 25, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetEventsAsync(null, false, 25, 25, It.IsAny<CancellationToken>()))
             .ReturnsAsync([MakeEvent(eventType: "SecondPageEvent")]);
 
         IRenderedComponent<SecurityEvents> component = RenderPage();
@@ -199,9 +274,72 @@ public class SecurityEventsPage_Pagination_Tests : SecurityEventsPageTestBase
         await component.InvokeAsync(() => nextButton.Click());
 
         SecurityEventsServiceMock.Verify(
-            s => s.GetEventsAsync(null, 25, 25, It.IsAny<CancellationToken>()),
+            s => s.GetEventsAsync(null, false, 25, 25, It.IsAny<CancellationToken>()),
             Times.Once);
 
-        Assert.Contains("SecondPageEvent", component.Markup);
+        Assert.Single(component.FindAll("[data-testid='security-event-row']"));
+    }
+}
+
+public class SecurityEventsPage_UnknownLogins_Tests : SecurityEventsPageTestBase
+{
+    [Fact]
+    public async Task NullOperatorRow_ShowsInvalidUserLabelWithTypedName()
+    {
+        _ = await RegisterRoleAsync(OperatorRole.SuperAdmin);
+
+        _ = SecurityEventsServiceMock
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeUnknownUserEvent("zumba")]);
+
+        IRenderedComponent<SecurityEvents> component = RenderPage();
+
+        IStringLocalizer<SecurityEvents> localizer = Services.GetRequiredService<IStringLocalizer<SecurityEvents>>();
+        IElement operatorCell = component.Find("[data-testid='security-event-operator']");
+        Assert.Equal(localizer["InvalidUserFormat", "zumba"].Value, operatorCell.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task UnknownLoginToggle_QueriesServiceWithUnknownOnlyTrue()
+    {
+        _ = await RegisterRoleAsync(OperatorRole.SuperAdmin);
+
+        _ = SecurityEventsServiceMock
+            .Setup(s => s.GetEventsAsync(null, false, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        _ = SecurityEventsServiceMock
+            .Setup(s => s.GetEventsAsync(null, true, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeUnknownUserEvent("zumba")]);
+
+        IRenderedComponent<SecurityEvents> component = RenderPage();
+
+        IRenderedComponent<ContainerFragment> panel = RenderRightPanel();
+        panel.Find("[data-testid='security-events-unknown-only']").Change(true);
+
+        SecurityEventsServiceMock.Verify(
+            s => s.GetEventsAsync(null, true, 0, 25, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _ = Assert.Single(component.FindAll("[data-testid='security-event-row']"));
+    }
+
+    [Fact]
+    public async Task UnknownLoginToggle_StoredChoice_IsRestoredOnLoad()
+    {
+        _ = await RegisterRoleAsync(OperatorRole.SuperAdmin);
+
+        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.security-events")
+            .SetResult("{\"providers\":null,\"account\":null,\"unknownOnly\":true}");
+
+        _ = SecurityEventsServiceMock
+            .Setup(s => s.GetEventsAsync(null, true, 0, 25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeUnknownUserEvent("zumba")]);
+
+        IRenderedComponent<SecurityEvents> component = RenderPage();
+
+        SecurityEventsServiceMock.Verify(
+            s => s.GetEventsAsync(null, true, 0, 25, It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+        _ = Assert.Single(component.FindAll("[data-testid='security-event-row']"));
     }
 }

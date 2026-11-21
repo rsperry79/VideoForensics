@@ -34,7 +34,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         // A loop needs at least two frames to show any motion; fewer means Ring is not serving images, and the test should say so.
         private const int MinimumImages = 2;
 
-        // Same metadata the capture service writes on a capture's Media row (SnapshotCaptureService.CaptureSnapshotMetadata).
+        // Same metadata the capture service writes on a capture's Media row (SnapshotCycle.CaptureSnapshotMetadata).
         private const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\",\"source\":\"capture\"}";
 
         public ValueTask InitializeAsync()
@@ -59,7 +59,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             using IServiceScope scope = RealSessionHelper.Services.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
 
-            ProviderAccount? account = (await sp.GetRequiredService<IProviderAccountRepository>().ListActiveAsync(ct))
+            ProviderAccount? account = (await sp.GetRequiredService<IProviderAccountWriteRepository>().ListActiveAsync(ct))
                 .FirstOrDefault(a => string.Equals(a.ProviderName, "Ring", StringComparison.OrdinalIgnoreCase));
             if (account is null)
             {
@@ -79,8 +79,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             // The device must already be synced into the database, because the loop and its snapshot rows belong to that row.
             string providerDeviceId = doorbot.Id.ToString(CultureInfo.InvariantCulture);
-            ILocationRepository locations = sp.GetRequiredService<ILocationRepository>();
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            ILocationWriteRepository locations = sp.GetRequiredService<ILocationWriteRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
             Device? device = null;
             Location? location = null;
             foreach (Location candidate in await locations.ListByProviderAccountIdAsync(account.Id, ct))
@@ -103,8 +103,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             string folder = MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, location.Name, device.Name);
             _ = Directory.CreateDirectory(folder);
 
-            IMediaItemRepository mediaItems = sp.GetRequiredService<IMediaItemRepository>();
-            ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
+            IMediaItemWriteRepository mediaItems = sp.GetRequiredService<IMediaItemWriteRepository>();
+            ISnapshotCaptureWriteRepository captures = sp.GetRequiredService<ISnapshotCaptureWriteRepository>();
 
             // Attempts are held to fixed slots, so the six are five seconds apart rather than five seconds after each one finishes.
             // The capture timeframe is fixed up front: it starts now and runs for six five-second slots (30 seconds).
@@ -151,6 +151,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                         DownloadedAtUtc = DateTime.UtcNow,
                         Sha256Hash = Convert.ToHexString(SHA256.HashData(result.Bytes)).ToLowerInvariant(),
                         IntegrityVerified = false,
+                        MediaKind = MediaKinds.Snapshot,
                         MetadataJson = CaptureSnapshotMetadata,
                     }, ct);
                 }
@@ -192,8 +193,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.True(Math.Abs(lapseSeconds - captureSeconds) <= 1,
                 $"The time lapse runs {lapseSeconds:F1}s but the capture timeframe is {captureSeconds:F1}s.");
 
-            // The snapshots are kept as evidence: the roll-up never deletes them. Hiding them in the timeline view is
-            // TimeLapseCoverage.HideCovered in Ui.Shared, which this project does not reference, so TimeLapseCoverageTests covers that part.
+            // The snapshots are kept as evidence: the roll-up never deletes them.
             IReadOnlyList<MediaItem> snapshotRows = await mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(device.Id, start.UtcDateTime.AddSeconds(-1), end.UtcDateTime.AddSeconds(1), ct);
             Assert.True(snapshotRows.Count >= images, $"Expected at least {images} snapshot rows to remain, found {snapshotRows.Count}.");
             foreach (string file in writtenFiles)
@@ -222,7 +222,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             string? folder = Path.GetDirectoryName(ffprobe);
             var options = new FFOptions { BinaryFolder = string.IsNullOrEmpty(folder) ? null : folder };
-            IMediaAnalysis analysis = await FFProbe.AnalyseAsync(path, options, ct);
+            IMediaAnalysis analysis = await FFProbe.AnalyseAsync(path, options, null, ct);
             return analysis.Duration.TotalSeconds;
         }
     }

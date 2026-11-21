@@ -3,26 +3,26 @@ using Microsoft.AspNetCore.Components.Routing;
 
 using VideoForensics.Client.Ui.Shared.Extensions;
 using VideoForensics.Client.Ui.Shared.Services.Time;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
 {
     public partial class MobileLayout : IDisposable
     {
-        private OperatorRole? _role;
+        private OperatorRoleDto? _role;
         private string _currentPath = "/";
         private string _currentQuery = string.Empty;
 
         private int _undismissedCount = 0;
         private bool _noticesDropdownOpen = false;
-        private List<Notice> _noticesList = [];
+        private List<NoticeDto> _noticesList = [];
 
         // Mirrors SessionState.PasskeySetupOnly (limited create-passkey session): hides all navigation and the settings sheet.
         private bool _passkeySetupOnly;
         private bool _navDrawerOpen = false;
         private bool _settingsSheetOpen = false;
 
-        private bool IsAdmin => _role.HasValue && _role >= OperatorRole.Admin;
+        private bool IsAdmin => _role.HasValue && _role >= OperatorRoleDto.Admin;
 
         private IReadOnlyList<NavGroup> VisibleGroups => _passkeySetupOnly ? [] : (IReadOnlyList<NavGroup>)NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
 
@@ -53,7 +53,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
                 // IJSRuntime is unavailable during Blazor's static prerender pass, so session/layout
                 // state can only be resolved once the circuit is connected.
                 await SessionState.EnsureLoadedAsync();
-                _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+                _role = SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
                 _passkeySetupOnly = SessionState.PasskeySetupOnly;
 
                 await ThemeService.InitializeAsync();
@@ -185,7 +185,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
             }
 
             // Dismiss every undismissed notice, not just the 5 shown in this dropdown.
-            IReadOnlyList<Notice> allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
+            IReadOnlyList<NoticeDto> allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
             await NoticeDismissalRepository.DismissAllAsync(allUndismissed.Select(n => n.Id), SessionState.OperatorId.Value, CancellationToken.None);
             await LoadNoticesForDropdownAsync();
             _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, CancellationToken.None);

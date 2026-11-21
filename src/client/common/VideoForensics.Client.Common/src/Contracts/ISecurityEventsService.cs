@@ -10,12 +10,13 @@ namespace VideoForensics.Client.Common.Contracts
     /// </summary>
     public record SecurityEventSummary(
         Guid Id,
-        Guid OperatorId,
+        Guid? OperatorId,
         string EventType,
         bool Success,
         string? IpAddress,
         DateTime OccurredAtUtc,
-        string? Reason
+        string? Reason,
+        string? AttemptedUsername
     );
 
     /// <summary>
@@ -33,6 +34,7 @@ namespace VideoForensics.Client.Common.Contracts
         /// Retrieves security events for the caller (self-service) or a specific operator (cross-account audit).
         /// </summary>
         /// <param name="operatorId">Optional operator ID to query. If null, returns the caller's own events. Cross-account queries require SuperAdmin + Local tier.</param>
+        /// <param name="unknownOnly">When true, returns only failed logins whose username matched no operator (requires SuperAdmin + Local tier). Pass false for all other queries.</param>
         /// <param name="offset">Number of events to skip (for pagination). Defaults to 0.</param>
         /// <param name="limit">Maximum number of events to return. Defaults to 20, max 1000.</param>
         /// <param name="ct">Cancellation token.</param>
@@ -42,6 +44,6 @@ namespace VideoForensics.Client.Common.Contracts
         /// not signed in, or Forbidden if a cross-account query is attempted by a caller who is not
         /// SuperAdmin on the Local network tier.
         /// </exception>
-        Task<IReadOnlyList<SecurityEventSummary>> GetEventsAsync(Guid? operatorId, int offset, int limit, CancellationToken ct);
+        Task<IReadOnlyList<SecurityEventSummary>> GetEventsAsync(Guid? operatorId, bool unknownOnly, int offset, int limit, CancellationToken ct);
     }
 }

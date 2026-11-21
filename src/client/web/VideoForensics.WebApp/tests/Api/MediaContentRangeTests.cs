@@ -76,6 +76,40 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
+        public async Task MediaContent_RangeNotFromZero_RecordsAccessAuditRow()
+        {
+            // A non-zero range must still be audited: otherwise a client can read a whole clip
+            // in ranges with no audit trail.
+            string path = CreateTempFileWithKnownBytes();
+            DefaultHttpContext context = CreateAuthenticatedContext();
+            context.Request.Headers["Range"] = "bytes=10-19";
+            var auditLog = new Mock<IAccessAuditLogRepository>();
+
+            IResult result = await InvokeGetContentAsync(context, path, auditLog);
+            _ = await ExecuteResultAsync(result, context);
+
+            auditLog.Verify(a => a.RecordAccessAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), "View", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task MediaContent_RequestAbortedDuringAudit_StillStreamsInsteadOfFailing()
+        {
+            // A client that aborts a media request (seek, stop, next range) cancels the request token.
+            // The audit row must still be written and the clip must still stream, not return 500.
+            string path = CreateTempFileWithKnownBytes();
+            DefaultHttpContext context = CreateAuthenticatedContext();
+            using var aborted = new CancellationTokenSource();
+            aborted.Cancel();
+
+            IResult result = await InvokeGetContentAsync(context, path, requestAborted: aborted.Token);
+            _ = await ExecuteResultAsync(result, context);
+
+            Assert.IsNotType<Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>(result);
+        }
+
+        [Fact]
         public async Task MediaContent_NoRangeHeader_Returns200WithWholeFile()
         {
             string path = CreateTempFileWithKnownBytes();
@@ -116,11 +150,11 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             return context;
         }
 
-        private static async Task<IResult> InvokeGetContentAsync(HttpContext context, string filePath)
+        private static async Task<IResult> InvokeGetContentAsync(HttpContext context, string filePath, Mock<IAccessAuditLogRepository>? auditMock = null, CancellationToken requestAborted = default)
         {
             var mediaItemId = Guid.NewGuid();
 
-            var mediaItems = new Mock<IMediaItemRepository>();
+            var mediaItems = new Mock<IMediaItemWriteRepository>();
             _ = mediaItems.Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new MediaItem
                 {
@@ -140,7 +174,8 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = storage.Setup(s => s.OpenReadStreamAsync(filePath, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => File.OpenRead(filePath));
 
-            var auditLog = new Mock<IAccessAuditLogRepository>();
+            Mock<IAccessAuditLogRepository> auditLog = auditMock ?? new Mock<IAccessAuditLogRepository>();
+            // Like the real repository, an audit write that gets a cancelled token fails.
             _ = auditLog.Setup(a => a.RecordAccessAsync(
                 mediaItemId,
                 It.IsAny<string>(),
@@ -148,28 +183,36 @@ namespace VideoForensics.Client.WebApp.Tests.Api
                 "127.0.0.1",
                 "In-app media view",
                 It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new AccessAuditLogEntity
+                .Returns((Guid _, string _, string _, string _, string _, CancellationToken token) =>
                 {
-                    Id = Guid.NewGuid(),
-                    EvidenceId = mediaItemId,
-                    UserId = Guid.NewGuid().ToString(),
-                    Action = "View",
-                    IpAddress = "127.0.0.1",
-                    Purpose = "Test",
-                    AccessedAtUtc = DateTime.UtcNow,
-                    CreatedAtUtc = DateTime.UtcNow
+                    if (token.IsCancellationRequested)
+                    {
+                        return Task.FromException<AccessAuditLogEntity>(new OperationCanceledException(token));
+                    }
+
+                    return Task.FromResult(new AccessAuditLogEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        EvidenceId = mediaItemId,
+                        UserId = Guid.NewGuid().ToString(),
+                        Action = "View",
+                        IpAddress = "127.0.0.1",
+                        Purpose = "Test",
+                        AccessedAtUtc = DateTime.UtcNow,
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
                 });
 
             var tierResolver = new Mock<INetworkTierResolver>();
             _ = tierResolver.Setup(t => t.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
 
             var ticketService = new Mock<IMediaAccessTicketService>();
-            var operators = new Mock<IOperatorRepository>();
+            var operators = new Mock<IOperatorWriteRepository>();
             var logger = new Mock<ILogger<Program>>();
 
             return await MediaApiEndpoints.GetContentAsync(
                 mediaItemId, null, ticketService.Object, mediaItems.Object, operators.Object, storage.Object,
-                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeRepository>(), Mock.Of<IDeviceRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, CancellationToken.None);
+                auditLog.Object, tierResolver.Object, logger.Object, Mock.Of<INotificationDispatcher>(), Mock.Of<INoticeWriteRepository>(), Mock.Of<IDeviceWriteRepository>(), Mock.Of<IEvidenceValidationJobs>(), context, requestAborted);
         }
 
         private static async Task<byte[]> ExecuteResultAsync(IResult result, DefaultHttpContext context)

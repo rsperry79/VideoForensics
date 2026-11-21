@@ -9,6 +9,7 @@ using System.Reactive.Subjects;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -31,10 +32,11 @@ public class LiveViewPageTests : BunitContext
 
     private static readonly Guid Camera = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid Snapshot = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid Garage = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
     private void AddCamera()
     {
-        var device = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" };
+        var device = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" }.ToDto();
         _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync([device]);
     }
 
@@ -52,7 +54,7 @@ public class LiveViewPageTests : BunitContext
         };
         _ = _mediaItems
             .Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(Camera, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
-            .ReturnsAsync([media]);
+            .ReturnsAsync([media.ToDto()]);
         _ = _contentUrls
             .Setup(c => c.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string> { [Snapshot] = url });
@@ -90,9 +92,56 @@ public class LiveViewPageTests : BunitContext
         cut.WaitForAssertion(() => Assert.Equal("https://example.test/still-2.jpg", cut.Find("[data-testid='live-view-still']").GetAttribute("src")));
     }
 
+    [Fact]
+    public void LiveView_StoredCameraSelection_RestoresOnLoad()
+    {
+        // Arrange: two cameras, and the operator last chose only the second one
+        var flood = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(
+        [
+            new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" }.ToDto(),
+            new Device { Id = flood, LocationId = Guid.NewGuid(), ProviderDeviceId = "flood", Name = "Flood", Type = "camera" }.ToDto(),
+        ]);
+        var media = new MediaItem { Id = Snapshot, DeviceId = flood, FileName = "f.jpg", FilePath = "f.jpg", MediaFormat = "jpg", RecordedAtUtc = DateTime.UtcNow, Sha256Hash = "h" };
+        _mediaItems
+            .Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(flood, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync([media.ToDto()]);
+        _contentUrls
+            .Setup(c => c.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string> { [Snapshot] = "https://example.test/flood.jpg" });
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.filters.live-view")
+            .SetResult($"{{\"providers\":null,\"account\":null,\"cameras\":[\"{flood:D}\"]}}");
+
+        // Act
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+
+        // Assert: only the stored camera has a tile
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        Assert.Equal(flood.ToString("D"), cut.Find("[data-testid='live-view-tile']").GetAttribute("data-device-id"));
+    }
+
+    [Fact]
+    public async Task LiveView_CameraChosenOnSharedReviewState_IsTheCameraShown()
+    {
+        // Arrange: two cameras; Live View starts on the first one
+        var porch = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" }.ToDto();
+        var garage = new Device { Id = Garage, LocationId = Guid.NewGuid(), ProviderDeviceId = "garage", Name = "Garage", Type = "camera" }.ToDto();
+        _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync([porch, garage]);
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(Camera.ToString("D"), cut.Find("[data-testid='live-view-tile']").GetAttribute("data-device-id")));
+
+        // Act: the camera is chosen on the shared review state, the same one the Review page writes to
+        var shared = Services.GetRequiredService<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
+        await cut.InvokeAsync(() => shared.SetCameras([Garage]));
+
+        // Assert: Live View shows the chosen camera
+        cut.WaitForAssertion(() => Assert.Equal(Garage.ToString("D"), cut.Find("[data-testid='live-view-tile']").GetAttribute("data-device-id")));
+    }
+
     public LiveViewPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.RightPanelFilterStore>();
         _ = Services.AddLocalization();
         _ = Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IMediaPlaybackPolicy, VideoForensics.Client.Ui.Shared.Services.DefaultMediaPlaybackPolicy>();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
@@ -106,7 +155,7 @@ public class LiveViewPageTests : BunitContext
         _deviceRepository = new Mock<IDeviceRepository>();
         _ = _deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>()))
-            .ReturnsAsync(Array.Empty<Device>());
+            .ReturnsAsync(Array.Empty<VideoForensics.Core.Api.Contracts.DeviceDto>());
         Mock<IDeviceRepository> deviceRepository = _deviceRepository;
 
         _mediaItems = new Mock<IMediaItemRepository>();
@@ -121,8 +170,8 @@ public class LiveViewPageTests : BunitContext
         var sessionService = new Mock<ILiveViewSessionService>();
 
         var sessionSource = new Mock<ILiveViewSessionSource>();
-        _ = sessionSource.SetupGet(s => s.SessionChanged).Returns(new Subject<LiveViewSession>());
-        _ = sessionSource.SetupGet(s => s.Telemetry).Returns(new Subject<LiveViewTelemetrySample>());
+        _ = sessionSource.SetupGet(s => s.SessionChanged).Returns(new Subject<LiveViewSessionDto>());
+        _ = sessionSource.SetupGet(s => s.Telemetry).Returns(new Subject<LiveViewTelemetrySampleDto>());
         _ = sessionSource.SetupGet(s => s.IsConnected).Returns(false);
 
         _ = Services.AddSingleton(deviceRepository.Object);

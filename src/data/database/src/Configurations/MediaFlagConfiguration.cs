@@ -18,6 +18,9 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(f => f.ReviewedBy).HasMaxLength(256);
             _ = builder.Property(f => f.ReviewNote).HasMaxLength(1024);
 
+            // Read-only on the entity: the repository fills it from the clip and its download event on each read.
+            _ = builder.Ignore(f => f.EventType);
+
             // SQLite has no row version type, so the int is bumped by the repository and checked on every update.
             _ = builder.Property(f => f.RowVersion).IsConcurrencyToken();
 

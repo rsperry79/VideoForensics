@@ -16,14 +16,14 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>The timeline runs at 1 fps, so a still with no later capture is held for one frame.</summary>
         private static readonly TimeSpan LastStillHold = TimeSpan.FromSeconds(1);
 
-        private readonly ISnapshotCaptureRepository _captures;
+        private readonly ISnapshotCaptureWriteRepository _captures;
         private readonly ISnapshotStillMapper _stillMapper;
         private readonly ITimelineVideoBuilder _builder;
         private readonly ILogger<SnapshotTimelineService> _logger;
         private readonly IMediaPathResolver _paths;
 
         public SnapshotTimelineService(
-            ISnapshotCaptureRepository captures,
+            ISnapshotCaptureWriteRepository captures,
             ISnapshotStillMapper stillMapper,
             ITimelineVideoBuilder builder,
             ILogger<SnapshotTimelineService> logger,

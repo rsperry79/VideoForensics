@@ -39,11 +39,7 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.BadRequest("A case id is required to export evidence.");
             }
 
-            ExportResult result = await exportService.ExportEvidenceAsync(
-                request.CaseId,
-                request.RecipientDescription,
-                request.Passphrase,
-                ct);
+            ExportResult result = await exportService.ExportEvidenceAsync(request.CaseId, ct);
 
             string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             await auditLog.LogAsync(
@@ -189,13 +185,13 @@ namespace VideoForensics.Client.WebApp.Api
                 IEvidenceValidationService validationService,
                 CancellationToken ct) =>
             {
-                IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await validationService.ReconcileWithProviderAsync(
+                IReadOnlyList<ReconciliationDiscrepancyDto> discrepancies = await validationService.ReconcileWithProviderAsync(
                     request.DeviceId,
                     request.ProviderDeviceId,
                     request.FromUtc,
                     request.ToUtc,
                     ct);
-                return Results.Ok(discrepancies.Select(d => d.ToDto()).ToList());
+                return Results.Ok(discrepancies.ToList());
             })
             .AddEndpointFilter<MaintenanceEndpointFilter>()
             .RequireRateLimiting("media")
@@ -246,13 +242,7 @@ namespace VideoForensics.Client.WebApp.Api
 
     /// <summary>Request to export one case's reports and evidence to an archive.</summary>
     /// <param name="CaseId">The case to export. Required; <see cref="Guid.Empty"/> is rejected.</param>
-    /// <param name="RecipientDescription">Description of the archive recipient/purpose.</param>
-    /// <param name="Passphrase">Optional passphrase for AES-256 encryption.</param>
-    public record ExportEvidenceRequest(
-        Guid CaseId,
-        string? RecipientDescription,
-        string? Passphrase
-    );
+    public record ExportEvidenceRequest(Guid CaseId);
 
     /// <summary>Request to validate all devices with optional date range override.</summary>
     /// <param name="FromUtcOverride">Override default start date (default: 90 days ago).</param>
@@ -278,7 +268,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static ReconciliationDiscrepancyDto ToDto(this ReconciliationDiscrepancy entity)
         {
             return new ReconciliationDiscrepancyDto(
-                Type: entity.Type,
+                Type: entity.Type.ToDto(),
                 ProviderEventId: entity.ProviderEventId,
                 FieldName: entity.FieldName,
                 StoredValue: entity.StoredValue,
@@ -296,7 +286,7 @@ namespace VideoForensics.Client.WebApp.Api
                 CompletedUtc: job.CompletedUtc,
                 Log: job.Log,
                 IntegrityResults: job.IntegrityResults?.Select(r => r.ToDto()).ToList(),
-                Discrepancies: job.Discrepancies?.Select(d => d.ToDto()).ToList(),
+                Discrepancies: job.Discrepancies?.ToList(),
                 ErrorMessage: job.ErrorMessage
             );
         }

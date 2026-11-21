@@ -7,7 +7,7 @@ using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Data.Common.Entities;
 
-using Xunit;
+using VideoForensics.Core.Api.Contracts;using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
@@ -18,8 +18,7 @@ public class ReviewTopBar_Tests : ReviewTestContext
     {
         AddDevices(2);
         return Render<ReviewTopBar>(parameters => parameters
-            .Add(p => p.State, ReviewState)
-            .Add(p => p.DeviceNames, Devices.ToDictionary(d => d.Id, NameOf)));
+            .Add(p => p.State, ReviewState));
     }
 
     [Fact]
@@ -109,29 +108,25 @@ public class ReviewTopBar_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTopBar_PendingTagsExist_ShowsTheBadge()
-    {
-        // Arrange
-        IRenderedComponent<ReviewTopBar> cut = RenderBar();
-        Assert.Empty(cut.FindAll("[data-testid='review-pending-tags-count']"));
-
-        // Act
-        _ = cut.InvokeAsync(() => Services.GetRequiredService<PendingEvidenceTags>().Add(new PendingTag(
-            CaseItemKind.Media, Guid.NewGuid(), Devices[0].Id, FixedNowUtc, PendingTagFakes.Reason, "actor-1")));
-
-        // Assert
-        _ = Assert.Single(cut.FindAll("[data-testid='review-pending-tags-count']"));
-    }
-
-    [Fact]
-    public void ReviewTopBar_Rendered_HasNoTabGroupLiveButtonOrFilterControls()
+    public void ReviewTopBar_Render_HasNoTabsTimeRangeOrCameraSelector()
     {
         // Arrange and Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
-        // Assert - these moved to the left view nav and the right filter panel
+        // Assert - the view tabs, time range, camera selector, Filters and pending tags moved to the right sidebar
         Assert.Empty(cut.FindAll("[data-testid='review-tabs']"));
-        Assert.Empty(cut.FindAll("[data-testid^='review-tab-button-']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-camera-selector']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-filters-button']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-pending-tags-count']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_Rendered_HasNoLiveButtonOrFilterControls()
+    {
+        // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert - Live stays in the left menu; the filters moved to the right filter panel
         Assert.Empty(cut.FindAll("[data-testid='review-live']"));
         Assert.Empty(cut.FindAll("[data-testid='review-filter']"));
         Assert.Empty(cut.FindAll("[data-testid='review-filter-active']"));
@@ -142,6 +137,19 @@ public class ReviewTopBar_Tests : ReviewTestContext
     public void ReviewTopBar_NoPopupOpen_RendersNoBackdrop()
     {
         // Arrange and Act
+        IRenderedComponent<ReviewTopBar> cut = RenderBar();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='review-popup-backdrop']"));
+    }
+
+    [Fact]
+    public void ReviewTopBar_PopupOpen_RendersNoBackdrop()
+    {
+        // Arrange: the backdrop lives in ReviewPopupHost, beside the popups, so the bar never draws its own
+        Services.GetRequiredService<ReviewPopupState>().Toggle(ReviewPopupState.Pending);
+
+        // Act
         IRenderedComponent<ReviewTopBar> cut = RenderBar();
 
         // Assert

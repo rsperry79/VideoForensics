@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Common.Entities;
@@ -24,7 +25,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _repository = new MediaItemRepository(_fixture.Factory, NullLogger<MediaItemRepository>.Instance);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new MediaItemRepository(unitOfWork, NullLogger<MediaItemRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()
@@ -33,7 +36,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             _fixture.Dispose();
         }
 
-        private static MediaItem Row(Guid deviceId, string format, DateTime recordedAt, string metadata)
+        private static MediaItem Row(Guid deviceId, string format, DateTime recordedAt, string? metadata, string kind = MediaKinds.Clip)
         {
             return new()
             {
@@ -46,6 +49,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 RecordedAtUtc = recordedAt,
                 DownloadedAtUtc = recordedAt,
                 MetadataJson = metadata,
+                MediaKind = kind,
             };
         }
 
@@ -53,11 +57,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task MediaItemRepository_LatestLoop_ReturnsLoopOlderThanTheNewestSnapshots()
         {
             var deviceId = Guid.NewGuid();
-            MediaItem loop = Row(deviceId, "mp4", Start, LoopMetadata);
+            MediaItem loop = Row(deviceId, "mp4", Start, LoopMetadata, MediaKinds.Timelapse);
             await _repository.AddAsync(loop, CancellationToken.None);
             for (int i = 1; i <= 250; i++)
             {
-                await _repository.AddAsync(Row(deviceId, "jpg", Start.AddSeconds(i * 5), SnapshotMetadata), CancellationToken.None);
+                await _repository.AddAsync(Row(deviceId, "jpg", Start.AddSeconds(i * 5), SnapshotMetadata, MediaKinds.Snapshot), CancellationToken.None);
             }
 
             MediaItem? latest = await _repository.GetLatestRollupLoopAsync(deviceId, CancellationToken.None);
@@ -70,8 +74,34 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task MediaItemRepository_LatestLoop_IgnoresOtherDevicesAndNonLoops()
         {
             var deviceId = Guid.NewGuid();
-            await _repository.AddAsync(Row(Guid.NewGuid(), "mp4", Start.AddMinutes(1), LoopMetadata), CancellationToken.None);
+            await _repository.AddAsync(Row(Guid.NewGuid(), "mp4", Start.AddMinutes(1), LoopMetadata, MediaKinds.Timelapse), CancellationToken.None);
             await _repository.AddAsync(Row(deviceId, "mp4", Start.AddMinutes(2), "{\"type\":\"video\"}"), CancellationToken.None);
+
+            MediaItem? latest = await _repository.GetLatestRollupLoopAsync(deviceId, CancellationToken.None);
+
+            Assert.Null(latest);
+        }
+
+        [Fact]
+        public async Task MediaItemRepository_LatestLoop_ClassifiesByMediaKind_WithoutAMarker()
+        {
+            // Why: the typed MediaKind column decides; a loop row with no JSON marker is still the loop.
+            var deviceId = Guid.NewGuid();
+            MediaItem loop = Row(deviceId, "mp4", Start, metadata: null);
+            loop.MediaKind = MediaKinds.Timelapse;
+            await _repository.AddAsync(loop, CancellationToken.None);
+
+            MediaItem? latest = await _repository.GetLatestRollupLoopAsync(deviceId, CancellationToken.None);
+
+            Assert.NotNull(latest);
+            Assert.Equal(loop.Id, latest!.Id);
+        }
+
+        [Fact]
+        public async Task MediaItemRepository_LatestLoop_MarkerTextOnAClipRow_IsNotALoop()
+        {
+            var deviceId = Guid.NewGuid();
+            await _repository.AddAsync(Row(deviceId, "mp4", Start, LoopMetadata), CancellationToken.None);
 
             MediaItem? latest = await _repository.GetLatestRollupLoopAsync(deviceId, CancellationToken.None);
 

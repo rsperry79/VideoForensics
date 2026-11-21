@@ -1,12 +1,5 @@
-/* The tab content and the timeline sit side by side: the content takes the remaining width and the timeline stays pinned to the right edge. */
-.review-body {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
+/* The tab content takes the remaining width of the stage; the timeline aside stays pinned to the top of its side column. */
 .review-content {
-    flex: 1 1 auto;
     min-width: 0;
 }
 
@@ -16,4 +9,7 @@
     align-self: flex-start;
     flex-shrink: 0;
     width: 7rem;
+    /* Measured window height (ReviewWindowSizing); the viewport-height value applies until the window is measured. */
+    height: var(--review-timeline-height, calc(100vh - 8rem));
+    min-height: 0;
 }

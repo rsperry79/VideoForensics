@@ -81,6 +81,7 @@ namespace VideoForensics.Providers.Ring.Entities
         /// Confidence score for detection/analysis match (0.0 to 1.0).
         /// Null if not computed.
         /// </summary>
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.LenientNullableDoubleConverter))]
         [JsonPropertyName("similarity")]
         public double? Similarity { get; set; }
 
@@ -103,6 +104,7 @@ namespace VideoForensics.Providers.Ring.Entities
         /// Null if no tags present.
         /// </summary>
         [JsonPropertyName("tags")]
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.CvTagListConverter))]
         public List<string> Tags { get; set; }
 
         /// <summary>cv_properties.key_moments. Shape not captured (null in every sample): read as a raw value, stored only if it is a string.</summary>

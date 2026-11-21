@@ -1,5 +1,4 @@
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Layout
 {
@@ -75,16 +74,13 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/accounts/{Id:guid}/sync"] = AccessPolicy.Admin,
                 ["/accounts/{Id:guid}/cases"] = AccessPolicy.Admin,
                 // Device config is SuperAdminLocal on the server, so this tab stays SuperAdmin on the Local tier.
-                ["/accounts/{Id:guid}/devices"] = AccessPolicy.SuperAdminLocal,
+                ["/accounts/{Id:guid}/devices"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
                 ["/review/export"] = AccessPolicy.SuperAdminLocal,
                 ["/cases/new"] = AccessPolicy.Review,
                 ["/settings/security-events"] = AccessPolicy.ReadOnly,
                 ["/settings/operators"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/operators/{Id:guid}"] = AccessPolicy.SuperAdminLocal,
-                // Approving credentials needs SuperAdminLocalOrPasskey (DeviceManagementEndpoints approve route); the
-                // list itself needs Admin, but the page exists only to act on approvals, so the stricter policy applies.
-                ["/admin/pending-credentials"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 // Admins may open this page only when a Super Admin opens it on the Permissions page. Factory reset and
                 // key storage stay SuperAdminLocal inside the page, since they have no server policy behind them.
                 ["/settings/infrastructure"] = AccessPolicy.InfrastructureSettings,
@@ -92,6 +88,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/settings/database"] = AccessPolicy.SuperAdminLocal,
                 ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/notifications"] = AccessPolicy.NotificationSettings,
+                // Each operator edits only their own preferences, so any signed-in operator (the lowest policy) may open it.
+                ["/settings/my-notifications"] = AccessPolicy.ReadOnly,
                 ["/settings/security-log"] = AccessPolicy.Admin,
                 ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
                 // Writes go through /api/v1/permissions/provider-accounts (SuperAdminLocalOrPasskey, like the lockout policy).
@@ -129,12 +127,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             return policy switch
             {
-                AccessPolicy.ReadOnly => ctx.HasRole(OperatorRole.ReadOnly),
-                AccessPolicy.Review => ctx.HasRole(OperatorRole.Review),
-                AccessPolicy.Admin => ctx.HasRole(OperatorRole.Admin),
-                AccessPolicy.SuperAdmin => ctx.HasRole(OperatorRole.SuperAdmin),
-                AccessPolicy.SuperAdminLocal => ctx.HasRole(OperatorRole.SuperAdmin) && ctx.IsLocalTier,
-                AccessPolicy.SuperAdminLocalOrPasskey => ctx.HasRole(OperatorRole.SuperAdmin) && (ctx.IsLocalTier || ctx.IsPasskeySession),
+                AccessPolicy.ReadOnly => ctx.HasRole(OperatorRoleDto.ReadOnly),
+                AccessPolicy.Review => ctx.HasRole(OperatorRoleDto.Review),
+                AccessPolicy.Admin => ctx.HasRole(OperatorRoleDto.Admin),
+                AccessPolicy.SuperAdmin => ctx.HasRole(OperatorRoleDto.SuperAdmin),
+                AccessPolicy.SuperAdminLocal => ctx.HasRole(OperatorRoleDto.SuperAdmin) && ctx.IsLocalTier,
+                AccessPolicy.SuperAdminLocalOrPasskey => ctx.HasRole(OperatorRoleDto.SuperAdmin) && (ctx.IsLocalTier || ctx.IsPasskeySession),
                 AccessPolicy.ReportSettings => AllowsSetting(RestrictedSettings.Reports, ctx),
                 AccessPolicy.EmailSettings => AllowsSetting(RestrictedSettings.Email, ctx),
                 AccessPolicy.NotificationSettings => AllowsSetting(RestrictedSettings.Notifications, ctx),
@@ -148,7 +146,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// <summary>SuperAdmin always; Admin only once a Super Admin has opened that settings page to admins.</summary>
         private static bool AllowsSetting(RestrictedSettings area, NavContext ctx)
         {
-            return ctx.HasRole(OperatorRole.SuperAdmin) || (ctx.OpenToAdmin.HasFlag(area) && ctx.HasRole(OperatorRole.Admin));
+            return ctx.HasRole(OperatorRoleDto.SuperAdmin) || (ctx.OpenToAdmin.HasFlag(area) && ctx.HasRole(OperatorRoleDto.Admin));
         }
 
         private static string StripQuery(string path)

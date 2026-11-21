@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Viewer;
 using VideoForensics.Client.Ui.Shared.Components.Viewer;
-using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Client.Ui.Shared.Services.Review;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -11,13 +11,14 @@ public class ReviewClipBuilder_Tests
 {
     private static readonly DateTime Start = new(2026, 10, 28, 10, 0, 0, DateTimeKind.Utc);
 
-    private static MediaItem Item(
+    private static MediaItemDto Item(
         Guid device,
         DateTime startUtc,
         double? duration,
         string format = "video/mp4",
         string? metadata = null,
-        bool purged = false)
+        bool purged = false,
+        string kind = MediaKinds.Clip)
     {
         return new MediaItem
         {
@@ -26,12 +27,13 @@ public class ReviewClipBuilder_Tests
             FileName = "clip.mp4",
             FilePath = "clips/clip.mp4",
             MediaFormat = format,
+            MediaKind = kind,
             Sha256Hash = "hash",
             RecordedAtUtc = startUtc,
             DurationSeconds = duration,
             MetadataJson = metadata,
             IsPurged = purged,
-        };
+        }.ToDto();
     }
 
     [Fact]
@@ -39,7 +41,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange: a roll-up is a playable mp4 loop, so it is a clip the timeline shows.
         var device = Guid.NewGuid();
-        MediaItem[] items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"snapshot-rollup\"}") };
+        MediaItemDto[] items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"snapshot-rollup\"}") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -53,7 +55,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItem[] items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"Snapshot-Rollup\"}") };
+        MediaItemDto[] items = new[] { Item(device, Start, 60, metadata: "{\"type\":\"Snapshot-Rollup\"}") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -67,7 +69,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItem[] items = new[] { Item(device, Start, 1, metadata: "{\"type\":\"snapshot\",\"source\":\"capture\"}") };
+        MediaItemDto[] items = new[] { Item(device, Start, 1, metadata: "{\"type\":\"snapshot\",\"source\":\"capture\"}", kind: MediaKinds.Snapshot) };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -81,7 +83,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItem[] items = new[] { Item(device, Start, 60, purged: true) };
+        MediaItemDto[] items = new[] { Item(device, Start, 60, purged: true) };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -95,7 +97,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItem[] items = new[] { Item(device, Start, 60, format: "image/jpeg") };
+        MediaItemDto[] items = new[] { Item(device, Start, 60, format: "image/jpeg") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -109,7 +111,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItem[] items = new[] { Item(Guid.NewGuid(), Start, 60) };
+        MediaItemDto[] items = new[] { Item(Guid.NewGuid(), Start, 60) };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -123,9 +125,9 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItem late = Item(device, Start.AddMinutes(5), 30);
-        MediaItem early = Item(device, Start, 30);
-        MediaItem[] items = new[] { late, early };
+        MediaItemDto late = Item(device, Start.AddMinutes(5), 30);
+        MediaItemDto early = Item(device, Start, 30);
+        MediaItemDto[] items = new[] { late, early };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -141,7 +143,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItem[] items = new[] { Item(device, Start, null), Item(device, Start, 0) };
+        MediaItemDto[] items = new[] { Item(device, Start, null), Item(device, Start, 0) };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -155,7 +157,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var device = Guid.NewGuid();
-        MediaItem[] items = new[] { Item(device, Start, 60, metadata: null), Item(device, Start.AddMinutes(1), 60, metadata: "{not json") };
+        MediaItemDto[] items = new[] { Item(device, Start, 60, metadata: null), Item(device, Start.AddMinutes(1), 60, metadata: "{not json") };
 
         // Act
         IReadOnlyList<ClipWindow> clips = ReviewClipBuilder.BuildClips(items, device);
@@ -185,9 +187,9 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange: the player picks the clip covering the cursor from the full list, so the tile must carry every clip.
         var camera = Guid.NewGuid();
-        MediaItem later = Item(camera, Start.AddMinutes(10), 60);
-        MediaItem earlier = Item(camera, Start, 60);
-        MediaItem otherCamera = Item(Guid.NewGuid(), Start, 60);
+        MediaItemDto later = Item(camera, Start.AddMinutes(10), 60);
+        MediaItemDto earlier = Item(camera, Start, 60);
+        MediaItemDto otherCamera = Item(Guid.NewGuid(), Start, 60);
 
         // Act
         IReadOnlyList<CameraTile> tiles = ReviewClipBuilder.BuildTiles(
@@ -232,7 +234,7 @@ public class ReviewClipBuilder_Tests
     {
         // Arrange
         var camera = Guid.NewGuid();
-        MediaItem clip = Item(camera, Start, 60);
+        MediaItemDto clip = Item(camera, Start, 60);
         string id = clip.Id.ToString("D");
 
         // Act
@@ -249,5 +251,68 @@ public class ReviewClipBuilder_Tests
         Assert.NotNull(preview);
         Assert.Equal("preview/" + id, preview(id));
         Assert.Null(tiles[0].ContentUrlFor("unknown"));
+    }
+
+    [Fact]
+    public void BuildUnavailableClips_EventWithoutMedia_IsFlaggedUnavailable()
+    {
+        // Arrange: the event was stored but has no downloadable media
+        Guid device = Guid.NewGuid();
+        var evt = new Event
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            ProviderEventId = "86401464",
+            EventType = "motion",
+            OccurredAtUtc = Start,
+            DiscoveredAtUtc = Start,
+            DownloadStatus = EventDownloadStatus.Unavailable,
+        }.ToDto();
+
+        // Act
+        IReadOnlyList<ClipWindow> windows = ReviewClipBuilder.BuildUnavailableClips([evt], device);
+
+        // Assert: one window at the event's time, marked unavailable so the timeline draws it apart from playable clips
+        ClipWindow window = Assert.Single(windows);
+        Assert.True(window.IsUnavailable);
+        Assert.Equal(Start, window.StartUtc);
+    }
+
+    [Fact]
+    public void BuildUnavailableClips_DownloadedEvent_IsExcluded()
+    {
+        // Arrange: a downloaded event has playable media, so it belongs to BuildClips, not here
+        Guid device = Guid.NewGuid();
+        var evt = new Event
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = device,
+            ProviderEventId = "86401465",
+            EventType = "motion",
+            OccurredAtUtc = Start,
+            DiscoveredAtUtc = Start,
+            DownloadStatus = EventDownloadStatus.Downloaded,
+        }.ToDto();
+
+        // Act / Assert
+        Assert.Empty(ReviewClipBuilder.BuildUnavailableClips([evt], device));
+    }
+
+    [Fact]
+    public void BuildUnavailableClips_OtherDeviceEvent_IsExcluded()
+    {
+        Guid device = Guid.NewGuid();
+        var evt = new Event
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = Guid.NewGuid(),
+            ProviderEventId = "86401466",
+            EventType = "motion",
+            OccurredAtUtc = Start,
+            DiscoveredAtUtc = Start,
+            DownloadStatus = EventDownloadStatus.NotAttempted,
+        }.ToDto();
+
+        Assert.Empty(ReviewClipBuilder.BuildUnavailableClips([evt], device));
     }
 }

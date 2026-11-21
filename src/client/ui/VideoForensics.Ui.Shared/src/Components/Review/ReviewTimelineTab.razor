@@ -11,7 +11,6 @@
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Core.Api.Contracts
-@using VideoForensics.Data.Common.Entities
 @inject IReviewClipLoader ClipLoader
 @inject ReviewUrlCache UrlCache
 @inject IServiceProvider ServiceProvider
@@ -27,15 +26,21 @@
 <div class="review-timeline-tab" data-testid="review-timeline-tab">
     @if (State.CameraIds.Count == 0)
     {
-        <p class="review-timeline-message" data-testid="review-timeline-no-cameras">@L["NoCamerasSelected"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message" data-testid="review-timeline-no-cameras">@L["NoCamerasSelected"]</p>
+        </div>
     }
     else if (_error)
     {
-        <p class="review-timeline-message text-danger" role="alert" data-testid="review-timeline-error">@L["ClipsLoadFailed"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message text-danger" role="alert" data-testid="review-timeline-error">@L["ClipsLoadFailed"]</p>
+        </div>
     }
     else if (_loaded is null || !_loaded.Key.Matches(State))
     {
-        <p class="review-timeline-message" role="status" data-testid="review-timeline-loading">@L["LoadingClips"]</p>
+        <div class="review-stage--message">
+            <p class="review-timeline-message" role="status" data-testid="review-timeline-loading">@L["LoadingClips"]</p>
+        </div>
     }
     else
     {
@@ -46,13 +51,17 @@
 
         @if (!_loaded.HasSelectedClips)
         {
-            <p class="review-timeline-message" data-testid="review-timeline-no-clips">@L["NoClipsInRange"]</p>
+            <div class="review-stage--message">
+                <p class="review-timeline-message" data-testid="review-timeline-no-clips">@L["NoClipsInRange"]</p>
+            </div>
         }
         else if (State.CameraIds.Count == 1)
         {
+            <button type="button" class="btn btn-sm btn-outline-secondary mb-2" data-testid="review-show-all-cameras" @onclick="ShowAllCameras">@L["ShowAllCameras"]</button>
+            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" OnPlaybackUtc="OnPlaybackPosition" OnGrabStill="StillCommand.GrabAsync" />
             @if (_stillStatus is not null && _stillClipId == Selection.MediaItemId)
             {
-                <div class="review-grab-still-bar">
+                <div class="review-grab-still-bar" role="status" aria-live="polite">
                     <span class="@(_stillStatus.IsError ? "text-danger" : null)" data-testid="review-grab-still-status">@_stillStatus.Text</span>
                     @if (_stillStatus.OpenUrl is not null)
                     {
@@ -60,12 +69,18 @@
                     }
                 </div>
             }
-            <SingleCameraView @ref="_singleCamera" Cameras="_tiles" SelectedIndex="0" Cursor="State.Cursor" OnSelect="OnStripSelect" />
         }
         else
         {
-            <CameraGrid Tiles="_tiles" Cursor="State.Cursor" />
+            <CameraGrid @ref="_grid" Tiles="_tiles" Cursor="State.Cursor" OnSelect="OnGridSelect" />
         }
+    }
+
+    @if (_loaded?.HasSelectedClips == true && State.CameraIds.Count > 1)
+    {
+        <div class="review-transport-dock">
+            <MediaTransportControls OnPlayPause="TogglePlayGridAsync" OnStep="StepGridAsync" Disabled="_grid is null" />
+        </div>
     }
 </div>
 
@@ -87,6 +102,23 @@
     [Parameter]
     public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
 
+    // The multi-camera grid, which the transport bar below it drives.
+    private CameraGrid? _grid;
+
+    private Task TogglePlayGridAsync() => _grid is null ? Task.CompletedTask : _grid.TogglePlayAsync();
+
+    // Reverse and forward move the shared timeline cursor, not each player, so every camera seeks to the same recording
+    // time and stays in sync. Each tile follows the cursor.
+    private Task StepGridAsync(double seconds)
+    {
+        if (State.Cursor is DateTime now)
+        {
+            State.SetPlaybackCursor(now.AddSeconds(seconds));
+        }
+
+        return Task.CompletedTask;
+    }
+
     // The single-camera view, whose main player reads the playback position for Grab still.
     private SingleCameraView? _singleCamera;
 
@@ -99,7 +131,7 @@
     private LoadKey? _requested;
     private IReadOnlyList<CameraTile> _tiles = [];
     private IReadOnlyList<Guid> _tileDeviceIds = [];
-    private Dictionary<string, MediaItem> _itemsByClipId = new(StringComparer.Ordinal);
+    private Dictionary<string, MediaItemDto> _itemsByClipId = new(StringComparer.Ordinal);
     private IReadOnlySet<Guid> _loadedDeviceIds = new HashSet<Guid>();
     private CancellationTokenSource? _loadCts;
     private readonly CancellationTokenSource _lifetime = new();
@@ -246,8 +278,8 @@
 
     private void Adopt(LoadKey key, IReadOnlyList<Guid> loadIds, ReviewClipSet set)
     {
-        _itemsByClipId = new Dictionary<string, MediaItem>(StringComparer.Ordinal);
-        foreach (MediaItem item in set.Items)
+        _itemsByClipId = new Dictionary<string, MediaItemDto>(StringComparer.Ordinal);
+        foreach (MediaItemDto item in set.Items)
         {
             _itemsByClipId[item.Id.ToString("D")] = item;
         }
@@ -296,14 +328,14 @@
             return;
         }
 
-        var wanted = new List<MediaItem>();
+        var wanted = new List<MediaItemDto>();
         foreach (CameraTile tile in _tiles)
         {
             IReadOnlyList<ClipWindow> clips = tile.Clips;
             int index = IndexAt(clips, cursor);
             for (int i = index; i < clips.Count && i <= index + 1; i++)
             {
-                if (_itemsByClipId.TryGetValue(clips[i].Id, out MediaItem? item))
+                if (_itemsByClipId.TryGetValue(clips[i].Id, out MediaItemDto? item))
                 {
                     wanted.Add(item);
                 }
@@ -349,6 +381,18 @@
         return clips.Count;
     }
 
+    /// <summary>The video reports its position as it plays. The timeline follows it without seeking the player.</summary>
+    private void OnPlaybackPosition(DateTime utc)
+    {
+        State.SetPlaybackCursor(utc);
+    }
+
+    /// <summary>Returns from the single-camera view to the grid: every camera in the list, up to the grid's limit.</summary>
+    private void ShowAllCameras()
+    {
+        State.SetCameras(_tileDeviceIds.Take(CameraSync.MaxTiles).ToList());
+    }
+
     /// <summary>The strip asks for a single camera. The tab narrows the selection to it and keeps the cursor.</summary>
     private void OnStripSelect(int index)
     {
@@ -361,15 +405,15 @@
     }
 
     /// <summary>The operator role parsed from the paired session, or null when none is known.</summary>
-    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+    private OperatorRoleDto? Role => SessionState.Role is not null && Enum.TryParse<OperatorRoleDto>(SessionState.Role, out OperatorRoleDto role) ? role : null;
 
     /// <summary>Why Grab still does not apply now, or null when it does. The reasons are checked in the order an operator can fix them.</summary>
     private LocalizedString? GrabStillReason
     {
         get
         {
-            OperatorRole? role = Role;
-            if (role is null || role.Value < OperatorRole.Review)
+            OperatorRoleDto? role = Role;
+            if (role is null || role.Value < OperatorRoleDto.Review)
             {
                 return L["GrabStillNeedsRole"];
             }
@@ -387,6 +431,17 @@
     /// Publishes the Grab still reason and handler to the sidebar button. Grab still needs the single-camera player, so
     /// a grid of several cameras reports that instead of the capture reasons.
     /// </summary>
+    /// <summary>A click on a grid preview opens that camera as the single view, the same as selecting only it in the filter.</summary>
+    private void OnGridSelect(int index)
+    {
+        if (index < 0 || index >= _tileDeviceIds.Count)
+        {
+            return;
+        }
+
+        State.SetCameras([_tileDeviceIds[index]]);
+    }
+
     private void PublishGrabStill()
     {
         if (_disposed)

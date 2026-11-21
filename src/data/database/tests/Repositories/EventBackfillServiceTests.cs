@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
@@ -19,6 +20,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         private MediaItemRepository _mediaItemRepository = null!;
         private UnitOfWork _unitOfWork = null!;
         private ILoggerFactory _loggerFactory = null!;
+        private EventBackfillService _backfillService = null!;
 
         public async ValueTask InitializeAsync()
         {
@@ -26,10 +28,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _fixture.InitializeAsync();
             _loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
 
-            _eventRepository = new EventRepository(_fixture.Factory, _loggerFactory.CreateLogger<EventRepository>());
-            _downloadEventRepository = new DownloadEventRepository(_fixture.Factory, _loggerFactory.CreateLogger<DownloadEventRepository>());
-            _mediaItemRepository = new MediaItemRepository(_fixture.Factory, _loggerFactory.CreateLogger<MediaItemRepository>());
             _unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _eventRepository = new EventRepository(_unitOfWork, _loggerFactory.CreateLogger<EventRepository>());
+            _mediaItemRepository = new MediaItemRepository(_unitOfWork, _loggerFactory.CreateLogger<MediaItemRepository>());
+            _downloadEventRepository = new DownloadEventRepository(_unitOfWork, _loggerFactory.CreateLogger<DownloadEventRepository>());
+            _backfillService = new EventBackfillService(new DeviceRepository(_unitOfWork, NullLogger<DeviceRepository>.Instance), new DingIdLinkRepository(_unitOfWork));
         }
 
         public async ValueTask DisposeAsync()
@@ -44,7 +47,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -81,7 +84,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -123,7 +126,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -156,7 +159,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -191,7 +194,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -226,7 +229,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -264,7 +267,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -296,7 +299,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             cts.Cancel();
 
             _ = await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-                await EventBackfillService.BackfillFromDownloadEventsAsync(
+                await _backfillService.BackfillFromDownloadEventsAsync(
                     _downloadEventRepository,
                     _mediaItemRepository,
                     _eventRepository,
@@ -315,7 +318,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -352,7 +355,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,
@@ -391,7 +394,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             var mockLogger = new Mock<ILogger>();
 
-            int result = await EventBackfillService.BackfillFromDownloadEventsAsync(
+            int result = await _backfillService.BackfillFromDownloadEventsAsync(
                 _downloadEventRepository,
                 _mediaItemRepository,
                 _eventRepository,

@@ -16,11 +16,7 @@
         }
         else if (_notes is { } notes)
         {
-            if (notes.Count == 0)
-            {
-                <p class="text-muted" data-testid="notes-empty">@L["NotesEmpty"]</p>
-            }
-            else
+            if (notes.Count > 0)
             {
                 <ol class="list-unstyled mb-0" data-testid="notes-list">
                     @foreach (NoteItem note in notes)
@@ -45,7 +41,7 @@
         {
             <div class="notes-add mt-3" data-testid="notes-form">
                 <label class="form-label small fw-semibold" for="notes-body">@L["NotesBodyLabel"]</label>
-                <SfTextBox ID="notes-body" Multiline="true" Placeholder="@L["NotesBodyLabel"].Value" @bind-Value="_body" @bind-Value:after="OnBodyChangedAsync" />
+                <SfTextBox ID="notes-body" Multiline="true" Placeholder="@L["NotesBodyLabel"].Value" HtmlAttributes="@NoteBoxAttributes" @bind-Value="_body" @bind-Value:after="OnBodyChangedAsync" />
                 <div class="small mt-1 @(Remaining < 0 ? "text-danger" : "text-muted")" data-testid="notes-remaining">@RemainingText</div>
 
                 @if (_error is { } error)
@@ -64,6 +60,13 @@
 @code {
     /// <summary>Longest note body accepted, counted after trimming the ends. Matches the server rule for notes.</summary>
     private const int MaxBodyLength = 4000;
+
+    /// <summary>One row tall by default; the vertical resize handle still lets the operator grow it.</summary>
+    private static readonly Dictionary<string, object> NoteBoxAttributes = new()
+    {
+        ["rows"] = "1",
+        ["style"] = "resize: vertical;",
+    };
 
     /// <summary>Loads the notes to show. Called on first render, when the delegate changes, and after each save.</summary>
     [Parameter, EditorRequired]

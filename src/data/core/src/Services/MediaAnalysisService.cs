@@ -31,8 +31,8 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Clips needed before an audio baseline (noise floor, silence) is trusted.</summary>
         private const int AudioBaselineMinimumSamples = 10;
 
-        private readonly IMediaItemRepository _items;
-        private readonly IDeviceRepository _devices;
+        private readonly IMediaItemWriteRepository _items;
+        private readonly IDeviceWriteRepository _devices;
         private readonly Hemisphere _hemisphere;
         private readonly IMediaBitrateAnalyzer _bitrate;
         private readonly IClipColorAnalyzer _color;
@@ -40,19 +40,19 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaThumbnailService _thumbnails;
         private readonly ILogger<MediaAnalysisService> _logger;
         private readonly IMediaPathResolver _paths;
-        private readonly IMediaFlagRepository _flags;
+        private readonly IMediaFlagWriteRepository _flags;
 
         /// <summary>Creates the service.</summary>
         public MediaAnalysisService(
-            IMediaItemRepository items,
-            IDeviceRepository devices,
+            IMediaItemWriteRepository items,
+            IDeviceWriteRepository devices,
             IMediaBitrateAnalyzer bitrate,
             IClipColorAnalyzer color,
             IAudioClipAnalyzer audio,
             IMediaThumbnailService thumbnails,
             IOptions<MediaAnalysisOptions> options,
             ILogger<MediaAnalysisService> logger,
-            IMediaFlagRepository flags,
+            IMediaFlagWriteRepository flags,
             IMediaPathResolver? paths = null)
         {
             _items = items;
@@ -75,13 +75,13 @@ namespace VideoForensics.Data.Core.Services
             return !string.Equals(media.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(media.MediaFormat, "jpeg", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(media.MediaFormat, "png", StringComparison.OrdinalIgnoreCase)
-            && (media.MetadataJson is null || !media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal));
+            && media.MediaKind != MediaKinds.Timelapse;
         }
 
         /// <summary>True for a roll-up time-lapse loop, whose duration is the window it covers.</summary>
         private static bool IsRollUpLoop(MediaItem media)
         {
-            return media.MetadataJson is not null && media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal);
+            return media.MediaKind == MediaKinds.Timelapse;
         }
 
         /// <inheritdoc />

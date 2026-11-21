@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using Moq;
+using VideoForensics.Core.Api.Contracts.Repositories;
+using VideoForensics.Core.Api.Contracts;
 
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
@@ -51,24 +53,28 @@ public abstract class ScopeRailTestContext : BunitContext
         };
     }
 
-    protected static ForensicCase MakeCase(
+    protected static ForensicCaseDto MakeCase(
         string caseNumber = "CASE-001",
         string title = "Test Case",
-        CaseStatus status = CaseStatus.Open,
+        CaseStatusDto status = CaseStatusDto.Open,
         DateTime? scopeFromUtc = null,
         DateTime? scopeToUtc = null)
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            CaseNumber = caseNumber,
-            Title = title,
-            Status = status,
-            ScopeFromUtc = scopeFromUtc,
-            ScopeToUtc = scopeToUtc,
-            CreatedBy = "test",
-            CreatedAtUtc = DateTime.UtcNow
-        };
+        return new ForensicCaseDto(
+            Id: Guid.NewGuid(),
+            CaseNumber: caseNumber,
+            Title: title,
+            Description: null,
+            Status: status.ToString(),
+            LeadOperatorId: null,
+            CreatedBy: "test",
+            CreatedAtUtc: DateTime.UtcNow,
+            UpdatedAtUtc: DateTime.UtcNow,
+            ClosedBy: null,
+            ClosedAtUtc: null,
+            ScopeFromUtc: scopeFromUtc,
+            ScopeToUtc: scopeToUtc,
+            DeviceIds: []);
     }
 
     protected Mock<IDeviceRepository> RegisterDeviceRepository(params Device[] devices)
@@ -76,7 +82,7 @@ public abstract class ScopeRailTestContext : BunitContext
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(devices.ToList());
+            .ReturnsAsync(devices.Select(d => d.ToDto()).ToList());
         _ = Services.AddScoped(_ => deviceRepository.Object);
         return deviceRepository;
     }
@@ -90,11 +96,11 @@ public abstract class ScopeRailTestContext : BunitContext
         return timeProvider;
     }
 
-    protected Mock<ICaseRepository> RegisterCaseRepository(params ForensicCase[] openCases)
+    protected Mock<ICaseRepository> RegisterCaseRepository(params ForensicCaseDto[] openCases)
     {
         var caseRepository = new Mock<ICaseRepository>();
         _ = caseRepository
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListAsync(CaseStatusDto.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync(openCases.ToList());
         _ = Services.AddScoped(_ => caseRepository.Object);
         return caseRepository;

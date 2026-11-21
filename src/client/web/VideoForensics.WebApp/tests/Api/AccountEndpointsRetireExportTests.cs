@@ -40,7 +40,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
 
         private readonly Guid _accountId = Guid.NewGuid();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IAccountExportService> _exports = new();
 
         private WebApplication _app = null!;
@@ -51,10 +51,11 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
 
-            _ = builder.Services.AddSingleton(Mock.Of<IUserRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<IUserWriteRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository>());
             _ = builder.Services.AddSingleton(_accounts.Object);
             _ = builder.Services.AddSingleton(_exports.Object);
-            _ = builder.Services.AddSingleton(Mock.Of<ICaseRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<ICaseWriteRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<IAccountSyncRunner>());
             _ = builder.Services.AddSingleton(Mock.Of<IRingAccountSyncState>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
@@ -69,6 +70,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(tier.Object);
             _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
             _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+        _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
             _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
             _ = builder.Services.AddAuthentication(TestScheme).AddScheme<AuthenticationSchemeOptions, SuperAdminTestHandler>(TestScheme, _ => { });
 

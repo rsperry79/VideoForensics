@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using VideoForensics.Data.Database.Logs;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
@@ -17,7 +18,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteLogsInMemoryFixture();
             await _fixture.InitializeAsync();
-            _repository = new LiveViewTelemetryRepository(_fixture.Factory, NullLogger<LiveViewTelemetryRepository>.Instance);
+            _repository = new LiveViewTelemetryRepository(new LogsDbGate(_fixture.Factory), NullLogger<LiveViewTelemetryRepository>.Instance);
         }
 
         public async ValueTask DisposeAsync()

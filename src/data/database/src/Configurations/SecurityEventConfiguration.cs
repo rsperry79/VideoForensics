@@ -11,12 +11,13 @@ namespace VideoForensics.Data.Database.Configurations
         public void Configure(EntityTypeBuilder<SecurityEvent> builder)
         {
             _ = builder.HasKey(e => e.Id);
-            _ = builder.Property(e => e.OperatorId).IsRequired();
+            _ = builder.Property(e => e.OperatorId).IsRequired(false);
             _ = builder.Property(e => e.EventType).IsRequired();
             _ = builder.Property(e => e.Success).IsRequired();
             _ = builder.Property(e => e.IpAddress).HasMaxLength(64);
             _ = builder.Property(e => e.OccurredAtUtc).IsRequired();
             _ = builder.Property(e => e.Reason).HasMaxLength(512);
+            _ = builder.Property(e => e.AttemptedUsername).HasMaxLength(256);
             _ = builder.Property(e => e.CreatedAtUtc).IsRequired();
 
             // Default EF Core naming convention already produces

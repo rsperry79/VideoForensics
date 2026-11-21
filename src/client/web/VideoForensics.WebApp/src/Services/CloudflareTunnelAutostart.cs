@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.WebApp.Services
 {
@@ -24,9 +24,9 @@ namespace VideoForensics.Client.WebApp.Services
         }
 
         /// <summary>The tunnel starts only when it is configured and the server is reachable beyond this machine.</summary>
-        public static bool ShouldAutostart(NetworkTier tier, bool hasTunnelToken)
+        public static bool ShouldAutostart(NetworkTierDto tier, bool hasTunnelToken)
         {
-            return hasTunnelToken && tier != NetworkTier.Local;
+            return hasTunnelToken && tier != NetworkTierDto.Local;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

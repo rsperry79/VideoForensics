@@ -1,5 +1,6 @@
-using VideoForensics.Data.Common.Entities;
 
+
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Devices;
 
 /// <summary>
@@ -8,21 +9,15 @@ namespace VideoForensics.Client.Ui.Shared.Services.Devices;
 /// </summary>
 public static class LatestDeviceMedia
 {
-    /// <summary>Marker the snapshot download writes into a snapshot's metadata.</summary>
-    private const string SnapshotMarker = "\"type\":\"snapshot\"";
-
-    /// <summary>Marker the roll-up writes into a loop's metadata.</summary>
-    private const string LoopMarker = "snapshot-rollup";
-
     /// <summary>The newest snapshot JPEG and the newest roll-up loop; either is null when the device has none yet.</summary>
-    public sealed record Selection(MediaItem? Snapshot, MediaItem? Loop);
+    public sealed record Selection(MediaItemDto? Snapshot, MediaItemDto? Loop);
 
     /// <summary>Selects from a device's recent media, in any order.</summary>
-    public static Selection Select(IEnumerable<MediaItem> items)
+    public static Selection Select(IEnumerable<MediaItemDto> items)
     {
-        MediaItem? snapshot = null;
-        MediaItem? loop = null;
-        foreach (MediaItem item in items)
+        MediaItemDto? snapshot = null;
+        MediaItemDto? loop = null;
+        foreach (MediaItemDto item in items)
         {
             if (IsSnapshot(item) && (snapshot is null || item.RecordedAtUtc > snapshot.RecordedAtUtc))
             {
@@ -38,17 +33,16 @@ public static class LatestDeviceMedia
         return new Selection(snapshot, loop);
     }
 
-    private static bool IsSnapshot(MediaItem item)
+    // Why: MediaKind is the typed classification (written by the snapshot capture and the roll-up). Text in MetadataJson is not read.
+    private static bool IsSnapshot(MediaItemDto item)
     {
-        return string.Equals(item.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
-        && item.MetadataJson is not null
-        && item.MetadataJson.Contains(SnapshotMarker, StringComparison.Ordinal);
+        return string.Equals(item.MediaKind, MediaKindNames.Snapshot, StringComparison.Ordinal)
+        && string.Equals(item.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsLoop(MediaItem item)
+    private static bool IsLoop(MediaItemDto item)
     {
-        return string.Equals(item.MediaFormat, "mp4", StringComparison.OrdinalIgnoreCase)
-        && item.MetadataJson is not null
-        && item.MetadataJson.Contains(LoopMarker, StringComparison.Ordinal);
+        return string.Equals(item.MediaKind, MediaKindNames.Timelapse, StringComparison.Ordinal)
+        && string.Equals(item.MediaFormat, "mp4", StringComparison.OrdinalIgnoreCase);
     }
 }

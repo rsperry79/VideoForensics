@@ -82,5 +82,6 @@ public class FlagReviewShell_Tests : BunitContext
 
         // The layout rules are in the component's scoped stylesheet; the root carries the class they hang from.
         Assert.Contains("flag-review-shell", cut.Find("[data-testid=flag-review-shell]").ClassList);
+        Assert.Contains("review-shell", cut.Find("[data-testid=flag-review-shell]").ClassList);
     }
 }

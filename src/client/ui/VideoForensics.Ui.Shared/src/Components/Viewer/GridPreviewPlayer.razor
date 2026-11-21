@@ -1,0 +1,35 @@
+@implements IPlaybackTarget
+@implements IDisposable
+@using VideoForensics.Client.Common.Viewer
+
+@* A muted grid preview that reports itself to the grid, so the grid's transport bar can drive it. *@
+<MediaPlayer @ref="_player" Source="@Url" SourceStartUtc="@SourceStartUtc" Cursor="Cursor" Muted="true" Loop="true" Autoplay="true" Controls="MediaPlayerControls.None" />
+
+@code {
+    private MediaPlayer? _player;
+
+    /// <summary>The preview's video URL.</summary>
+    [Parameter] public string? Url { get; set; }
+
+    /// <summary>The UTC start of the preview's clip.</summary>
+    [Parameter] public DateTime? SourceStartUtc { get; set; }
+
+    /// <summary>The shared playback time (UTC).</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>Called with this preview once, so the grid can drive it.</summary>
+    [Parameter] public Action<GridPreviewPlayer>? Registered { get; set; }
+
+    /// <summary>Called when this preview leaves the grid.</summary>
+    [Parameter] public Action<GridPreviewPlayer>? Unregistered { get; set; }
+
+    protected override void OnInitialized() => Registered?.Invoke(this);
+
+    public void Dispose() => Unregistered?.Invoke(this);
+
+    /// <summary>Plays or pauses this preview.</summary>
+    public Task TogglePlayAsync() => _player is null ? Task.CompletedTask : _player.TogglePlayAsync();
+
+    /// <summary>Steps this preview by a number of seconds.</summary>
+    public Task StepAsync(double seconds) => _player is null ? Task.CompletedTask : _player.StepAsync(seconds);
+}

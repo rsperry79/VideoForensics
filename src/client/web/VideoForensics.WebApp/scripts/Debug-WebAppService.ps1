@@ -72,7 +72,9 @@ $project = Join-Path $PSScriptRoot '..\..\..\..\..\src\client\web\VideoForensics
 $project = (Resolve-Path $project).Path
 $updatesRoot = Join-Path $env:ProgramData 'VideoForensics\updates'
 $healthUrl = 'http://localhost:5162/healthz'
-$logConsoleProject = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..\src\utils\logviewer\src\VideoForensics.Utils.LogViewer.csproj')).Path
+# Only used when the log console opens (not with -NoLogConsole). The project was removed from wip, so this is a
+# plain path: resolving it eagerly failed the whole script even when the console was not wanted.
+$logConsoleProject = Join-Path $PSScriptRoot '..\..\..\..\..\src\utils\logviewer\src\VideoForensics.Utils.LogViewer.csproj'
 # The build output folder is the project's bin\<Configuration>\net10.0, the folder Visual Studio builds into.
 $buildOutput = Join-Path (Split-Path -Parent $project) "bin\$Configuration\net10.0"
 # The published executable is named after the project's AssemblyName, not the file name.
@@ -116,6 +118,15 @@ function Test-WebAppHealthy {
     catch {
         return $false
     }
+}
+
+# The process ID that listens on the WebApp port, or $null when nothing listens there.
+function Get-ListeningProcessId {
+    param([Parameter(Mandatory)][int]$Port)
+
+    $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($listener) { return [int]$listener.OwningProcess }
+    return $null
 }
 
 # The service is ready once the package is consumed and the health check answers. The old instance keeps answering
@@ -364,15 +375,38 @@ try {
     # open before the WebApp starts.
     $viewerId = $null
     if (-not $NoLogConsole -and $PSCmdlet.ShouldProcess($logConsoleProject, 'Open logger console')) {
-        $viewerDll = Publish-LogViewer -ProjectPath $logConsoleProject -RunDirectory $DebugDirectory
+        # The log viewer is installed separately (SperryDev.Logger.Viewer), so the script opens that build.
+        $viewerDll = Join-Path $env:ProgramFiles 'SperryDev.Logger.Viewer\SperryDev.Logger.Viewer.dll'
+        if (-not (Test-Path -LiteralPath $viewerDll)) { throw "The installed log viewer was not found at $viewerDll." }
         $viewerId = Start-LogViewer -DllPath $viewerDll
     }
 
     $processId = $null
     if ($useService) {
 
-        # Visual Studio stages each Debug build (deploy\windows\stage-debug-build.ps1). Here the script waits for the
-        # service to apply that build, so build in Visual Studio first.
+        # The server is started only when it is not already answering. A stopped service is started here, then the
+        # wait below confirms it answers.
+        if (-not (Test-WebAppHealthy -Url $healthUrl) -and $service.Status -ne 'Running' -and
+            $PSCmdlet.ShouldProcess("service $ServiceName", 'Start')) {
+            Write-Host "Starting service $ServiceName (it is not answering $healthUrl)"
+            Start-Service -Name $ServiceName
+        }
+
+        # Stage the Debug build with the updater, the same step Visual Studio runs after a build. The service applies the
+        # staged package and restarts, then the wait below confirms it answers.
+        if ($PSCmdlet.ShouldProcess("service $ServiceName", "Stage the $Configuration build with the updater")) {
+            $stager = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..\deploy\windows\stage-debug-build.ps1')).Path
+            # The stager publishes without rebuilding, so this script builds the project first.
+            Write-Host "Building $project ($Configuration) for service $ServiceName"
+            dotnet build $project -c $Configuration
+            if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
+
+            Write-Host "Staging the $Configuration build for service $ServiceName"
+            & $stager -ProjectPath $project -Configuration $Configuration -ServiceName $ServiceName
+            if ($LASTEXITCODE -ne 0) { throw "stage-debug-build.ps1 failed with exit code $LASTEXITCODE." }
+        }
+
+        # Waits for the service to apply the staged build and answer the health check.
         if ($PSCmdlet.ShouldProcess("service $ServiceName", "Wait for the service to run the current build")) {
             Write-Host "Waiting for service $ServiceName to apply any staged build (up to $ReadyTimeoutSeconds s)"
             if (-not (Wait-ForStagedBuild -TimeoutSeconds $ReadyTimeoutSeconds)) {
@@ -384,6 +418,11 @@ try {
         # Read the PID after the update: the service restarted, so the process from before does not count.
         $processId = (Get-CimInstance Win32_Service -Filter "Name='$ServiceName'").ProcessId
         if ($processId -le 0) { throw "Service $ServiceName reports no process ID after the update." }
+    }
+    elseif (Test-WebAppHealthy -Url $healthUrl) {
+        # The server already answers, so it is not started again. Attach to the process that owns its port.
+        $processId = Get-ListeningProcessId -Port 5162
+        Write-Host "The server already answers $healthUrl (PID $processId). Not starting another copy."
     }
     else {
         # Stop only the copy this script started earlier, matched by its exact executable path.

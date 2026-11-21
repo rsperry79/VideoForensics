@@ -16,10 +16,10 @@ namespace VideoForensics.Client.Hosting.Tests.Services
     {
         private readonly Mock<IProviderAuthService> _mockAuth = new();
         private readonly Mock<IEventPullService> _mockPull = new();
-        private readonly Mock<IProviderAccountRepository> _mockAccounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _mockAccounts = new();
         private readonly Mock<IProviderSyncRunRepository> _mockRuns = new();
         private readonly Mock<ILogger<AccountSyncRunner>> _mockLogger = new();
-        private readonly SyncActivityLog _activity = new();
+        private readonly SyncActivityLog _activity = new(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncActivityLog>.Instance);
         private readonly Guid _accountId = Guid.NewGuid();
 
         private AccountSyncRunner CreateSut()
@@ -28,7 +28,6 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             new ServiceCollection().AddScoped(_ => Mock.Of<IInventorySyncService>()).AddScoped(_ => _mockAuth.Object).AddScoped(_ => _mockPull.Object).BuildServiceProvider(),
             _mockAccounts.Object,
             _mockRuns.Object,
-            Mock.Of<ISnapshotSyncService>(),
             _mockLogger.Object,
             _activity);
         }

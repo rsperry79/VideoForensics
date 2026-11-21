@@ -1,6 +1,6 @@
 @page "/settings/devices"
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @inject NavigationManager NavigationManager
@@ -45,21 +45,21 @@ else if (_devices is null || _devices.Count == 0)
 }
 else
 {
-    <SfGrid TValue="PairedDevice" DataSource="@_filteredDevices" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+    <SfGrid TValue="PairedDeviceDto" DataSource="@_filteredDevices" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(PairedDevice.DeviceName)" HeaderText="@L["ColDeviceName"]" MinWidth="100" />
-            <GridColumn Field="@nameof(PairedDevice.Role)" HeaderText="@L["ColRole"]" MinWidth="100" />
-            <GridColumn Field="@nameof(PairedDevice.PairedAtUtc)" HeaderText="@L["ColPairedAt"]" MinWidth="100">
+            <GridColumn Field="@nameof(PairedDeviceDto.DeviceName)" HeaderText="@L["ColDeviceName"]" MinWidth="100" />
+            <GridColumn Field="@nameof(PairedDeviceDto.Role)" HeaderText="@L["ColRole"]" MinWidth="100" />
+            <GridColumn Field="@nameof(PairedDeviceDto.PairedAtUtc)" HeaderText="@L["ColPairedAt"]" MinWidth="100">
                 <Template>
-                    <LocalTimeText Value="@((context as PairedDevice)!.PairedAtUtc)" />
+                    <LocalTimeText Value="@((context as PairedDeviceDto)!.PairedAtUtc)" />
                 </Template>
             </GridColumn>
             <GridColumn HeaderText="@L["ColLastSeenUtc"]" MinWidth="100">
                 <Template>
                     @{
-                        var device = (PairedDevice)context;
+                        var device = (PairedDeviceDto)context;
                         <LocalTimeText Value="@device.LastSeenAtUtc" Fallback="@L["NotAvailable"].Value" />
                     }
                 </Template>
@@ -67,7 +67,7 @@ else
             <GridColumn HeaderText="@L["ColLastSeenIp"]" MinWidth="100">
                 <Template>
                     @{
-                        var device = (PairedDevice)context;
+                        var device = (PairedDeviceDto)context;
                         @(device.LastSeenIp ?? L["NotAvailable"].Value)
                     }
                 </Template>
@@ -75,7 +75,7 @@ else
             <GridColumn HeaderText="@L["ColLastSeenTier"]" MinWidth="100">
                 <Template>
                     @{
-                        var device = (PairedDevice)context;
+                        var device = (PairedDeviceDto)context;
                         @(device.LastSeenTier?.ToString() ?? L["NotAvailable"].Value)
                     }
                 </Template>
@@ -83,7 +83,7 @@ else
             <GridColumn HeaderText="@L["ColStatus"]" AllowSorting="false" MinWidth="100">
                 <Template>
                     @{
-                        var device = (PairedDevice)context;
+                        var device = (PairedDeviceDto)context;
                         @if (device.IsActive)
                         {
                             <span style="color: var(--sf-success);">@L["StatusActive"]</span>
@@ -98,7 +98,7 @@ else
             <GridColumn HeaderText="" AllowSorting="false" MinWidth="100">
                 <Template>
                     @{
-                        var device = (PairedDevice)context;
+                        var device = (PairedDeviceDto)context;
                         @if (device.IsActive)
                         {
                             <SfButton Content="@L["RevokeButton"]" OnClick="() => BeginRevoke(device.Id)" CssClass="e-danger" />
@@ -136,8 +136,8 @@ else
 
 @code {
     private bool _isLoading = true;
-    private List<PairedDevice>? _devices = new();
-    private IEnumerable<PairedDevice> _filteredDevices = new List<PairedDevice>();
+    private List<PairedDeviceDto>? _devices = new();
+    private IEnumerable<PairedDeviceDto> _filteredDevices = new List<PairedDeviceDto>();
     private string? _authError;
     private string? _loadError;
     private string? _actionError;
@@ -182,8 +182,8 @@ else
             }
 
             response.EnsureSuccessStatusCode();
-            _devices = await response.Content.ReadFromJsonAsync<List<PairedDevice>>(JsonOptions);
-            _filteredDevices = _devices ?? new List<PairedDevice>();
+            _devices = await response.Content.ReadFromJsonAsync<List<PairedDeviceDto>>(JsonOptions);
+            _filteredDevices = _devices ?? new List<PairedDeviceDto>();
         }
         catch (Exception ex)
         {

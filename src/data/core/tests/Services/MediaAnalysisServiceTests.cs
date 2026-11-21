@@ -15,13 +15,13 @@ namespace VideoForensics.Data.Core.Tests.Services
 {
     public class MediaAnalysisServiceTests
     {
-        private readonly Mock<IMediaItemRepository> _items = new();
+        private readonly Mock<IMediaItemWriteRepository> _items = new();
         private readonly Mock<IMediaBitrateAnalyzer> _bitrate = new();
         private readonly Mock<IClipColorAnalyzer> _color = new();
         private readonly Mock<IAudioClipAnalyzer> _audio = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
         private readonly Mock<IMediaThumbnailService> _thumbnails = new();
-        private readonly Mock<IMediaFlagRepository> _flags = new();
+        private readonly Mock<IMediaFlagWriteRepository> _flags = new();
         private readonly Guid _deviceId = Guid.NewGuid();
 
         private MediaAnalysisService CreateSut()
@@ -128,6 +128,7 @@ namespace VideoForensics.Data.Core.Tests.Services
             // must not overwrite the window length with that.
             MediaItem loop = Clip(_deviceId, "Day", 0);
             loop.MetadataJson = "{\"type\":\"snapshot-rollup\"}";
+            loop.MediaKind = MediaKinds.Timelapse;
             loop.DurationSeconds = 900;
             SetUpClip(loop, Array.Empty<MediaItem>(), new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
                 new ClipColorStats(0.5, 25.0), null!);

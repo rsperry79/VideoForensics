@@ -105,6 +105,8 @@ namespace VideoForensics.Providers.Ring
                     return false;
                 }
 
+                // Why: a refresh token in the old format does not decrypt, so it is saved back as null. The user re-enters
+                // Ring credentials once (decided). The clear-text password is migrated now so it does not stay on disk.
                 RingCredentials existing = Load(authPath);
                 existing.Password = clearText;
                 Save(authPath, existing);

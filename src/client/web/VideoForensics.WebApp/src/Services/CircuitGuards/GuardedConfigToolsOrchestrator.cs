@@ -1,5 +1,4 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Ui.Shared.Layout;
 using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Core.Api.Contracts;
@@ -79,6 +78,26 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
         public Task<(bool Success, string Message)> SetServiceIntervalHoursAsync(IForensicsConfiguration config, string service, int hours, CancellationToken ct = default)
         {
             return RunServicesSetting(() => inner.SetServiceIntervalHoursAsync(config, service, hours, ct), ct);
+        }
+
+        public Task<(bool Success, string Message)> SetServiceIntervalMinutesAsync(IForensicsConfiguration config, string service, int minutes, CancellationToken ct = default)
+        {
+            return RunServicesSetting(() => inner.SetServiceIntervalMinutesAsync(config, service, minutes, ct), ct);
+        }
+
+        public Task<(bool Success, string Message)> SetScheduledSyncTickSecondsAsync(IForensicsConfiguration config, int seconds, CancellationToken ct = default)
+        {
+            return RunServicesSetting(() => inner.SetScheduledSyncTickSecondsAsync(config, seconds, ct), ct);
+        }
+
+        public Task<(bool Success, string Message)> SetTimelapseCheckIntervalMinutesAsync(IForensicsConfiguration config, int minutes, CancellationToken ct = default)
+        {
+            return RunServicesSetting(() => inner.SetTimelapseCheckIntervalMinutesAsync(config, minutes, ct), ct);
+        }
+
+        public Task<(bool Success, string Message)> SetTimelapseMaxSegmentMinutesAsync(IForensicsConfiguration config, int seconds, CancellationToken ct = default)
+        {
+            return RunServicesSetting(() => inner.SetTimelapseMaxSegmentMinutesAsync(config, seconds, ct), ct);
         }
 
         public Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default)

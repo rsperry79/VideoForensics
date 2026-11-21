@@ -53,10 +53,10 @@ namespace VideoForensics.Client.WebApp.Api
             }
 
             // Determine target operator ID and authorization mode
-            Guid targetOperatorId;
+            Guid? targetOperatorId;
             bool isSelfService;
 
-            if (string.IsNullOrEmpty(request.OperatorId))
+            if (!request.UnknownOnly && string.IsNullOrEmpty(request.OperatorId))
             {
                 // Self-service: caller queries their own events
                 targetOperatorId = callerId;
@@ -64,13 +64,21 @@ namespace VideoForensics.Client.WebApp.Api
             }
             else
             {
-                // Cross-account query: caller requests another operator's events
-                if (!Guid.TryParse(request.OperatorId, out Guid parsedOperatorId))
+                // Cross-account query: a named operator's events, or the unknown-login list (rows with no operator).
+                // The unknown-login list shows typed usernames that belong to no operator, so it is admin-only like cross-account queries.
+                if (request.UnknownOnly)
+                {
+                    targetOperatorId = null;
+                }
+                else if (!Guid.TryParse(request.OperatorId, out Guid parsedOperatorId))
                 {
                     return Results.BadRequest(new { error = "OperatorId must be a valid UUID." });
                 }
+                else
+                {
+                    targetOperatorId = parsedOperatorId;
+                }
 
-                targetOperatorId = parsedOperatorId;
                 isSelfService = false;
 
                 // Cross-account queries require SuperAdminLocal policy
@@ -88,22 +96,22 @@ namespace VideoForensics.Client.WebApp.Api
                 // real browser is, so re-resolving it here would silently grant Local tier to a
                 // caller whose real session tier is Internet/Network.
                 string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
-                if (!Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) || tier != NetworkTier.Local)
+                if (!VideoForensics.Client.WebApp.Auth.PasskeyTierRules.IsLocalOrPasskey(context.User))
                 {
-                    logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} is not on Local tier (tier={Tier})", callerId, tier);
+                    logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} is not on Local tier or a passkey session", callerId);
                     return Results.StatusCode(StatusCodes.Status403Forbidden);
                 }
             }
 
             // Log the query
-            logger.LogDebug("GetSecurityEvents: operatorId={OperatorId}, self-service={IsSelfService}, caller={CallerId}",
-                targetOperatorId, isSelfService, callerId);
+            logger.LogDebug("GetSecurityEvents: operatorId={OperatorId}, unknownOnly={UnknownOnly}, self-service={IsSelfService}, caller={CallerId}",
+                targetOperatorId, request.UnknownOnly, isSelfService, callerId);
 
             try
             {
                 // Fetch events from the audit service and map to API DTOs
                 var events = new List<VideoForensics.Core.Api.Contracts.SecurityEventDto>();
-                await foreach (Data.Common.Contracts.SecurityEventDto @event in auditService.GetOperatorEventsAsync(targetOperatorId, offset, limit, ct))
+                await foreach (Data.Common.Contracts.SecurityEventDto @event in auditService.GetOperatorEventsAsync(targetOperatorId, request.UnknownOnly, offset, limit, ct))
                 {
                     events.Add(new VideoForensics.Core.Api.Contracts.SecurityEventDto(
                         Id: @event.Id,
@@ -112,7 +120,8 @@ namespace VideoForensics.Client.WebApp.Api
                         Success: @event.Success,
                         IpAddress: @event.IpAddress,
                         OccurredAtUtc: @event.OccurredAtUtc,
-                        Reason: @event.Reason
+                        Reason: @event.Reason,
+                        AttemptedUsername: @event.AttemptedUsername
                     ));
                 }
 

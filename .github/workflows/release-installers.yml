@@ -197,16 +197,14 @@ jobs:
           $dbSetupDir = (Resolve-Path "publish-dbsetup").Path
           $dbDiagnosticsDir = (Resolve-Path "publish-dbdiagnostics").Path
           $dbRepairDir = (Resolve-Path "publish-dbrepair").Path
-          $logViewerDir = (Resolve-Path "publish-logviewer").Path
-          Write-Host "Compiling Inno Setup installer: version=$version server=$serverDir desktop=$desktopDir dbsetup=$dbSetupDir dbdiagnostics=$dbDiagnosticsDir dbrepair=$dbRepairDir logviewer=$logViewerDir"
+          Write-Host "Compiling Inno Setup installer: version=$version server=$serverDir desktop=$desktopDir dbsetup=$dbSetupDir dbdiagnostics=$dbDiagnosticsDir dbrepair=$dbRepairDir"
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" deploy\windows\VideoForensics.iss `
             "/DAppVersion=$version" `
             "/DServerPublishDir=$serverDir" `
             "/DDesktopPublishDir=$desktopDir" `
             "/DDbSetupPublishDir=$dbSetupDir" `
             "/DDbDiagnosticsPublishDir=$dbDiagnosticsDir" `
-            "/DDbRepairPublishDir=$dbRepairDir" `
-            "/DLogViewerPublishDir=$logViewerDir"
+            "/DDbRepairPublishDir=$dbRepairDir"
 
       - name: Locate built installer
         shell: pwsh
@@ -236,6 +234,44 @@ jobs:
           path: |
             deploy/windows/bin/VideoForensicsSetup.exe
             deploy/windows/bin/VideoForensicsSetup.exe.sha256
+
+  build-update-package:
+    needs: [validate, resolve-source, build-windows]
+    runs-on: ubuntu-latest
+    outputs:
+      zip-name: ${{ steps.package.outputs.zip-name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows publish output
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-publish
+          run-id: ${{ needs.resolve-source.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: .
+
+      - name: Extract Windows publish output
+        shell: bash
+        run: tar -xf windows-publish.tar
+
+      # Signs manifest.json with VF_UPDATE_SIGNING_KEY. Fails when the key is missing, so no unsigned update is published.
+      - name: Build and sign update package
+        id: package
+        shell: bash
+        env:
+          VF_UPDATE_SIGNING_KEY: ${{ secrets.VF_UPDATE_SIGNING_KEY }}
+          VERSION: ${{ needs.build-windows.outputs.version }}
+        run: |
+          bash .github/scripts/build-update-package.sh "$VERSION" publish-win update-package
+          echo "zip-name=VideoForensics-$VERSION-update-win-x64.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Upload update package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-package
+          path: update-package/*.zip
 
   generate-notes:
     runs-on: ubuntu-latest
@@ -325,7 +361,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [build-debian, build-windows, generate-notes, generate-manifest]
+    needs: [build-debian, build-windows, build-update-package, generate-notes, generate-manifest]
     # Create releases on: version tags (v1.0.0), main branch pushes (prod), and dev branch pushes (dev prerelease)
     if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && success()
 
@@ -395,7 +431,7 @@ jobs:
           # deploy/debian/ rather than flat. A flat `cp dir/*` only copies top-level entries
           # and silently no-ops on directories, so use find to copy every file regardless of
           # nesting depth (windows-installer is already flat, but find handles that too).
-          find release-artifacts/debian-package release-artifacts/windows-installer -type f -exec cp -v {} release-files/ \;
+          find release-artifacts/debian-package release-artifacts/windows-installer release-artifacts/update-package -type f -exec cp -v {} release-files/ \;
           echo "Release files ready:"
           ls -lah release-files/
 

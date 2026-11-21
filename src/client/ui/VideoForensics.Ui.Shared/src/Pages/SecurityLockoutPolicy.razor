@@ -1,5 +1,5 @@
 @page "/settings/lockout-policy"
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @using System.Globalization
 @using Microsoft.Extensions.Localization
@@ -261,8 +261,8 @@ else
     private bool _isLoadingTwoFactor = true;
     private string? _twoFactorLoadError;
     private List<TwoFactorRoleRequirement>? _twoFactorRequirements;
-    private Dictionary<OperatorRole, bool> _twoFactorStates = new();
-    private HashSet<OperatorRole> _savingTwoFactorRoles = new();
+    private Dictionary<OperatorRoleDto, bool> _twoFactorStates = new();
+    private HashSet<OperatorRoleDto> _savingTwoFactorRoles = new();
     private bool _twoFactorRoleSaveSuccess;
     private string? _twoFactorRoleSaveMessage;
 
@@ -377,8 +377,8 @@ else
                         var req = new TwoFactorRoleRequirement
                         {
                             Role = roleElement.ValueKind == System.Text.Json.JsonValueKind.Number
-                                ? (OperatorRole)roleElement.GetInt32()
-                                : Enum.Parse<OperatorRole>(roleElement.GetString() ?? "ReadOnly"),
+                                ? (OperatorRoleDto)roleElement.GetInt32()
+                                : Enum.Parse<OperatorRoleDto>(roleElement.GetString() ?? "ReadOnly"),
                             RequireTwoFactor = dto.GetProperty("requireTwoFactor").GetBoolean()
                         };
                         _twoFactorRequirements.Add(req);
@@ -461,7 +461,7 @@ else
         }
     }
 
-    private async Task SaveTwoFactorRoleAsync(OperatorRole role)
+    private async Task SaveTwoFactorRoleAsync(OperatorRoleDto role)
     {
         _savingTwoFactorRoles.Add(role);
         _twoFactorRoleSaveMessage = null;
@@ -604,7 +604,7 @@ else
 
     private class TwoFactorRoleRequirement
     {
-        public OperatorRole Role { get; set; }
+        public OperatorRoleDto Role { get; set; }
         public bool RequireTwoFactor { get; set; }
     }
 }

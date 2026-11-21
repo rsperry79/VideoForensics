@@ -15,7 +15,7 @@ html[data-theme="dark"] body {
     --vf-input-text: #ffffff;
 }
 
-/* Outline buttons (Play, Speed, Previous/Next flag) rendered #868e96 on #1e1e1e in dark mode, about
+/* Outline buttons (Play, Speed, Previous/Next) rendered #868e96 on #1e1e1e in dark mode, about
    5:1 contrast and hard to read. Lift their text to the dark body color, about 12:1. */
 html[data-theme="dark"] .e-btn.e-outline,
 html[data-theme="dark"] .e-btn.e-flat,
@@ -130,4 +130,37 @@ nav a:hover {
 
 .help-toggle-btn:hover {
     background: var(--vf-border-color);
+}
+
+/* Week-by-hour grid: a box is tinted by how far its mean sits from the camera's all-time mean, in sd. */
+.calendar-box-green {
+    background-color: color-mix(in srgb, var(--bs-success) 30%, transparent);
+}
+
+.calendar-box-yellow {
+    background-color: color-mix(in srgb, var(--bs-warning) 40%, transparent);
+}
+
+.calendar-box-red {
+    background-color: color-mix(in srgb, var(--bs-danger) 40%, transparent);
+}
+
+.calendar-box-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+}
+
+/* The left-nav pane while hidden (see layout-prefs.js setLeftNavHidden). The pane leaves the flow but keeps its
+   layout box: display:none made Syncfusion re-measure it at 0 and reset it to its 48px minimum. */
+.splitter-left-nav.vf-left-nav-hidden {
+    position: absolute !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* The separator after the hidden pane has no pane to split, so it can go. */
+.e-splitter-separator.vf-left-nav-hidden {
+    display: none !important;
 }

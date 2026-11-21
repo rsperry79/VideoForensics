@@ -44,7 +44,7 @@ namespace VideoForensics.Client.WebApp.Auth
         private readonly IPairedDeviceRepository _pairedDeviceRepository;
         private readonly IOperatorCredentialRepository _operatorCredentialRepository;
         private readonly INetworkTierResolver _tierResolver;
-        private readonly IOperatorRepository _operatorRepository;
+        private readonly IOperatorWriteRepository _operatorRepository;
         private readonly ISessionTierHeaderProtector _headerProtector;
 
         public PairedDeviceAuthenticationHandler(
@@ -55,7 +55,7 @@ namespace VideoForensics.Client.WebApp.Auth
             IPairedDeviceRepository pairedDeviceRepository,
             IOperatorCredentialRepository operatorCredentialRepository,
             INetworkTierResolver tierResolver,
-            IOperatorRepository operatorRepository,
+            IOperatorWriteRepository operatorRepository,
             ISessionTierHeaderProtector headerProtector)
             : base(options, logger, encoder)
         {

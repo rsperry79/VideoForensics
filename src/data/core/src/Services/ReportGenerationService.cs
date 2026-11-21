@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
 
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -18,12 +19,12 @@ namespace VideoForensics.Data.Core.Services
     /// <summary>Service for generating forensic analysis reports from stored evidence data.</summary>
     internal class ReportGenerationService : IReportGenerationService
     {
-        private readonly IMediaItemRepository _mediaItemRepository;
-        private readonly IDeviceRepository _deviceRepository;
+        private readonly IMediaItemWriteRepository _mediaItemRepository;
+        private readonly IDeviceWriteRepository _deviceRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
         private readonly IActionLogRepository _actionLogRepository;
-        private readonly IEventRepository _eventRepository;
-        private readonly IJammingRepository _jammingRepository;
+        private readonly IEventWriteRepository _eventRepository;
+        private readonly IJammingWriteRepository _jammingRepository;
         private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<ReportGenerationService> _logger;
         private readonly IStorageLocationProvider _storageLocationProvider;
@@ -35,12 +36,12 @@ namespace VideoForensics.Data.Core.Services
         private static readonly TimeSpan ChainAlertWindow = TimeSpan.FromHours(1);
 
         public ReportGenerationService(
-            IMediaItemRepository mediaItemRepository,
-            IDeviceRepository deviceRepository,
+            IMediaItemWriteRepository mediaItemRepository,
+            IDeviceWriteRepository deviceRepository,
             IDownloadEventRepository downloadEventRepository,
             IActionLogRepository actionLogRepository,
-            IEventRepository eventRepository,
-            IJammingRepository jammingRepository,
+            IEventWriteRepository eventRepository,
+            IJammingWriteRepository jammingRepository,
             IIntegrityRecordRepository integrityRecordRepository,
             ILogger<ReportGenerationService> logger,
             IStorageLocationProvider storageLocationProvider,
@@ -58,7 +59,7 @@ namespace VideoForensics.Data.Core.Services
             _storageLocationProvider = storageLocationProvider;
         }
 
-        public async Task<EvidenceReviewReport> BuildEvidenceReviewAsync(
+        private async Task<EvidenceReviewReport> BuildEvidenceReviewCoreAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -122,7 +123,7 @@ namespace VideoForensics.Data.Core.Services
             return report;
         }
 
-        public async Task<ForensicAnalysisReport> BuildForensicAnalysisReportAsync(
+        private async Task<ForensicAnalysisReport> BuildForensicAnalysisReportCoreAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -161,7 +162,7 @@ namespace VideoForensics.Data.Core.Services
             return report;
         }
 
-        public async Task<SignalAnomalyReport> BuildSignalAnomalyReportAsync(
+        private async Task<SignalAnomalyReport> BuildSignalAnomalyReportCoreAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -229,7 +230,7 @@ namespace VideoForensics.Data.Core.Services
             return report;
         }
 
-        public async Task<AccessControlReport> BuildAccessControlReportAsync(
+        private async Task<AccessControlReport> BuildAccessControlReportCoreAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -273,7 +274,7 @@ namespace VideoForensics.Data.Core.Services
             return report;
         }
 
-        public async Task<ChainOfCustodyReport> BuildChainOfCustodyReportAsync(
+        private async Task<ChainOfCustodyReport> BuildChainOfCustodyReportCoreAsync(
             Guid? deviceId,
             DateTime fromUtc,
             DateTime toUtc,
@@ -377,12 +378,29 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        public async Task<EvidenceReviewReportDto> BuildEvidenceReviewAsync(Guid? deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            (await BuildEvidenceReviewCoreAsync(deviceId, fromUtc, toUtc, ct)).ToDto();
+
+        public async Task<ForensicAnalysisReportDto> BuildForensicAnalysisReportAsync(Guid? deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            (await BuildForensicAnalysisReportCoreAsync(deviceId, fromUtc, toUtc, ct)).ToDto();
+
+        public async Task<SignalAnomalyReportDto> BuildSignalAnomalyReportAsync(Guid? deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            (await BuildSignalAnomalyReportCoreAsync(deviceId, fromUtc, toUtc, ct)).ToDto();
+
+        public async Task<AccessControlReportDto> BuildAccessControlReportAsync(Guid? deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            (await BuildAccessControlReportCoreAsync(deviceId, fromUtc, toUtc, ct)).ToDto();
+
+        public async Task<ChainOfCustodyReportDto> BuildChainOfCustodyReportAsync(Guid? deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            (await BuildChainOfCustodyReportCoreAsync(deviceId, fromUtc, toUtc, ct)).ToDto();
+
         public async Task WriteReportAsync(object reportDto, string format, CancellationToken ct)
         {
             try
             {
                 string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-                string reportTypeName = reportDto.GetType().Name;
+                string reportTypeName = reportDto.GetType().Name.EndsWith("Dto", StringComparison.Ordinal)
+                    ? reportDto.GetType().Name[..^3]
+                    : reportDto.GetType().Name;
                 string fileName = $"{reportTypeName}_{timestamp}.{format.ToLowerInvariant()}";
 
                 // Determine output directory using storage provider

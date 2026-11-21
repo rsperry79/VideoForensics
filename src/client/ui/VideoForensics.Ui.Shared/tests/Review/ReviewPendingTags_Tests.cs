@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Services.Cases;
 using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -18,7 +19,7 @@ public class ReviewPendingTags_Tests : ReviewTestContext
 {
     private PendingEvidenceTags Pending => Services.GetRequiredService<PendingEvidenceTags>();
 
-    private PendingTag CreateTag(Guid deviceId, CaseItemKind kind = CaseItemKind.Media)
+    private PendingTag CreateTag(Guid deviceId, CaseItemKindDto kind = CaseItemKindDto.Media)
     {
         return new PendingTag(kind, Guid.NewGuid(), deviceId, FixedNowUtc, PendingTagFakes.Reason, "actor-1");
     }
@@ -46,13 +47,27 @@ public class ReviewPendingTags_Tests : ReviewTestContext
         // Arrange
         AddDevices(1);
         _ = Pending.Add(CreateTag(Devices[0].Id));
-        _ = Pending.Add(CreateTag(Devices[0].Id, CaseItemKind.Event));
+        _ = Pending.Add(CreateTag(Devices[0].Id, CaseItemKindDto.Event));
 
         // Act
         IRenderedComponent<ReviewPendingTags> cut = RenderBadge();
 
         // Assert
         Assert.Equal(L["PendingTagsCount", 2].Value, cut.Find("[data-testid='review-pending-tags-count']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void ReviewPendingTags_WithPendingTags_ShowsTheDefinitionOnScreen()
+    {
+        // Arrange
+        AddDevices(1);
+        _ = Pending.Add(CreateTag(Devices[0].Id));
+
+        // Act
+        IRenderedComponent<ReviewPendingTags> cut = RenderBadge();
+
+        // Assert: the meaning is printed beside the count, not only in a hover title
+        Assert.Equal(L["PendingTagsHelp"].Value, cut.Find("[data-testid='review-pending-tags-help']").TextContent.Trim());
     }
 
     [Fact]
@@ -76,8 +91,8 @@ public class ReviewPendingTags_Tests : ReviewTestContext
     {
         // Arrange
         AddDevices(1);
-        _ = Pending.Add(CreateTag(Devices[0].Id, CaseItemKind.Media));
-        _ = Pending.Add(CreateTag(Devices[0].Id, CaseItemKind.Event));
+        _ = Pending.Add(CreateTag(Devices[0].Id, CaseItemKindDto.Media));
+        _ = Pending.Add(CreateTag(Devices[0].Id, CaseItemKindDto.Event));
         IRenderedComponent<ReviewPendingTags> cut = RenderBadge();
 
         // Act
@@ -117,7 +132,7 @@ public class ReviewPendingTags_Tests : ReviewTestContext
         AddDevices(1);
         _ = Pending.Add(CreateTag(Devices[0].Id));
         IRenderedComponent<ReviewPendingTags> cut = RenderBadge();
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         CaseState caseState = await PendingTagFakes.ActivateAsync(PendingTagFakes.CreateRepository(openCase), openCase);
 
         // Act

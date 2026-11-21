@@ -12,14 +12,14 @@ using Xunit;
 namespace VideoForensics.Data.Database.Tests
 {
     /// <summary>
-    /// Tests for <see cref="ICaseRepository.ListForProviderAccountAsync"/>.
+    /// Tests for <see cref="ICaseWriteRepository.ListForProviderAccountAsync"/>.
     /// A case is attached to a provider account when any of its scope devices belongs to a location
     /// the account can see (CaseDevice -> Device -> ProviderAccountLocation).
     /// </summary>
     public class CaseRepositoryProviderAccountTests : IAsyncLifetime
     {
         private SqliteInMemoryFixture _fixture = null!;
-        private ICaseRepository _repository = null!;
+        private ICaseWriteRepository _repository = null!;
         private ILoggerFactory _loggerFactory = null!;
 
         public async ValueTask InitializeAsync()
@@ -28,8 +28,9 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             _loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
 
-            var actionLog = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _repository = new CaseRepository(_fixture.Factory, actionLog, _loggerFactory.CreateLogger<CaseRepository>());
+            var actionLog = new ActionLogRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>()), _loggerFactory.CreateLogger<ActionLogRepository>());
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, _loggerFactory), _loggerFactory.CreateLogger<UnitOfWork>());
+            _repository = new CaseRepository(unitOfWork, actionLog, _loggerFactory.CreateLogger<CaseRepository>());
         }
 
         public async ValueTask DisposeAsync()

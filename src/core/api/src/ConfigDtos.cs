@@ -1,6 +1,3 @@
-using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>
@@ -41,6 +38,14 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="CalibrationStalenessDays">Staleness threshold in days; calibration buckets older than this are re-sampled even if at minimum threshold.</param>
     /// <param name="LogPruneIntervalHours">Hours between operational log prune runs (1 to 168).</param>
     /// <param name="MediaBackfillIntervalHours">Hours between media backfill runs (1 to 168).</param>
+    /// <param name="TimelapseCheckIntervalMinutes">Minutes between time-lapse checks (1 to 1440).</param>
+    /// <param name="TimelapseMaxSegmentMinutes">Longest time-lapse segment in minutes; longer event gaps are split (1 to 1440).</param>
+    /// <param name="JammingIntervalMinutes">Minutes between jamming detection runs (1 to 1440).</param>
+    /// <param name="CodecIntervalMinutes">Minutes between codec checks (1 to 1440).</param>
+    /// <param name="FlagIntervalMinutes">Minutes between flag checks (1 to 1440).</param>
+    /// <param name="DeviceHealthIntervalMinutes">Minutes between device health checks (1 to 1440).</param>
+    /// <param name="OfflineRepollIntervalMinutes">Minutes between re-poll attempts for offline devices (1 to 1440).</param>
+    /// <param name="ScheduledSyncTickSeconds">Seconds between scheduled sync ticks (5 to 3600).</param>
     public record ClientConfigDto(
         bool EnableForensicAnalysisReports,
         bool EnableSignalAnomalyReports,
@@ -49,7 +54,7 @@ namespace VideoForensics.Core.Api.Contracts
         bool EnableAccessControlMonitoring,
         bool EnablePiiRedaction,
         string ReportOutputFormat,
-        RedactionLevel RedactionLevel,
+        RedactionLevelDto RedactionLevel,
         int RetentionDaysDefault,
         string LogLevel,
         int MaxConcurrentDownloads,
@@ -57,7 +62,7 @@ namespace VideoForensics.Core.Api.Contracts
         bool EnableHealthSync,
         bool EnableMdnsAdvertisement,
         bool EnableEmailNotifications,
-        NetworkTier ConfiguredNetworkTier,
+        NetworkTierDto ConfiguredNetworkTier,
         string? InternetServerUrl,
         bool EnableLiveView,
         int LiveViewIdleTimeoutMinutes,
@@ -74,96 +79,14 @@ namespace VideoForensics.Core.Api.Contracts
         bool EnableScheduledReports = true,
         int ScheduledReportIntervalHours = 24,
         int LogPruneIntervalHours = 24,
-        int MediaBackfillIntervalHours = 6
+        int MediaBackfillIntervalHours = 6,
+        int TimelapseCheckIntervalMinutes = 15,
+        int TimelapseMaxSegmentMinutes = 60,
+        int JammingIntervalMinutes = 15,
+        int CodecIntervalMinutes = 15,
+        int FlagIntervalMinutes = 15,
+        int DeviceHealthIntervalMinutes = 15,
+        int OfflineRepollIntervalMinutes = 10,
+        int ScheduledSyncTickSeconds = 60
     );
-
-    /// <summary>Extension methods for mapping configuration objects to/from ClientConfigDtos.</summary>
-    public static class ClientConfigDtoMapping
-    {
-        /// <summary>
-        /// Converts an IForensicsConfiguration to a ClientConfigDto.
-        /// </summary>
-        public static ClientConfigDto ToDto(this IForensicsConfiguration config)
-        {
-            return new ClientConfigDto(
-                EnableForensicAnalysisReports: config.EnableForensicAnalysisReports,
-                EnableSignalAnomalyReports: config.EnableSignalAnomalyReports,
-                EnableChainOfCustodyReports: config.EnableChainOfCustodyReports,
-                EnableEvidenceValidationReports: config.EnableEvidenceValidationReports,
-                EnableAccessControlMonitoring: config.EnableAccessControlMonitoring,
-                EnablePiiRedaction: config.EnablePiiRedaction,
-                ReportOutputFormat: config.ReportOutputFormat,
-                RedactionLevel: config.RedactionLevel,
-                RetentionDaysDefault: config.RetentionDaysDefault,
-                LogLevel: config.LogLevel,
-                MaxConcurrentDownloads: config.MaxConcurrentDownloads,
-                DownloadStartDate: config.DownloadStartDate,
-                EnableHealthSync: config.EnableHealthSync,
-                EnableScheduledReports: config.EnableScheduledReports,
-                ScheduledReportIntervalHours: config.ScheduledReportIntervalHours,
-                LogPruneIntervalHours: config.LogPruneIntervalHours,
-                MediaBackfillIntervalHours: config.MediaBackfillIntervalHours,
-                EnableMdnsAdvertisement: config.EnableMdnsAdvertisement,
-                EnableEmailNotifications: config.EnableEmailNotifications,
-                ConfiguredNetworkTier: config.ConfiguredNetworkTier,
-                InternetServerUrl: config.InternetServerUrl,
-                EnableLiveView: config.EnableLiveView,
-                LiveViewIdleTimeoutMinutes: config.LiveViewIdleTimeoutMinutes,
-                LiveViewTelemetrySampleIntervalSeconds: config.LiveViewTelemetrySampleIntervalSeconds,
-                SustainedModeMaxDurationMinutes: config.SustainedModeMaxDurationMinutes,
-                LiveViewTelemetryRetentionDays: config.LiveViewTelemetryRetentionDays,
-                ElevatedPollingWindowMinutes: config.ElevatedPollingWindowMinutes,
-                ElevatedPollingIntervalSeconds: config.ElevatedPollingIntervalSeconds,
-                EnableBitrateCalibration: config.EnableBitrateCalibration,
-                CalibrationCheckIntervalMinutes: config.CalibrationCheckIntervalMinutes,
-                CalibrationSessionDurationSeconds: config.CalibrationSessionDurationSeconds,
-                MinCalibrationSamplesPerBucket: config.MinCalibrationSamplesPerBucket,
-                CalibrationStalenessDays: config.CalibrationStalenessDays
-            );
-        }
-
-        /// <summary>
-        /// Converts a ClientConfigDto back to a configuration object. Only the client-safe allowlist is set; every other
-        /// setting keeps its default, because the server never sends it. A client must not persist the result.
-        /// </summary>
-        public static ForensicsConfiguration ToDomain(this ClientConfigDto dto)
-        {
-            return new ForensicsConfiguration
-            {
-                EnableForensicAnalysisReports = dto.EnableForensicAnalysisReports,
-                EnableSignalAnomalyReports = dto.EnableSignalAnomalyReports,
-                EnableChainOfCustodyReports = dto.EnableChainOfCustodyReports,
-                EnableEvidenceValidationReports = dto.EnableEvidenceValidationReports,
-                EnableAccessControlMonitoring = dto.EnableAccessControlMonitoring,
-                EnablePiiRedaction = dto.EnablePiiRedaction,
-                ReportOutputFormat = dto.ReportOutputFormat,
-                RedactionLevel = dto.RedactionLevel,
-                RetentionDaysDefault = dto.RetentionDaysDefault,
-                LogLevel = dto.LogLevel,
-                MaxConcurrentDownloads = dto.MaxConcurrentDownloads,
-                DownloadStartDate = dto.DownloadStartDate,
-                EnableHealthSync = dto.EnableHealthSync,
-                EnableScheduledReports = dto.EnableScheduledReports,
-                ScheduledReportIntervalHours = dto.ScheduledReportIntervalHours,
-                LogPruneIntervalHours = dto.LogPruneIntervalHours,
-                MediaBackfillIntervalHours = dto.MediaBackfillIntervalHours,
-                EnableMdnsAdvertisement = dto.EnableMdnsAdvertisement,
-                EnableEmailNotifications = dto.EnableEmailNotifications,
-                ConfiguredNetworkTier = dto.ConfiguredNetworkTier,
-                InternetServerUrl = dto.InternetServerUrl,
-                EnableLiveView = dto.EnableLiveView,
-                LiveViewIdleTimeoutMinutes = dto.LiveViewIdleTimeoutMinutes,
-                LiveViewTelemetrySampleIntervalSeconds = dto.LiveViewTelemetrySampleIntervalSeconds,
-                SustainedModeMaxDurationMinutes = dto.SustainedModeMaxDurationMinutes,
-                LiveViewTelemetryRetentionDays = dto.LiveViewTelemetryRetentionDays,
-                ElevatedPollingWindowMinutes = dto.ElevatedPollingWindowMinutes,
-                ElevatedPollingIntervalSeconds = dto.ElevatedPollingIntervalSeconds,
-                EnableBitrateCalibration = dto.EnableBitrateCalibration,
-                CalibrationCheckIntervalMinutes = dto.CalibrationCheckIntervalMinutes,
-                CalibrationSessionDurationSeconds = dto.CalibrationSessionDurationSeconds,
-                MinCalibrationSamplesPerBucket = dto.MinCalibrationSamplesPerBucket,
-                CalibrationStalenessDays = dto.CalibrationStalenessDays
-            };
-        }
-    }
 }

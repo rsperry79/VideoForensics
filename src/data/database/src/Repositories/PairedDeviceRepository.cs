@@ -10,40 +10,41 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for PairedDevice entities.</summary>
     public class PairedDeviceRepository : IPairedDeviceRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<PairedDeviceRepository> _logger;
 
-        public PairedDeviceRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<PairedDeviceRepository> logger)
+        public PairedDeviceRepository(IUnitOfWork unitOfWork, ILogger<PairedDeviceRepository> logger)
         {
-            _factory = factory;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
-        public async Task<PairedDevice?> GetAsync(Guid pairedDeviceId, CancellationToken ct)
+        public Task<PairedDevice?> GetAsync(Guid pairedDeviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.PairedDevices.FirstOrDefaultAsync(d => d.Id == pairedDeviceId, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().PairedDevices.FirstOrDefaultAsync(d => d.Id == pairedDeviceId, ct), ct);
         }
 
-        public async Task<PairedDevice?> GetByWebAuthnCredentialIdAsync(string credentialId, CancellationToken ct)
+        public Task<PairedDevice?> GetByWebAuthnCredentialIdAsync(string credentialId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.PairedDevices.FirstOrDefaultAsync(
-                d => d.WebAuthnCredentialId == credentialId && d.RevokedAtUtc == null, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().PairedDevices.FirstOrDefaultAsync(
+                d => d.WebAuthnCredentialId == credentialId && d.RevokedAtUtc == null, ct), ct);
         }
 
-        public async Task<PairedDevice?> GetByFallbackApiKeyHashAsync(string apiKeyHash, CancellationToken ct)
+        public Task<PairedDevice?> GetByFallbackApiKeyHashAsync(string apiKeyHash, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.PairedDevices.FirstOrDefaultAsync(
-                d => d.FallbackApiKeyHash == apiKeyHash && d.RevokedAtUtc == null, ct);
+            return _unitOfWork.ReadAsync(context => context.Db().PairedDevices.FirstOrDefaultAsync(
+                d => d.FallbackApiKeyHash == apiKeyHash && d.RevokedAtUtc == null, ct), ct);
         }
 
         public async Task<PairedDevice> AddAsync(PairedDevice device, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = db.PairedDevices.Add(device);
-            _ = await db.SaveChangesAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                _ = db.PairedDevices.Add(device);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
             _logger.LogDebug("Paired device created: {PairedDeviceName} for Operator {OperatorId}, role {Role}",
                 device.DeviceName, device.OperatorId, device.Role);
             return device;
@@ -51,92 +52,129 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task UpdateAsync(PairedDevice device, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = db.PairedDevices.Update(device);
-            _ = await db.SaveChangesAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                _ = db.PairedDevices.Update(device);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
 
-        public async Task<IReadOnlyList<PairedDevice>> ListAsync(CancellationToken ct)
+        public Task<IReadOnlyList<PairedDevice>> ListAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.PairedDevices.OrderByDescending(d => d.PairedAtUtc).ToListAsync(ct);
+            return _unitOfWork.ReadAsync<IReadOnlyList<PairedDevice>>(async context =>
+            {
+                return await context.Db().PairedDevices.OrderByDescending(d => d.PairedAtUtc).ToListAsync(ct);
+            }, ct);
         }
 
-        public async Task<IReadOnlyList<PairedDevice>> ListForOperatorAsync(Guid operatorId, CancellationToken ct)
+        public Task<IReadOnlyList<PairedDevice>> ListForOperatorAsync(Guid operatorId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.PairedDevices
-                .Where(d => d.OperatorId == operatorId)
-                .OrderByDescending(d => d.PairedAtUtc)
-                .ToListAsync(ct);
+            return _unitOfWork.ReadAsync<IReadOnlyList<PairedDevice>>(async context =>
+            {
+                return await context.Db().PairedDevices
+                    .Where(d => d.OperatorId == operatorId)
+                    .OrderByDescending(d => d.PairedAtUtc)
+                    .ToListAsync(ct);
+            }, ct);
         }
 
         public async Task RevokeAsync(Guid pairedDeviceId, string reason, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            PairedDevice? device = await db.PairedDevices.FirstOrDefaultAsync(d => d.Id == pairedDeviceId, ct);
+            PairedDevice? device = await _unitOfWork.ExecuteAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                PairedDevice? found = await db.PairedDevices.FirstOrDefaultAsync(d => d.Id == pairedDeviceId, ct);
+                if (found == null)
+                {
+                    return found;
+                }
+
+                found.RevokedAtUtc = DateTime.UtcNow;
+                found.RevokedReason = reason;
+                _ = await db.SaveChangesAsync(ct);
+                return found;
+            }, ct);
+
             if (device == null)
             {
                 return;
             }
 
-            device.RevokedAtUtc = DateTime.UtcNow;
-            device.RevokedReason = reason;
-            _ = await db.SaveChangesAsync(ct);
             _logger.LogInformation("Paired device revoked: {PairedDeviceName} - {Reason}", device.DeviceName, SanitizeForLog(reason));
         }
 
         public async Task<bool> DeleteRevokedAsync(Guid pairedDeviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            // The RevokedAtUtc filter is in the query, not checked after load, so an active device
-            // can never match and is never deleted even if a caller skips the revoke step.
-            PairedDevice? device = await db.PairedDevices
-                .FirstOrDefaultAsync(d => d.Id == pairedDeviceId && d.RevokedAtUtc != null, ct);
+            PairedDevice? device = await _unitOfWork.ExecuteAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                // The RevokedAtUtc filter is in the query, not checked after load, so an active device
+                // can never match and is never deleted even if a caller skips the revoke step.
+                PairedDevice? found = await db.PairedDevices
+                    .FirstOrDefaultAsync(d => d.Id == pairedDeviceId && d.RevokedAtUtc != null, ct);
+                if (found == null)
+                {
+                    return found;
+                }
+
+                _ = db.PairedDevices.Remove(found);
+                _ = await db.SaveChangesAsync(ct);
+                return found;
+            }, ct);
+
             if (device == null)
             {
                 return false;
             }
 
-            _ = db.PairedDevices.Remove(device);
-            _ = await db.SaveChangesAsync(ct);
             _logger.LogInformation("Paired device removed: {PairedDeviceName}", device.DeviceName);
             return true;
         }
 
         public async Task<IReadOnlyList<Guid>> RevokeAllForOperatorAsync(Guid operatorId, string reason, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<PairedDevice> devices = await db.PairedDevices
-                .Where(d => d.OperatorId == operatorId && d.RevokedAtUtc == null)
-                .ToListAsync(ct);
-
-            DateTime now = DateTime.UtcNow;
-            foreach (PairedDevice? device in devices)
+            (int count, IReadOnlyList<Guid> ids) = await _unitOfWork.ExecuteAsync(async context =>
             {
-                device.RevokedAtUtc = now;
-                device.RevokedReason = reason;
-            }
+                VideoForensicsDbContext db = context.Db();
+                List<PairedDevice> devices = await db.PairedDevices
+                    .Where(d => d.OperatorId == operatorId && d.RevokedAtUtc == null)
+                    .ToListAsync(ct);
 
-            _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Revoked all {Count} active device(s) for Operator {OperatorId} - {Reason}", devices.Count, operatorId, SanitizeForLog(reason));
-            return devices.Select(d => d.Id).ToList();
+                DateTime now = DateTime.UtcNow;
+                foreach (PairedDevice? device in devices)
+                {
+                    device.RevokedAtUtc = now;
+                    device.RevokedReason = reason;
+                }
+
+                _ = await db.SaveChangesAsync(ct);
+                return (devices.Count, (IReadOnlyList<Guid>)devices.Select(d => d.Id).ToList());
+            }, ct);
+
+            _logger.LogInformation("Revoked all {Count} active device(s) for Operator {OperatorId} - {Reason}", count, operatorId, SanitizeForLog(reason));
+            return ids;
         }
 
         public async Task RecordSuccessfulAuthAsync(Guid pairedDeviceId, uint newSignCount, string? sourceIp, NetworkTier tier, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            PairedDevice? device = await db.PairedDevices.FirstOrDefaultAsync(d => d.Id == pairedDeviceId, ct);
-            if (device == null)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                return;
-            }
+                VideoForensicsDbContext db = context.Db();
+                PairedDevice? device = await db.PairedDevices.FirstOrDefaultAsync(d => d.Id == pairedDeviceId, ct);
+                if (device == null)
+                {
+                    return null;
+                }
 
-            device.WebAuthnSignCount = newSignCount;
-            device.LastSeenAtUtc = DateTime.UtcNow;
-            device.LastSeenIp = sourceIp;
-            device.LastSeenTier = tier;
-            _ = await db.SaveChangesAsync(ct);
+                device.WebAuthnSignCount = newSignCount;
+                device.LastSeenAtUtc = DateTime.UtcNow;
+                device.LastSeenIp = sourceIp;
+                device.LastSeenTier = tier;
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>

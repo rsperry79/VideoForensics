@@ -18,8 +18,5 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// off, accounts get only the normal incremental pulls, so the first sync does not add provider calls.
         /// </summary>
         public bool InitialSyncEnabled { get; set; } = false;
-
-        /// <summary>Seconds between scheduler passes over the enabled sync schedules (default 60, floor 5).</summary>
-        public int TickSeconds { get; set; } = 60;
     }
 }

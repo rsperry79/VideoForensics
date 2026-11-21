@@ -1,5 +1,5 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Core.Tools
 {
@@ -10,13 +10,13 @@ namespace VideoForensics.Client.Core.Tools
     public sealed class NullLiveViewTelemetryPublisher : ILiveViewTelemetryPublisher
     {
         /// <inheritdoc />
-        public Task PublishSessionChangedAsync(LiveViewSession session, CancellationToken ct)
+        public Task PublishSessionChangedAsync(LiveViewSessionDto session, CancellationToken ct)
         {
             return Task.CompletedTask;
         }
 
         /// <inheritdoc />
-        public Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct)
+        public Task PublishSampleAsync(LiveViewTelemetrySampleDto sample, CancellationToken ct)
         {
             return Task.CompletedTask;
         }

@@ -8,11 +8,12 @@ paths:
 # Providers and data
 
 ## Adding a provider
-- Before adding a provider, read `.claude/reference/provider-onboarding.md`.
+- Before adding a provider, use the `provider-onboarding` skill.
 
 ## Data
 - EF: after `migrations add`, confirm the migration is not empty (the snapshot may already have the model). `migrations remove` can leave files; delete the migration and Designer files by explicit path.
 - Every provider API field is parsed and stored in typed columns or tables. Design the schema first; never store JSON to dodge a schema gap.
 - Raw JSON only for audit trail or fields that cannot be normalized, in an optional `MetadataJson` column. No unstructured JSON in core domain tables (events, devices, locations).
+- Exception: `Devices.SettingsMetadataJson` `cv_settings.triggers[]` stays JSON. It has always been empty and its element shape is unknown. Move it to a child table once a non-empty sample is captured.
 - Do not scope globally unique provider resources to an account (e.g. `ProviderLocationId`). Use junction tables for multi-account sharing.
 - Run filtering, sorting, paging, counting, and aggregation on the server (EF query → SQL). Do not `ToListAsync()` and then filter, sort, or page in memory. Pull to the client only when the logic cannot translate to SQL; say why in a comment.

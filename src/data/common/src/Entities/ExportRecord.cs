@@ -7,7 +7,6 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime ExportedAtUtc { get; set; }
         public required string ExportedByUserName { get; set; }
         public string? CaseReference { get; set; }
-        public string? RecipientDescription { get; set; }
         public required string ArchiveFileName { get; set; }
         public required string ArchiveSha256Hash { get; set; }
         public bool WasEncrypted { get; set; }

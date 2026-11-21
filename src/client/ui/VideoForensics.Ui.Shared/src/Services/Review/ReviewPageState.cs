@@ -49,6 +49,27 @@ public sealed class ReviewPageState
     /// <summary>The instant the page is looking at (UTC), always inside the range, or null when unset.</summary>
     public DateTime? Cursor { get; private set; }
 
+    /// <summary>
+    /// Where the video is while it plays (UTC), or null before anything plays. The timeline draws this. It is kept apart
+    /// from <see cref="Cursor"/>, so playback never re-seeks the player and never rewrites the address bar.
+    /// </summary>
+    public DateTime? PlaybackCursor { get; private set; }
+
+    /// <summary>Raised when <see cref="PlaybackCursor"/> moves. Separate from <see cref="OnChange"/>, which drives seeks and the URL.</summary>
+    public event Action? OnPlaybackChange;
+
+    /// <summary>Records the playback position. Does nothing when it is unchanged, and never touches <see cref="Cursor"/>.</summary>
+    public void SetPlaybackCursor(DateTime utc)
+    {
+        if (PlaybackCursor == utc)
+        {
+            return;
+        }
+
+        PlaybackCursor = utc;
+        OnPlaybackChange?.Invoke();
+    }
+
     /// <summary>The active tab.</summary>
     public ReviewTab ActiveTab { get; private set; } = ReviewTab.Timeline;
 
@@ -102,6 +123,13 @@ public sealed class ReviewPageState
     {
         if (SetCursorCore(utc))
         {
+            // A seek moves the play bar at once; the playback position comes back with the player's next progress report.
+            if (PlaybackCursor is not null)
+            {
+                PlaybackCursor = null;
+                OnPlaybackChange?.Invoke();
+            }
+
             OnChange?.Invoke();
         }
     }

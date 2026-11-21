@@ -1,7 +1,7 @@
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Cases;
 
@@ -18,7 +18,7 @@ public class CaseState
     /// <summary>
     /// The currently-active case, or null if no case is selected.
     /// </summary>
-    public ForensicCase? ActiveCase { get; private set; }
+    public ForensicCaseDto? ActiveCase { get; private set; }
 
     /// <summary>
     /// The device IDs associated with the active case, if any.
@@ -47,7 +47,7 @@ public class CaseState
     /// </summary>
     public async Task<bool> ActivateAsync(Guid caseId, CancellationToken ct)
     {
-        ForensicCase? forensicCase = await _caseRepository.GetAsync(caseId, ct);
+        ForensicCaseDto? forensicCase = await _caseRepository.GetAsync(caseId, ct);
         if (forensicCase is null)
         {
             return false;
@@ -154,7 +154,7 @@ public class CaseState
             throw new InvalidOperationException("No active case to save scope to.");
         }
 
-        if (ActiveCase.Status == CaseStatus.Closed)
+        if (ActiveCase.Status == CaseStatusDto.Closed.ToString())
         {
             throw new InvalidOperationException("Cannot modify a closed case.");
         }
@@ -168,7 +168,7 @@ public class CaseState
             ct);
 
         // Refresh the active case to reflect the saved changes
-        ForensicCase? refreshed = await _caseRepository.GetAsync(ActiveCase.Id, ct);
+        ForensicCaseDto? refreshed = await _caseRepository.GetAsync(ActiveCase.Id, ct);
         if (refreshed is not null)
         {
             ActiveCase = refreshed;
@@ -180,11 +180,11 @@ public class CaseState
     /// Pins an evidence item (event or media) to the active case with a given reason.
     /// Throws InvalidOperationException if no case is active or if the case is closed.
     /// </summary>
-    public async Task<CaseItem> PinAsync(CaseItemKind kind, Guid targetId, string reason, string actor, CancellationToken ct)
+    public async Task<CaseItemDto> PinAsync(CaseItemKindDto kind, Guid targetId, string reason, string actor, CancellationToken ct)
     {
         return ActiveCase is null
             ? throw new InvalidOperationException("No active case to pin evidence to.")
-            : ActiveCase.Status == CaseStatus.Closed
+            : ActiveCase.Status == CaseStatusDto.Closed.ToString()
             ? throw new InvalidOperationException("Cannot pin evidence to a closed case.")
             : await _caseRepository.AddItemAsync(
             ActiveCase.Id,
@@ -199,25 +199,20 @@ public class CaseState
     /// Returns true when the active case already holds a live pin for the item. Callers check this before pinning,
     /// because the repository reports an existing pin only as a generic InvalidOperationException.
     /// </summary>
-    public async Task<bool> HasActivePinAsync(CaseItemKind kind, Guid targetId, CancellationToken ct)
+    public async Task<bool> HasActivePinAsync(CaseItemKindDto kind, Guid targetId, CancellationToken ct)
     {
         if (ActiveCase is null)
         {
             return false;
         }
 
-        IReadOnlyList<CaseItem> items = await _caseRepository.ListItemsAsync(ActiveCase.Id, false, ct);
-        return items.Any(i => i.Kind == kind && TargetOf(i) == targetId);
+        IReadOnlyList<CaseItemDto> items = await _caseRepository.ListItemsAsync(ActiveCase.Id, false, ct);
+        return items.Any(i => i.Kind == kind.ToString() && TargetOf(i) == targetId);
     }
 
     /// <summary>The id of the event, media item or snapshot an item points at.</summary>
-    private static Guid? TargetOf(CaseItem item)
+    private static Guid? TargetOf(CaseItemDto item)
     {
-        return item.Kind switch
-        {
-            CaseItemKind.Event => item.EventId,
-            CaseItemKind.Snapshot => item.SnapshotCaptureId,
-            _ => item.MediaItemId,
-        };
+        return item.TargetId;
     }
 }

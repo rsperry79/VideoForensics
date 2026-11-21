@@ -57,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             await service.RecordThrottledAsync(AccountA, new ThrottledException { RetryAfter = TimeSpan.FromSeconds(5) }, CancellationToken.None);
 
-            Assert.Equal(baseInterval + TimeSpan.FromSeconds(1), pacerA.MinInterval);
+            Assert.Equal(baseInterval + TimeSpan.FromMinutes(1), pacerA.MinInterval);
             Assert.Equal(baseInterval, pacerB.MinInterval);
         }
 
@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RecordThrottledAsync_TwoRateLimitsInOneIncident_AddsOneSecondOfSpacing()
+        public async Task RecordThrottledAsync_TwoRateLimitsInOneIncident_AddsOneMinuteOfSpacing()
         {
             (RingMediaDownloadService service, _) = CreateService();
             MediaRequestPacer pacerA = service.GetPacerForAccount(AccountA);
@@ -82,7 +82,7 @@ namespace VideoForensics.Providers.Ring.Tests
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
 
-            Assert.Equal(baseInterval + TimeSpan.FromSeconds(1), pacerA.MinInterval);
+            Assert.Equal(baseInterval + TimeSpan.FromMinutes(1), pacerA.MinInterval);
         }
 
         [Fact]
@@ -237,12 +237,12 @@ namespace VideoForensics.Providers.Ring.Tests
 
             service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
 
-            Assert.Equal(TimeSpan.FromSeconds(3), pacerA.MinInterval);
+            Assert.Equal(TimeSpan.FromSeconds(62), pacerA.MinInterval);
         }
 
-        private static (RingMediaDownloadService Service, Mock<ISyncScheduleRepository> Repository) CreateServiceWithScheduleRepository()
+        private static (RingMediaDownloadService Service, Mock<ISyncScheduleWriteRepository> Repository) CreateServiceWithScheduleRepository()
         {
-            var repository = new Mock<ISyncScheduleRepository>();
+            var repository = new Mock<ISyncScheduleWriteRepository>();
             var service = new RingMediaDownloadService(
                 new Mock<ILogger>().Object,
                 new Mock<ISessionProvider>().Object,
@@ -254,49 +254,50 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RecordThrottledAsync_NewIncidentWithBaseSpacing_SavesBasePlusOneSecond()
+        public async Task RecordThrottledAsync_NewIncidentWithBaseSpacing_SavesBaseRoundedUpPlusOneMinute()
         {
-            (RingMediaDownloadService service, Mock<ISyncScheduleRepository> repository) = CreateServiceWithScheduleRepository();
+            (RingMediaDownloadService service, Mock<ISyncScheduleWriteRepository> repository) = CreateServiceWithScheduleRepository();
             service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
 
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
 
-            repository.Verify(r => r.SetSnapshotIntervalSecondsAsync(AccountA, 3, It.IsAny<CancellationToken>()), Times.Once);
+            // Two seconds of base spacing rounds up to one minute; the incident adds one more.
+            repository.Verify(r => r.SetSnapshotIntervalMinutesAsync(AccountA, 2, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
         public async Task RecordThrottledAsync_RepeatInsideSameIncident_SavesOnlyOnce()
         {
-            (RingMediaDownloadService service, Mock<ISyncScheduleRepository> repository) = CreateServiceWithScheduleRepository();
+            (RingMediaDownloadService service, Mock<ISyncScheduleWriteRepository> repository) = CreateServiceWithScheduleRepository();
             service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
 
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
 
-            repository.Verify(r => r.SetSnapshotIntervalSecondsAsync(AccountA, 3, It.IsAny<CancellationToken>()), Times.Once);
+            repository.Verify(r => r.SetSnapshotIntervalMinutesAsync(AccountA, 2, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task RecordThrottledAsync_NewIncidentWithStoredInterval_SavesStoredPlusOneSecond()
+        public async Task RecordThrottledAsync_NewIncidentWithStoredInterval_SavesStoredPlusOneMinute()
         {
-            (RingMediaDownloadService service, Mock<ISyncScheduleRepository> repository) = CreateServiceWithScheduleRepository();
+            (RingMediaDownloadService service, Mock<ISyncScheduleWriteRepository> repository) = CreateServiceWithScheduleRepository();
             _ = repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new SyncSchedule { ProviderAccountId = AccountA, SnapshotIntervalSeconds = 5 });
+                .ReturnsAsync(new SyncSchedule { ProviderAccountId = AccountA, SnapshotIntervalMinutes = 5 });
             service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
 
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
 
-            repository.Verify(r => r.SetSnapshotIntervalSecondsAsync(AccountA, 6, It.IsAny<CancellationToken>()), Times.Once);
+            repository.Verify(r => r.SetSnapshotIntervalMinutesAsync(AccountA, 6, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
         public async Task RecordThrottledAsync_HardBan_DoesNotSaveSnapshotInterval()
         {
-            (RingMediaDownloadService service, Mock<ISyncScheduleRepository> repository) = CreateServiceWithScheduleRepository();
+            (RingMediaDownloadService service, Mock<ISyncScheduleWriteRepository> repository) = CreateServiceWithScheduleRepository();
 
             await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
 
-            repository.Verify(r => r.SetSnapshotIntervalSecondsAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            repository.Verify(r => r.SetSnapshotIntervalMinutesAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         /// <summary>Collects log entries so tests can assert a failure was logged without a Moq expression over generic Log.</summary>
@@ -320,15 +321,15 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-        private static (RingMediaDownloadService Service, Mock<ISyncScheduleRepository> Repository, CapturingLogger Logger) CreateServiceForStoredInterval(
-            int? storedSeconds, Exception? loadFailure = null)
+        private static (RingMediaDownloadService Service, Mock<ISyncScheduleWriteRepository> Repository, CapturingLogger Logger) CreateServiceForStoredInterval(
+            int? storedMinutes, Exception? loadFailure = null)
         {
-            var repository = new Mock<ISyncScheduleRepository>();
+            var repository = new Mock<ISyncScheduleWriteRepository>();
             var logger = new CapturingLogger();
             _ = loadFailure != null
                 ? repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>())).ThrowsAsync(loadFailure)
                 : repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new SyncSchedule { ProviderAccountId = AccountA, SnapshotIntervalSeconds = storedSeconds });
+                    .ReturnsAsync(new SyncSchedule { ProviderAccountId = AccountA, SnapshotIntervalMinutes = storedMinutes });
 
             var service = new RingMediaDownloadService(
                 logger,
@@ -351,27 +352,28 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task DownloadVideosAsync_StoredIntervalAboveBase_RaisesPacerToStoredInterval()
         {
-            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: 3);
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedMinutes: 3);
 
             _ = await DownloadOnceAsync(service);
 
-            Assert.Equal(TimeSpan.FromSeconds(3), service.GetPacerForAccount(AccountA).MinInterval);
+            Assert.Equal(TimeSpan.FromMinutes(3), service.GetPacerForAccount(AccountA).MinInterval);
         }
 
         [Fact]
         public async Task DownloadVideosAsync_StoredIntervalBelowBase_KeepsBaseSpacing()
         {
-            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: 1);
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedMinutes: 1);
+            service.SetRequestPacing(1, TimeSpan.FromMinutes(2));
 
             _ = await DownloadOnceAsync(service);
 
-            Assert.Equal(TimeSpan.FromSeconds(2), service.GetPacerForAccount(AccountA).MinInterval);
+            Assert.Equal(TimeSpan.FromMinutes(2), service.GetPacerForAccount(AccountA).MinInterval);
         }
 
         [Fact]
         public async Task DownloadVideosAsync_NoStoredInterval_KeepsBaseSpacing()
         {
-            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: null);
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedMinutes: null);
 
             _ = await DownloadOnceAsync(service);
 
@@ -382,7 +384,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task DownloadVideosAsync_RepositoryThrows_KeepsBaseSpacingLogsAndDoesNotThrow()
         {
             (RingMediaDownloadService service, _, CapturingLogger logger) =
-                CreateServiceForStoredInterval(storedSeconds: null, loadFailure: new InvalidOperationException("db-detail-xyz"));
+                CreateServiceForStoredInterval(storedMinutes: null, loadFailure: new InvalidOperationException("db-detail-xyz"));
 
             _ = await DownloadOnceAsync(service);
 
@@ -400,7 +402,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task DownloadVideosAsync_TwoDownloads_LoadsStoredIntervalOnce()
         {
-            (RingMediaDownloadService service, Mock<ISyncScheduleRepository> repository, _) = CreateServiceForStoredInterval(storedSeconds: 3);
+            (RingMediaDownloadService service, Mock<ISyncScheduleWriteRepository> repository, _) = CreateServiceForStoredInterval(storedMinutes: 3);
 
             _ = await DownloadOnceAsync(service);
             _ = await DownloadOnceAsync(service);
@@ -411,26 +413,26 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task SetRequestPacing_AfterStoredIntervalLoaded_KeepsStoredFloor()
         {
-            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: 3);
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedMinutes: 3);
             _ = await DownloadOnceAsync(service);
 
             // Each run calls SetRequestPacing; the restored spacing must survive it.
             service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
 
-            Assert.Equal(TimeSpan.FromSeconds(3), service.GetPacerForAccount(AccountA).MinInterval);
+            Assert.Equal(TimeSpan.FromMinutes(3), service.GetPacerForAccount(AccountA).MinInterval);
         }
 
         [Fact]
         public async Task SetRequestPacing_AfterIncidentFollowingStoredInterval_KeepsRaisedSpacing()
         {
-            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: 3);
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedMinutes: 3);
             _ = await DownloadOnceAsync(service);
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
 
-            // The incident saved 4 seconds; the next run's SetRequestPacing must not drop it back to 3.
+            // The incident saved 4 minutes; the next run's SetRequestPacing must not drop it back to 3.
             service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
 
-            Assert.Equal(TimeSpan.FromSeconds(4), service.GetPacerForAccount(AccountA).MinInterval);
+            Assert.Equal(TimeSpan.FromMinutes(4), service.GetPacerForAccount(AccountA).MinInterval);
         }
     }
 }

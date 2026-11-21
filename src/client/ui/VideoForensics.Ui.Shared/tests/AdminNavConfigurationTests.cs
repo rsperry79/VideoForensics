@@ -1,7 +1,7 @@
 
 using System.Resources;
 
-using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Data.Common.Entities;
 
@@ -14,7 +14,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// </summary>
 public class AdminNavConfiguration_Tests
 {
-    private static NavContext Ctx(OperatorRole? role, bool local = false, bool passkey = false)
+    private static NavContext Ctx(OperatorRoleDto? role, bool local = false, bool passkey = false)
     {
         return new(role is not null, role, AppLockSupported: false, IsLocalTier: local, IsPasskeySession: passkey);
     }
@@ -23,7 +23,6 @@ public class AdminNavConfiguration_Tests
     [InlineData("/settings/security-events", AccessPolicy.ReadOnly)]
     [InlineData("/settings/operators", AccessPolicy.SuperAdminLocal)]
     [InlineData("/settings/operators/{Id:guid}", AccessPolicy.SuperAdminLocal)]
-    [InlineData("/admin/pending-credentials", AccessPolicy.SuperAdminLocalOrPasskey)]
     [InlineData("/settings/infrastructure", AccessPolicy.InfrastructureSettings)]
     [InlineData("/tools/import-export", AccessPolicy.SuperAdminLocal)]
     [InlineData("/settings/notifications", AccessPolicy.NotificationSettings)]
@@ -44,7 +43,7 @@ public class AdminNavConfiguration_Tests
     [InlineData("/query", AccessPolicy.Admin)]
     [InlineData("/accounts/add", AccessPolicy.Admin)]
     [InlineData("/accounts/{Id:guid}", AccessPolicy.Admin)]
-    [InlineData("/accounts/{Id:guid}/devices", AccessPolicy.SuperAdminLocal)]
+    [InlineData("/accounts/{Id:guid}/devices", AccessPolicy.SuperAdminLocalOrPasskey)]
     [InlineData("/analyze?analysis=reports", AccessPolicy.ReadOnly)]
     [InlineData("/analyze?analysis=anomalies", AccessPolicy.ReadOnly)]
     [InlineData("/analyze?analysis=access", AccessPolicy.ReadOnly)]
@@ -61,37 +60,24 @@ public class AdminNavConfiguration_Tests
     [InlineData("/settings/infrastructure")]
     public void PageAccessRules_RemoteAdmin_CannotOpenLocalOnlyAdminPage(string path)
     {
-        Assert.False(PageAccessRules.IsAllowed(path, Ctx(OperatorRole.Admin)));
+        Assert.False(PageAccessRules.IsAllowed(path, Ctx(OperatorRoleDto.Admin)));
     }
 
     [Fact]
     public void PageAccessRules_JammingTab_ReadOnlyOperator_Denied_ButReportsTabAllowed()
     {
         // Analyze tabs are keyed by query, so one tab's rule must not leak to another.
-        Assert.False(PageAccessRules.IsAllowed("/analyze?analysis=jamming", Ctx(OperatorRole.ReadOnly)));
-        Assert.True(PageAccessRules.IsAllowed("/analyze?analysis=reports", Ctx(OperatorRole.ReadOnly)));
-        Assert.True(PageAccessRules.IsAllowed("/analyze", Ctx(OperatorRole.ReadOnly)));
-    }
-
-    [Fact]
-    public void PageAccessRules_PendingApprovals_RemotePasskeySuperAdmin_Allowed()
-    {
-        // Approving credentials is open to a passkey session from any tier (SuperAdminLocalOrPasskey).
-        Assert.True(PageAccessRules.IsAllowed("/admin/pending-credentials", Ctx(OperatorRole.SuperAdmin, passkey: true)));
-    }
-
-    [Fact]
-    public void PageAccessRules_PendingApprovals_RemotePasswordSuperAdmin_Denied()
-    {
-        Assert.False(PageAccessRules.IsAllowed("/admin/pending-credentials", Ctx(OperatorRole.SuperAdmin)));
+        Assert.False(PageAccessRules.IsAllowed("/analyze?analysis=jamming", Ctx(OperatorRoleDto.ReadOnly)));
+        Assert.True(PageAccessRules.IsAllowed("/analyze?analysis=reports", Ctx(OperatorRoleDto.ReadOnly)));
+        Assert.True(PageAccessRules.IsAllowed("/analyze", Ctx(OperatorRoleDto.ReadOnly)));
     }
 
     [Fact]
     public void PageAccessRules_OperatorDetailsTemplate_RemoteSuperAdmin_Denied()
     {
         // The guard checks the @page template, so the parameterized template must be listed.
-        Assert.False(PageAccessRules.IsAllowed("/settings/operators/{Id:guid}", Ctx(OperatorRole.SuperAdmin)));
-        Assert.True(PageAccessRules.IsAllowed("/settings/operators/{Id:guid}", Ctx(OperatorRole.SuperAdmin, local: true)));
+        Assert.False(PageAccessRules.IsAllowed("/settings/operators/{Id:guid}", Ctx(OperatorRoleDto.SuperAdmin)));
+        Assert.True(PageAccessRules.IsAllowed("/settings/operators/{Id:guid}", Ctx(OperatorRoleDto.SuperAdmin, local: true)));
     }
 
     [Fact]
@@ -120,7 +106,7 @@ public class AdminNavConfiguration_Tests
         ];
         var group = new NavGroup("test", "Test", "/settings", items);
 
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, new NavContext(true, OperatorRole.SuperAdmin, false, IsLocalTier: true));
+        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, new NavContext(true, OperatorRoleDto.SuperAdmin, false, IsLocalTier: true));
 
         Assert.Equal(2, sections.Count);
         Assert.Equal("Security", sections[0].Title);

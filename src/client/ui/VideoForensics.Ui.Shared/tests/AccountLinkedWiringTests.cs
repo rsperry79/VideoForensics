@@ -17,6 +17,8 @@ using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -176,12 +178,12 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
-                new() { Id = RingAccountId, UserId = Guid.NewGuid(), ProviderName = "Ring" },
-                new() { Id = newId, UserId = newUserId, ProviderName = "Ring" },
+                new ProviderAccountEntity { Id = RingAccountId, UserId = Guid.NewGuid(), ProviderName = "Ring" }.ToDto(),
+                new ProviderAccountEntity { Id = newId, UserId = newUserId, ProviderName = "Ring" }.ToDto(),
             ]);
         _ = UserRepositoryMock
             .Setup(r => r.GetAsync(newUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { ProviderUserKey = "new-key", DisplayName = "Newly Linked Owner" });
+            .ReturnsAsync(new User { ProviderUserKey = "new-key", DisplayName = "Newly Linked Owner" }.ToDto());
 
         int before = ListActiveCalls();
         _ = cut.InvokeAsync(() => _linked.OnNext(newId));
@@ -217,7 +219,7 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
     public void Accounts_DisposedDuringInitialLoad_DoesNotSubscribe()
     {
         // Hold the initial load open so the component is disposed while OnInitializedAsync is still awaiting it.
-        var gate = new TaskCompletionSource<IReadOnlyList<ProviderAccountEntity>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var gate = new TaskCompletionSource<IReadOnlyList<ProviderAccountDto>>(TaskCreationOptions.RunContinuationsAsynchronously);
         _ = AccountRepositoryMock
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
             .Returns(gate.Task);

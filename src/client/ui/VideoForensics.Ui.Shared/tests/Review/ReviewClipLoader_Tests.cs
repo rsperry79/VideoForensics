@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;using VideoForensics.Core.Api.Contracts;
 using Moq;
 
 using VideoForensics.Client.Ui.Shared.Contracts;
@@ -33,6 +34,26 @@ public class ReviewClipLoader_Tests
         };
     }
 
+    [Fact]
+    public async Task LoadAsync_IncludesUnavailableEventsOfTheWindow_AndLeavesOutDownloadedOnes()
+    {
+        // Arrange: one stored event with no media, one with downloaded media
+        Guid device = Guid.NewGuid();
+        var unavailable = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = "86401464", EventType = "motion", OccurredAtUtc = FromUtc, DiscoveredAtUtc = FromUtc, DownloadStatus = EventDownloadStatus.Unavailable }.ToDto();
+        var downloaded = new Event { Id = Guid.NewGuid(), DeviceId = device, ProviderEventId = "86401465", EventType = "motion", OccurredAtUtc = FromUtc, DiscoveredAtUtc = FromUtc, DownloadStatus = EventDownloadStatus.Downloaded }.ToDto();
+        var events = new Mock<IEventRepository>();
+        _ = events.Setup(e => e.ListByDeviceAndDateRangeAsync(device, FromUtc, ToUtc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EventDto> { unavailable, downloaded });
+        var loader = new ReviewClipLoader(RepositoryServing([]).Object, events: events.Object);
+
+        // Act
+        ReviewClipSet set = await loader.LoadAsync([device], FromUtc, ToUtc, CancellationToken.None);
+
+        // Assert
+        EventDto only = Assert.Single(set.UnavailableEvents!);
+        Assert.Equal(unavailable.Id, only.Id);
+    }
+
     /// <summary>A repository double that answers pages from <paramref name="items"/>, filtered by device as the SQL query does.</summary>
     private Mock<IMediaItemRepository> RepositoryServing(IReadOnlyList<MediaItem> items)
     {
@@ -48,7 +69,7 @@ public class ReviewClipLoader_Tests
                     .Where(item => !videoOnly || MediaFormatHelper.IsVideo(item.MediaFormat))
                     .ToList();
                 IReadOnlyList<MediaItem> page = matching.Skip(skip).Take(take).ToList();
-                return Task.FromResult(new MediaItemPage(page, matching.Count));
+                return Task.FromResult(new MediaItemPageDto(page.Select(item => item.ToDto()).ToList(), matching.Count));
             });
         return repository;
     }

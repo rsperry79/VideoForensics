@@ -104,6 +104,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public bool? LowConfidence { get; set; }
 
         /// <summary>Null in every capture; typed by name because no non-null value has been observed.</summary>
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.LenientNullableDoubleConverter))]
         [JsonPropertyName("similarity")]
         public double? Similarity { get; set; }
 
@@ -159,6 +160,7 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("short_description")]
         public string ShortDescription { get; set; }
 
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.LenientNullableDoubleConverter))]
         [JsonPropertyName("similarity")]
         public double? Similarity { get; set; }
 
@@ -173,6 +175,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public System.Text.Json.JsonElement? KeyMoments { get; set; }
 
         [JsonPropertyName("tags")]
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.CvTagListConverter))]
         public List<string> Tags { get; set; }
     }
 

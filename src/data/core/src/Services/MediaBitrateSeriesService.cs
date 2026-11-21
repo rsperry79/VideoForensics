@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Core.Services
     /// was reviewed with.
     /// </summary>
     public sealed class MediaBitrateSeriesService(
-        IMediaItemRepository items,
+        IMediaItemWriteRepository items,
         IMediaPacketReader packets,
         IMediaPathResolver paths,
         ILogger<MediaBitrateSeriesService> logger) : IMediaBitrateSeriesService

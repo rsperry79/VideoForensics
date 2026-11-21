@@ -26,6 +26,12 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(e => e.RecordingStatus)
                 .HasMaxLength(256);
 
+            _ = builder.Property(e => e.DownloadAttempts)
+                .HasDefaultValue(0);
+
+            _ = builder.Property(e => e.AwaitingDingId)
+                .HasDefaultValue(false);
+
             _ = builder.HasIndex(e => new { e.DeviceId, e.ProviderEventId })
                 .IsUnique();
 

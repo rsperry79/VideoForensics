@@ -36,12 +36,12 @@ namespace VideoForensics.Core.Providers.Core
 
             try
             {
-                bool success = await processor
-                    .NotifyOnOutput(line => stdout.AppendLine(line))
-                    .NotifyOnError(line => stderr.AppendLine(line))
+                FFMpegResult result = await processor
+                    .NotifyOnStandardOutput(line => stdout.AppendLine(line))
+                    .NotifyOnStandardError(line => stderr.AppendLine(line))
                     .CancellableThrough(timeoutCts.Token)
                     .ProcessAsynchronously(throwOnError: false);
-                return new CaptureResult(success, stdout.ToString(), stderr.ToString());
+                return new CaptureResult(result.Success, stdout.ToString(), stderr.ToString());
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

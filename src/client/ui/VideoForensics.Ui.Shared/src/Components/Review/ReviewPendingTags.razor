@@ -1,7 +1,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Pages
 @using VideoForensics.Client.Ui.Shared.Services.Review
-@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Core.Api.Contracts
 @implements IDisposable
 @inject PendingEvidenceTags PendingTags
 @inject ReviewPopupState Popups
@@ -21,6 +21,7 @@
                     @onclick="OnToggleOpen">
                 <span class="badge rounded-pill text-bg-secondary" data-testid="review-pending-tags-count">@L["PendingTagsCount", PendingTags.Count]</span>
             </button>
+            <span class="small text-muted" data-testid="review-pending-tags-help">@L["PendingTagsHelp"]</span>
         }
 
         @if (Popups.IsOpen(ReviewPopupState.Pending) && PendingTags.Count > 0)
@@ -119,9 +120,9 @@
         _dismissedAttach = PendingTags.LastAttach;
     }
 
-    private string KindLabel(CaseItemKind kind)
+    private string KindLabel(CaseItemKindDto kind)
     {
-        return kind == CaseItemKind.Event ? L["PendingTagKindEvent"].Value : L["PendingTagKindMedia"].Value;
+        return kind == CaseItemKindDto.Event ? L["PendingTagKindEvent"].Value : L["PendingTagKindMedia"].Value;
     }
 
     private string? CameraName(Guid deviceId)

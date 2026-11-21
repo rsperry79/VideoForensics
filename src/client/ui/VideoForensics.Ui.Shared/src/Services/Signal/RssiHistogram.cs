@@ -4,7 +4,8 @@ namespace VideoForensics.Client.Ui.Shared.Services.Signal;
 /// <param name="XFraction">Where the reading falls in the window: 0 at the window start, 1 at its end.</param>
 /// <param name="HeightFraction">How weak the signal is: 0 at the strongest reading, 1 at the weakest.</param>
 /// <param name="CapturedAtUtc">When the reading was taken. A click on the bar seeks the player to this instant.</param>
-public sealed record RssiBar(double XFraction, double HeightFraction, DateTime CapturedAtUtc);
+/// <param name="RssiDbm">The reading itself, shown in the bar's tooltip.</param>
+public sealed record RssiBar(double XFraction, double HeightFraction, DateTime CapturedAtUtc, int RssiDbm);
 
 /// <summary>Turns RSSI readings into histogram bars for a window. Readings without a signal, and readings outside the window, are left out.</summary>
 public static class RssiHistogram
@@ -37,7 +38,7 @@ public static class RssiHistogram
 
             double x = (reading.CapturedAtUtc - startUtc).TotalSeconds / span;
             double weakness = (StrongestDbm - rssi) / (StrongestDbm - WeakestDbm);
-            bars.Add(new RssiBar(x, Math.Clamp(weakness, 0, 1), reading.CapturedAtUtc));
+            bars.Add(new RssiBar(x, Math.Clamp(weakness, 0, 1), reading.CapturedAtUtc, rssi));
         }
 
         return bars;

@@ -1,5 +1,5 @@
-@using VideoForensics.Data.Common.Entities
-@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Core.Api.Contracts
+@using VideoForensics.Core.Api.Contracts.Repositories
 @inject ISyncScheduleRepository SyncScheduleRepository
 @inject NavigationManager NavigationManager
 @inject HttpClient HttpClient
@@ -43,17 +43,12 @@ else
             <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
                 <div class="mb-3">
                     <label for="snapshot-rssi-interval">@L["SnapshotRssiIntervalLabel"]</label>
-                    <IntervalSecondsInput Id="snapshot-rssi-interval" Value="_snapshotRssiIntervalSeconds" ValueChanged="v => { _snapshotRssiIntervalSeconds = v; QueueAutoSave(); }" />
+                    <SfNumericTextBox ID="snapshot-rssi-interval" @bind-Value="_snapshotRssiIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="@SyncScheduleLimits.MinimumSnapshotIntervalMinutes" Step="1" />
                 </div>
                 <div class="mb-3">
                     <label for="event-poll-interval">@L["EventPollIntervalLabel"]</label>
                     <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="1" Step="1" />
                 </div>
-                <div class="mb-3">
-                    <label for="snapshot-rollup-interval">@L["SnapshotRollupIntervalLabel"]</label>
-                    <SfNumericTextBox ID="snapshot-rollup-interval" @bind-Value="_snapshotRollupIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="1" Step="1" />
-                </div>
-
                 <div class="mb-3">
                     <label for="is-enabled">
                         <SfCheckBox ID="is-enabled" @bind-Checked="_isEnabled" @bind-Checked:after="QueueAutoSave" TChecked="bool" />
@@ -142,7 +137,7 @@ else
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <IntervalSecondsInput Value="window.SnapshotRssiIntervalSeconds" ValueChanged="v => { window.SnapshotRssiIntervalSeconds = v; QueueAutoSave(); }" />
+                                                        <SfNumericTextBox @bind-Value="window.SnapshotRssiIntervalMinutes" @bind-Value:after="QueueAutoSave" Min="@SyncScheduleLimits.MinimumSnapshotIntervalMinutes" Step="1" />
                                                     </td>
                                                     <td>
                                                         <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="@L["Remove"]" />
@@ -177,13 +172,42 @@ else
 
     private CancellationTokenSource? _autoSaveCts;
 
-    private SyncSchedule? _schedule;
-    private int _snapshotRssiIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalSeconds;
+    /// <summary>A jamming window being edited on this page. Saved as a <see cref="JammingScheduleWindowDto"/>.</summary>
+    private sealed class EditableJammingWindow
+    {
+        public EditableJammingWindow()
+        {
+        }
+
+        public EditableJammingWindow(JammingScheduleWindowDto window)
+        {
+            Id = window.Id;
+            DayOfWeek = window.DayOfWeek;
+            StartMinuteOfDay = window.StartMinuteOfDay;
+            EndMinuteOfDay = window.EndMinuteOfDay;
+            SnapshotRssiIntervalMinutes = window.SnapshotRssiIntervalMinutes;
+        }
+
+        public Guid Id { get; init; }
+
+        public int DayOfWeek { get; set; }
+
+        public int StartMinuteOfDay { get; set; }
+
+        public int EndMinuteOfDay { get; set; }
+
+        public int SnapshotRssiIntervalMinutes { get; set; }
+
+        public JammingScheduleWindowDto ToDto() =>
+            new(Id, DayOfWeek, StartMinuteOfDay, EndMinuteOfDay, SnapshotRssiIntervalMinutes);
+    }
+
+    private SyncScheduleDto? _schedule;
+    private int _snapshotRssiIntervalMinutes = SyncScheduleLimits.DefaultSnapshotIntervalMinutes;
     private int _eventPollIntervalMinutes = 60;
-    private int _snapshotRollupIntervalMinutes = SyncSchedule.DefaultSnapshotRollupIntervalMinutes;
     private bool _isEnabled = true;
     private bool _useAdvancedJammingSchedule;
-    private List<JammingScheduleWindow>? _jammingWindows;
+    private List<EditableJammingWindow>? _jammingWindows;
     private bool _isLoading = true;
     private bool _isBusy;
     private bool _canEditAccount;
@@ -385,13 +409,12 @@ else
             _schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(Id, CancellationToken.None);
             if (_schedule != null)
             {
-                _snapshotRssiIntervalSeconds = _schedule.SnapshotRssiIntervalSeconds;
+                _snapshotRssiIntervalMinutes = _schedule.SnapshotRssiIntervalMinutes;
                 _eventPollIntervalMinutes = _schedule.EventPollIntervalMinutes;
-                _snapshotRollupIntervalMinutes = _schedule.SnapshotRollupIntervalMinutes;
                 _isEnabled = _schedule.IsEnabled;
                 _useAdvancedJammingSchedule = _schedule.UseAdvancedJammingSchedule;
                 // Create a mutable copy of jamming windows for editing
-                _jammingWindows = new List<JammingScheduleWindow>(_schedule.JammingWindows ?? []);
+                _jammingWindows = (_schedule.JammingWindows ?? []).Select(w => new EditableJammingWindow(w)).ToList();
             }
             else
             {
@@ -419,20 +442,20 @@ else
         }
 
         // Default: Monday, 00:00-00:15, matching default interval
-        var newWindow = new JammingScheduleWindow
+        var newWindow = new EditableJammingWindow
         {
             Id = Guid.NewGuid(),
-            SyncScheduleId = _schedule?.Id ?? Guid.Empty,
+            
             DayOfWeek = 1, // Monday
             StartMinuteOfDay = 0, // 00:00
             EndMinuteOfDay = 15, // 00:15
-            SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds
+            SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes
         };
 
         _jammingWindows.Add(newWindow);
     }
 
-    private void RemoveWindow(JammingScheduleWindow window)
+    private void RemoveWindow(EditableJammingWindow window)
     {
         QueueAutoSave();
         _jammingWindows?.Remove(window);
@@ -486,9 +509,9 @@ else
             }
 
             // Validate interval meets minimum
-            if (window.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
+            if (window.SnapshotRssiIntervalMinutes < SyncScheduleLimits.MinimumSnapshotIntervalMinutes)
             {
-                _statusMessage = L["IntervalMinimum", SyncSchedule.MinimumSnapshotIntervalSeconds];
+                _statusMessage = L["IntervalMinimum", SyncScheduleLimits.MinimumSnapshotIntervalMinutes];
                 _statusIsError = true;
                 return false;
             }
@@ -554,47 +577,25 @@ else
         _isBusy = true;
         try
         {
-            if (_schedule == null)
-            {
-                _schedule = new SyncSchedule
-                {
-                    Id = Guid.NewGuid(),
-                    ProviderAccountId = Id,
-                    SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds,
-                    EventPollIntervalMinutes = _eventPollIntervalMinutes,
-                    SnapshotRollupIntervalMinutes = _snapshotRollupIntervalMinutes,
-                    IsEnabled = _isEnabled,
-                    UseAdvancedJammingSchedule = _useAdvancedJammingSchedule,
-                    EventNextRunUtc = null,
-                    EventLastRunUtc = null,
-                    SnapshotNextRunUtc = null,
-                    SnapshotLastRunUtc = null,
-                    JammingWindows = _useAdvancedJammingSchedule ? (_jammingWindows ?? []) : []
-                };
-            }
-            else
-            {
-                _schedule.SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds;
-                _schedule.EventPollIntervalMinutes = _eventPollIntervalMinutes;
-                _schedule.SnapshotRollupIntervalMinutes = _snapshotRollupIntervalMinutes;
-                _schedule.IsEnabled = _isEnabled;
-                _schedule.UseAdvancedJammingSchedule = _useAdvancedJammingSchedule;
-                // Ensure SyncScheduleId is set on windows for persistence
-                if (_useAdvancedJammingSchedule && _jammingWindows != null)
-                {
-                    foreach (var window in _jammingWindows)
-                    {
-                        window.SyncScheduleId = _schedule.Id;
-                    }
-                    _schedule.JammingWindows = _jammingWindows;
-                }
-                else
-                {
-                    _schedule.JammingWindows = [];
-                }
-            }
+            // Keep the saved schedule's id, run times and cursor; apply the edited values on top.
+            var windows = _useAdvancedJammingSchedule
+                ? (_jammingWindows ?? []).Select(w => w.ToDto()).ToList()
+                : new List<JammingScheduleWindowDto>();
+            var schedule = new SyncScheduleDto(
+                Id: _schedule?.Id ?? Guid.NewGuid(),
+                ProviderAccountId: Id,
+                EventPollIntervalMinutes: _eventPollIntervalMinutes,
+                SnapshotRssiIntervalMinutes: _snapshotRssiIntervalMinutes,
+                IsEnabled: _isEnabled,
+                UseAdvancedJammingSchedule: _useAdvancedJammingSchedule,
+                EventNextRunUtc: _schedule?.EventNextRunUtc,
+                EventLastRunUtc: _schedule?.EventLastRunUtc,
+                SnapshotIntervalMinutes: _schedule?.SnapshotIntervalMinutes,
+                BackfillCursorUtc: _schedule?.BackfillCursorUtc,
+                JammingWindows: windows);
 
-            await SyncScheduleRepository.UpsertAsync(_schedule, CancellationToken.None);
+            await SyncScheduleRepository.UpsertAsync(schedule, CancellationToken.None);
+            _schedule = schedule;
             _statusMessage = L["ScheduleSaved"];
             _statusIsError = false;
 

@@ -10,7 +10,8 @@ interface Window {
     vfCaseNoteCheck: (body: string) => { valid: boolean; trimmedLength: number; code: "empty" | "tooLong" | null };
     vfClickElement: (element: HTMLElement | null) => void;
     vfDeviceLabel: { get(): string };
-    vfLayoutPrefs: { get(key: string): string | null; set(key: string, value: string): void };
+    vfHistory: { replaceUrl(url: string): void };
+    vfLayoutPrefs: { get(key: string): string | null; set(key: string, value: string): void; setLeftNavHidden(hidden: boolean): boolean };
     vfPanelResize: {
         attach(handleId: string, panelId: string, options: { min?: number; max?: number } | null, dotNetRef: DotNetObjectReference | null): void;
         detach(handleId: string): void;
@@ -26,6 +27,7 @@ interface Window {
     };
     vfViewport: {
         getIsMobile(): boolean;
+        getSize(): { width: number; height: number };
         watchViewport(dotNetRef: DotNetObjectReference): void;
     };
     // Set by startLiveView so that addIceCandidate can reach the connection it created.

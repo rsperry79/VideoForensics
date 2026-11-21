@@ -46,6 +46,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 try
                 {
                     await PruneOnceAsync(stoppingToken);
+                    _heartbeats?.RecordRun(nameof(OperationalLogPruneService), _time.GetUtcNow());
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -53,6 +54,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
+                    _heartbeats?.RecordError(nameof(OperationalLogPruneService), _time.GetUtcNow(), "run failed");
                     _logger.LogError("Operational log prune failed; it will run again at the next interval: {Message} ({ErrorType})", ex.Message, ex.GetType().Name);
                 }
             }

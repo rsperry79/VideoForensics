@@ -10,6 +10,9 @@ namespace VideoForensics.Data.Common.Entities
         public required string FileName { get; set; }
         public required string FilePath { get; set; }
         public required string MediaFormat { get; set; }
+
+        /// <summary>What the row holds (<see cref="MediaKinds"/>). Part of the unique key with the device and recorded instant.</summary>
+        public string MediaKind { get; set; } = MediaKinds.Clip;
         public long FileSizeBytes { get; set; }
         public DateTime RecordedAtUtc { get; set; }
         public DateTime DownloadedAtUtc { get; set; }

@@ -47,7 +47,7 @@ namespace VideoForensics.Client.WebApp.Api
                 string userCode,
                 ApproveDeviceCodeRequest request,
                 IDeviceCodePairingService deviceCodePairing,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 IPairedDeviceRepository pairedDevices,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
@@ -58,7 +58,7 @@ namespace VideoForensics.Client.WebApp.Api
                 string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
                 string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
                 bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role == OperatorRole.SuperAdmin;
-                bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
+                bool isLocal = VideoForensics.Client.WebApp.Auth.PasskeyTierRules.IsLocalOrPasskey(context.User);
 
                 if (!isSuperAdmin || !isLocal)
                 {
@@ -78,6 +78,13 @@ namespace VideoForensics.Client.WebApp.Api
 
                 // Hash it with SHA-256 for storage
                 string apiKeyHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(rawApiKey)));
+
+                // Claim the session first. TryApprove is the atomic gate: a second approval, or one that lost a race,
+                // must not create another service account and device.
+                if (!deviceCodePairing.TryApprove(userCode, rawApiKey))
+                {
+                    return Results.NotFound(new { error = "Pairing code expired or invalid." });
+                }
 
                 // Create the operator
                 var operatorId = Guid.NewGuid();
@@ -105,9 +112,6 @@ namespace VideoForensics.Client.WebApp.Api
                     FallbackApiKeyHash = apiKeyHash,
                     PairedAtUtc = DateTime.UtcNow
                 }, ct);
-
-                // Approve the session and attach the raw key (single-use, consumed on next poll)
-                _ = deviceCodePairing.TryApprove(userCode, rawApiKey);
 
                 // Audit log the approval
                 await auditLog.LogAsync(SecurityAuditEventTypes.DeviceCodeApproved, op.Id, pairedDevice.Id,

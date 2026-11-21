@@ -12,7 +12,9 @@ using VideoForensics.Client.Core.Tools;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Core.Api.Contracts.Repositories;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -30,7 +32,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <see cref="IReportGenerationService"/> mock stubbed to return empty (no-row) reports so no
 /// panel ever needs to render a Syncfusion grid, and a real <see cref="JammingToolsOrchestrator"/>
 /// (a concrete class - the testable seam is its constructor dependencies: <see
-/// cref="IJammingRepository"/> and <see cref="IDeviceHealthRepository"/>, both mocked) wired for
+/// cref="IJammingRepository"/> and <see cref="IDeviceHealthWriteRepository"/>, both mocked) wired for
 /// an empty health history (fewer than 3 readings -> no incidents detected, so JammingPanel's
 /// success branch renders with zero rows).
 /// </summary>
@@ -42,7 +44,8 @@ public abstract class AnalyzePageTestBase : BunitContext
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
     protected Mock<IReportGenerationService> ReportGenerationServiceMock { get; } = new();
     protected Mock<IJammingRepository> JammingRepositoryMock { get; } = new();
-    protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+    protected Mock<IJammingWriteRepository> JammingWriteRepositoryMock { get; } = new();
+    protected Mock<IDeviceHealthWriteRepository> DeviceHealthRepositoryMock { get; } = new();
     protected Mock<INoteRepository> NoteRepositoryMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
@@ -68,23 +71,23 @@ public abstract class AnalyzePageTestBase : BunitContext
 
         _ = ReportGenerationServiceMock
             .Setup(m => m.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ForensicAnalysisReport());
+            .ReturnsAsync(new ForensicAnalysisReportDto(default, default, default, [], [], [], null));
         _ = ReportGenerationServiceMock
             .Setup(m => m.BuildSignalAnomalyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SignalAnomalyReport());
+            .ReturnsAsync(new SignalAnomalyReportDto(default, default, default, [], []));
         _ = ReportGenerationServiceMock
             .Setup(m => m.BuildAccessControlReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AccessControlReport());
+            .ReturnsAsync(new AccessControlReportDto(default, default, default, [], []));
 
         _ = DeviceHealthRepositoryMock
             .Setup(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        _ = JammingRepositoryMock
+        _ = JammingWriteRepositoryMock
             .Setup(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new JammingStatsSummary());
         _ = JammingRepositoryMock
             .Setup(m => m.GetStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((JammingStatsSummary?)null);
+            .ReturnsAsync((JammingStatsSummaryDto?)null);
         _ = JammingRepositoryMock
             .Setup(m => m.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
@@ -96,13 +99,13 @@ public abstract class AnalyzePageTestBase : BunitContext
         _ = Services.AddScoped(_ => ReportGenerationServiceMock.Object);
         _ = Services.AddLogging();
         _ = NoteRepositoryMock
-            .Setup(m => m.ListAsync(It.IsAny<NoteTargetKind>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<Note>());
+            .Setup(m => m.ListAsync(It.IsAny<NoteTargetKindDto>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<NoteDto>());
         _ = Services.AddScoped(_ => NoteRepositoryMock.Object);
         _ = Services.AddScoped(_ => ScopeState);
-        _ = Services.AddScoped(_ => new JammingToolsOrchestrator(
+        _ = Services.AddScoped<VideoForensics.Client.Common.Contracts.IJammingToolsOrchestrator>(_ => new JammingToolsOrchestrator(
             Mock.Of<ILogger<JammingToolsOrchestrator>>(),
-            JammingRepositoryMock.Object,
+            JammingWriteRepositoryMock.Object,
             DeviceHealthRepositoryMock.Object));
 
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
@@ -440,7 +443,7 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
 
         Assert.Empty(component.FindAll("[data-testid='analysis-jamming']"));
         Assert.NotEmpty(component.FindAll("[data-testid='analysis-reports']"));
-        JammingRepositoryMock.Verify(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        JammingWriteRepositoryMock.Verify(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -453,7 +456,7 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
         IRenderedComponent<Analyze> component = RenderPage();
 
         DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
-        JammingRepositoryMock.Verify(m => m.RecomputeStatsAsync(device.Id, It.IsAny<CancellationToken>()), Times.Once);
+        JammingWriteRepositoryMock.Verify(m => m.RecomputeStatsAsync(device.Id, It.IsAny<CancellationToken>()), Times.Once);
         Assert.Empty(component.FindAll(".alert-danger"));
     }
 

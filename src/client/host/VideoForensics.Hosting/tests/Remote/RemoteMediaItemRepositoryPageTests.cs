@@ -32,6 +32,7 @@ public class RemoteMediaItemRepositoryPageTests
             FileName: "2024-01-15_120000.mp4",
             FilePath: "/media/2024-01-15_120000.mp4",
             MediaFormat: "mp4",
+            MediaKind: "Clip",
             FileSizeBytes: 1024,
             RecordedAtUtc: new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
             DownloadedAtUtc: new DateTime(2024, 1, 15, 12, 5, 0, DateTimeKind.Utc),
@@ -162,7 +163,7 @@ public class RemoteMediaItemRepositoryPageTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteMediaItemRepository(httpClient);
 
-        MediaItemPage page = await repo.GetPageByDevicesAndDateRangeAsync(
+        MediaItemPageDto page = await repo.GetPageByDevicesAndDateRangeAsync(
             new[] { Guid.NewGuid() },
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),
@@ -189,7 +190,7 @@ public class RemoteMediaItemRepositoryPageTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteMediaItemRepository(httpClient);
 
-        MediaItemPage page = await repo.GetPageByDevicesAndDateRangeAsync(
+        MediaItemPageDto page = await repo.GetPageByDevicesAndDateRangeAsync(
             new[] { Guid.NewGuid() },
             new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc),

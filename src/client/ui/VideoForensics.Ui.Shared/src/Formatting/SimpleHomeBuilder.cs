@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts.Repositories;
 using Microsoft.Extensions.Localization;
 
 using System.Globalization;
@@ -6,8 +7,6 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Resources;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Formatting;
 
@@ -69,23 +68,23 @@ public sealed class SimpleHomeBuilder
         DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         DateTime fromUtc = nowUtc - window;
 
-        IReadOnlyList<Device> deviceList = await devices.ListAsync(ct);
+        IReadOnlyList<DeviceDto> deviceList = await devices.ListAsync(ct);
         var names = deviceList.ToDictionary(d => d.Id, d => string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim());
 
         var entries = new List<SimpleTimelineEntry>();
-        var mediaItems = new List<(MediaItem Item, string? Name)>();
+        var mediaItems = new List<(MediaItemDto Item, string? Name)>();
 
-        foreach (Device device in deviceList)
+        foreach (DeviceDto device in deviceList)
         {
             string? name = names[device.Id];
 
-            foreach (Event evt in await events.ListByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
+            foreach (EventDto evt in await events.ListByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
             {
                 DateTime when = AsUtc(evt.OccurredAtUtc);
-                entries.Add(new SimpleTimelineEntry(when, TimeText(when), EventPlainLanguageFormatter.Describe(_localizer, evt.ToDto(), name), SimpleEntryKind.Event));
+                entries.Add(new SimpleTimelineEntry(when, TimeText(when), EventPlainLanguageFormatter.Describe(_localizer, evt, name), SimpleEntryKind.Event));
             }
 
-            foreach (MediaItem item in await media.GetByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
+            foreach (MediaItemDto item in await media.GetByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
             {
                 mediaItems.Add((item, name));
             }
@@ -97,7 +96,7 @@ public sealed class SimpleHomeBuilder
         {
             try
             {
-                foreach (JammingIncidentRecord incident in await jamming.ListIncidentsAsync(null, fromUtc, nowUtc, ct))
+                foreach (JammingIncidentDto incident in (await jamming.ListIncidentsAsync(null, fromUtc, nowUtc, ct)))
                 {
                     _ = names.TryGetValue(incident.DeviceId, out string? name);
                     DateTime start = AsUtc(incident.StartUtc);
@@ -125,7 +124,7 @@ public sealed class SimpleHomeBuilder
         return new SimpleHomeModel(days, evidence, hasMore, fromUtc, blockedUnavailable);
     }
 
-    private async Task<IReadOnlyList<SimpleEvidenceItem>> BuildEvidenceAsync(List<(MediaItem Item, string? Name)> mediaItems, CancellationToken ct)
+    private async Task<IReadOnlyList<SimpleEvidenceItem>> BuildEvidenceAsync(List<(MediaItemDto Item, string? Name)> mediaItems, CancellationToken ct)
     {
         var top = mediaItems.OrderByDescending(m => m.Item.RecordedAtUtc).Take(MaxEvidenceItems).ToList();
         if (top.Count == 0)

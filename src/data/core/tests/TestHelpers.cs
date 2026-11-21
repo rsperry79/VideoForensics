@@ -35,7 +35,6 @@ namespace VideoForensics.Data.Core.Tests
             string? archiveSha256Hash = null,
             string? appVersion = null,
             string? caseReference = null,
-            string? recipientDescription = null,
             int itemCount = 0)
         {
             return new ExportRecord
@@ -44,7 +43,6 @@ namespace VideoForensics.Data.Core.Tests
                 ExportedAtUtc = DateTime.UtcNow,
                 ExportedByUserName = exportedByUserName ?? "test_user",
                 CaseReference = caseReference,
-                RecipientDescription = recipientDescription,
                 ArchiveFileName = archiveFileName ?? "export.zip",
                 ArchiveSha256Hash = archiveSha256Hash ?? "test_archive_hash",
                 WasEncrypted = false,

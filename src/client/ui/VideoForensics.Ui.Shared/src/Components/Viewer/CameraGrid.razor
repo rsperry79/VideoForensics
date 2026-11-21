@@ -1,8 +1,7 @@
-@implements IAsyncDisposable
 @using Microsoft.Extensions.Localization
-@inject IStringLocalizer<SharedResources> L
 @using VideoForensics.Client.Common.Viewer
 @using VideoForensics.Client.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 
 @if (!CameraSync.IsTileCountAllowed(Tiles.Count))
 {
@@ -10,14 +9,33 @@
 }
 else
 {
-    <div class="camera-grid" data-testid="camera-grid" style="grid-template-columns:repeat(@_columns, 1fr)">
+    <div class="camera-grid" data-testid="camera-grid">
         @for (int i = 0; i < Tiles.Count; i++)
         {
             CameraTile tile = Tiles[i];
             int index = i;
             <figure class="camera-tile" data-testid="camera-tile">
                 <figcaption>@tile.Label</figcaption>
-                <ReviewPlayer @ref="_players[index]" Clips="tile.Clips" ContentUrlFor="tile.ContentUrlFor" Cursor="Cursor" />
+                @if (index == 0)
+                {
+                    @* The first camera is the full player with its own controls. *@
+                    <ReviewPlayer @ref="_firstPlayer" Clips="tile.Clips" ContentUrlFor="tile.ContentUrlFor" Cursor="Cursor" />
+                }
+                else
+                {
+                    @* Every other camera is a muted preview that follows the shared cursor. A click opens it as the single view. *@
+                    CameraPreview preview = PreviewFor(tile);
+                    <button type="button" class="camera-tile-preview" data-testid="camera-tile-preview" data-camera-index="@index" aria-label="@tile.Label" @onclick="() => OnSelect.InvokeAsync(index)">
+                        @if (preview.Clip is null || preview.Url is null)
+                        {
+                            <span class="camera-tile-placeholder" data-testid="camera-tile-placeholder">@L["ReviewPlayerGap"]</span>
+                        }
+                        else
+                        {
+                            <GridPreviewPlayer Url="@preview.Url" SourceStartUtc="@preview.Clip.StartUtc" Cursor="Cursor" Registered="RegisterPreview" Unregistered="UnregisterPreview" />
+                        }
+                    </button>
+                }
             </figure>
         }
     </div>
@@ -30,106 +48,62 @@ else
     /// <summary>Shared playback time (UTC) that every tile follows.</summary>
     [Parameter] public DateTime? Cursor { get; set; }
 
-    private int _columns => Math.Max(1, (int)Math.Ceiling(Math.Sqrt(Tiles.Count)));
+    /// <summary>Raised with a tile's index when its preview is clicked.</summary>
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
 
-    // One slot per tile, filled by @ref. Tile 0 is the master clock. Slots are resized, not cleared, so existing refs survive re-renders.
-    private readonly List<ReviewPlayer?> _players = [];
-    private PeriodicTimer? _timer;
-    private CancellationTokenSource? _cts;
+    // The first camera's full player, which the grid's transport bar drives.
+    private ReviewPlayer? _firstPlayer;
 
-    protected override void OnParametersSet()
+    /// <summary>Plays or pauses the first camera. Does nothing when there is no full player (a gap, or no cameras).</summary>
+    public async Task TogglePlayAsync()
     {
-        while (_players.Count < Tiles.Count)
+        foreach (IPlaybackTarget target in Targets())
         {
-            _players.Add(null);
-        }
-
-        if (_players.Count > Tiles.Count)
-        {
-            _players.RemoveRange(Tiles.Count, _players.Count - Tiles.Count);
+            await target.TogglePlayAsync();
         }
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    private readonly Dictionary<GridPreviewPlayer, bool> _previews = new();
+
+    private void RegisterPreview(GridPreviewPlayer preview) => _previews[preview] = true;
+
+    private void UnregisterPreview(GridPreviewPlayer preview) => _previews.Remove(preview);
+
+    private IEnumerable<IPlaybackTarget> Targets()
     {
-        // Sync runs only for multi-tile grids. The loop starts once and lives until the component is disposed.
-        if (firstRender && Tiles.Count >= 2 && _timer is null)
+        if (_firstPlayer is not null)
         {
-            _cts = new CancellationTokenSource();
-            _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-            _ = RunSyncLoopAsync(_timer, _cts.Token);
+            yield return _firstPlayer;
         }
 
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Compares every tile to tile 0 and seeks any tile that has drifted past the tolerance. Does nothing when the
-    /// master tile is not playing a clip, since there is then no shared time to follow.
-    /// </summary>
-    public async Task SyncTilesAsync()
-    {
-        if (_players.Count == 0 || _players[0] is not { } master)
+        foreach (GridPreviewPlayer preview in _previews.Keys)
         {
-            return;
-        }
-
-        double? masterSeconds = await master.ReadPlaybackUtcSecondsAsync();
-        if (masterSeconds is not double masterValue)
-        {
-            return;
-        }
-
-        DateTime masterUtc = DateTimeOffset.FromUnixTimeMilliseconds((long)Math.Round(masterValue * 1000.0)).UtcDateTime;
-
-        for (int i = 1; i < _players.Count; i++)
-        {
-            if (_players[i] is not { } player)
-            {
-                continue;
-            }
-
-            double? tileSeconds = await player.ReadPlaybackUtcSecondsAsync();
-            if (tileSeconds is double tileValue && CameraSync.NeedsResync(tileValue, masterValue, CameraSync.DefaultToleranceSeconds))
-            {
-                await player.SeekToUtcAsync(masterUtc);
-            }
+            yield return preview;
         }
     }
 
-    private async Task RunSyncLoopAsync(PeriodicTimer timer, CancellationToken token)
+    /// <summary>Steps the first camera by a number of seconds (negative goes back).</summary>
+    public async Task StepAsync(double seconds)
     {
-        try
+        foreach (IPlaybackTarget target in Targets())
         {
-            while (await timer.WaitForNextTickAsync(token))
-            {
-                try
-                {
-                    // Run on the renderer context, as Blazor requires for component work started from a timer.
-                    await InvokeAsync(SyncTilesAsync);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Shutdown in progress; the next WaitForNextTickAsync call ends the loop.
-                }
-                catch (Exception)
-                {
-                    // A failing JS call usually means the circuit has gone. Stop syncing rather than retry every second.
-                    break;
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Dispose cancelled the loop while it was waiting for the next tick.
+            await target.StepAsync(seconds);
         }
     }
 
-    public ValueTask DisposeAsync()
+    /// <summary>The clip covering the cursor for one tile, and its preview URL. Either is null in a gap or with no preview.</summary>
+    private sealed record CameraPreview(ClipWindow? Clip, string? Url);
+
+    private CameraPreview PreviewFor(CameraTile tile)
     {
-        _cts?.Cancel();
-        _timer?.Dispose();
-        _cts?.Dispose();
-        return ValueTask.CompletedTask;
+        if (Cursor is not DateTime time)
+        {
+            return new CameraPreview(null, null);
+        }
+
+        ClipSelection? selection = ReviewTimeline.ClipAt(tile.Clips, time);
+        ClipWindow? clip = selection is null ? null : tile.Clips.FirstOrDefault(c => c.Id == selection.ClipId);
+        string? url = clip is null ? null : tile.PreviewUrlFor?.Invoke(clip.Id);
+        return new CameraPreview(clip, url);
     }
 }

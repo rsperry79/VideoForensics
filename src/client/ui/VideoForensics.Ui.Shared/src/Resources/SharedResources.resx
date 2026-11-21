@@ -122,6 +122,9 @@
   <data name="App Lock" xml:space="preserve">
     <value>App Lock</value>
   </data>
+  <data name="My Notifications" xml:space="preserve">
+    <value>My Notifications</value>
+  </data>
   <data name="Save" xml:space="preserve">
     <value>Save</value>
   </data>
@@ -728,9 +731,6 @@
   <data name="Security Events" xml:space="preserve">
     <value>Security Events</value>
   </data>
-  <data name="Pending Approvals" xml:space="preserve">
-    <value>Pending Approvals</value>
-  </data>
   <data name="Login Methods" xml:space="preserve">
     <value>Login Methods</value>
   </data>
@@ -893,6 +893,18 @@
   <data name="FlaggedMediaUnknownCamera" xml:space="preserve">
     <value>Unknown camera</value>
   </data>
+  <data name="FlaggedMediaNoEvent" xml:space="preserve">
+    <value>No event</value>
+  </data>
+  <data name="FlaggedMediaColDev" xml:space="preserve">
+    <value>Dev</value>
+  </data>
+  <data name="FlaggedMediaDevEmpty" xml:space="preserve">
+    <value>-</value>
+  </data>
+  <data name="FlaggedMediaDevTooltip" xml:space="preserve">
+    <value>std devs from the all-time mean</value>
+  </data>
   <data name="FlaggedMediaType_BitrateCollapse" xml:space="preserve">
     <value>Bit rate collapse</value>
   </data>
@@ -1053,10 +1065,10 @@
     <value>Flag navigation</value>
   </data>
   <data name="ClipNavigatorPrevious" xml:space="preserve">
-    <value>Previous flag</value>
+    <value>Previous</value>
   </data>
   <data name="ClipNavigatorNext" xml:space="preserve">
-    <value>Next flag</value>
+    <value>Next</value>
   </data>
   <data name="ClipNavigatorTotal" xml:space="preserve">
     <value>{0} flags</value>
@@ -1069,6 +1081,9 @@
   </data>
   <data name="ClipNavigatorEnd" xml:space="preserve">
     <value>No more flags in this direction</value>
+  </data>
+  <data name="NoUnreviewedFlagsLeft" xml:space="preserve">
+    <value>No unreviewed flags left</value>
   </data>
   <data name="SignalFlagsHeading" xml:space="preserve">
     <value>Signal deviation flags</value>
@@ -1118,8 +1133,29 @@
   <data name="BitrateSeriesEmpty" xml:space="preserve">
     <value>No bit rate data for this clip.</value>
   </data>
+  <data name="BitrateBarTooltip" xml:space="preserve">
+    <value>{0} · {1} kbps</value>
+  </data>
+  <data name="BitrateBarTooltipWithStdDev" xml:space="preserve">
+    <value>{0} · {1} kbps · σ {2} kbps</value>
+  </data>
+  <data name="BitrateBarOffset" xml:space="preserve">
+    <value>{0} s into clip</value>
+  </data>
+  <data name="RssiBarTooltip" xml:space="preserve">
+    <value>{0} · {1} dBm</value>
+  </data>
+  <data name="RssiBarTooltipWithStdDev" xml:space="preserve">
+    <value>{0} · {1} dBm · σ {2} dBm</value>
+  </data>
   <data name="PlaybackNow" xml:space="preserve">
     <value>Now {0}</value>
+  </data>
+  <data name="PlaybackEventType" xml:space="preserve">
+    <value> · {0}</value>
+  </data>
+  <data name="EventTypeLabel_person" xml:space="preserve">
+    <value>Person</value>
   </data>
   <data name="BitrateReviewBreadcrumbRoot" xml:space="preserve">
     <value>Bit rate</value>
@@ -1141,9 +1177,6 @@
   </data>
   <data name="NotesHeading" xml:space="preserve">
     <value>Notes</value>
-  </data>
-  <data name="NotesEmpty" xml:space="preserve">
-    <value>No notes yet.</value>
   </data>
   <data name="NotesAdd" xml:space="preserve">
     <value>Add note</value>
@@ -1175,7 +1208,31 @@
   <data name="CaseNotFound" xml:space="preserve">
     <value>Case not found.</value>
   </data>
+  <data name="LocalHost" xml:space="preserve">
+    <value>LocalHost</value>
+  </data>
   <data name="FlagActionsMissingCase" xml:space="preserve">
     <value>That case no longer exists.</value>
+  </data>
+  <data name="ShowMoreAlerts" xml:space="preserve">
+    <value>Show {0} more</value>
+  </data>
+  <data name="ShowLessAlerts" xml:space="preserve">
+    <value>Show less</value>
+  </data>
+  <data name="SingleCameraKeysLabel" xml:space="preserve">
+    <value>Player. Space plays or pauses, the arrow keys move five seconds, and S grabs a still.</value>
+  </data>
+  <data name="TransportLabel" xml:space="preserve">
+    <value>Playback controls</value>
+  </data>
+  <data name="TransportBack10" xml:space="preserve">
+    <value>Back 10 seconds</value>
+  </data>
+  <data name="TransportPlayPause" xml:space="preserve">
+    <value>Play or pause</value>
+  </data>
+  <data name="TransportForward10" xml:space="preserve">
+    <value>Forward 10 seconds</value>
   </data>
 </root>

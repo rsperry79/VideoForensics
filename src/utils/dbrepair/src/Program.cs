@@ -482,7 +482,7 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
         }
 
         using IServiceScope scope = provider.CreateScope();
-        IOperatorRepository operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorRepository>();
+        IOperatorWriteRepository operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorWriteRepository>();
         IAppSettingRepository appSettingRepo = scope.ServiceProvider.GetRequiredService<IAppSettingRepository>();
         ISecurityAuditLogRepository auditRepo = scope.ServiceProvider.GetRequiredService<ISecurityAuditLogRepository>();
 
@@ -613,7 +613,9 @@ static async Task<int> ReportDingIdRepairAsync(DingIdRepairService service, IDbC
 {
     try
     {
-        DingIdRepairReport report = await service.RunAsync(factory, apply, backup, ct, confirmHold, beforeWrites);
+        // Why: the repair runs through the same unit of work as the app, so its write holds the write gate and rolls back as one.
+        var unitOfWork = new UnitOfWork(factory, new ServiceCollection().AddLogging().BuildServiceProvider(), Microsoft.Extensions.Logging.Abstractions.NullLogger<UnitOfWork>.Instance);
+        DingIdRepairReport report = await service.RunAsync(unitOfWork, apply, backup, ct, confirmHold, beforeWrites);
         // Why: the caller needs the Applied flag to word a lost-hold message after the session has ended.
         onReport?.Invoke(report);
         if (report.Aborted)

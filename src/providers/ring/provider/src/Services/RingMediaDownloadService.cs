@@ -63,9 +63,9 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly INotificationDispatcher? _notificationDispatcher;
 
         // Persists the account's snapshot spacing after a new rate-limit incident. Null when the host has no schedule store.
-        private readonly ISyncScheduleRepository? _syncScheduleRepository;
+        private readonly ISyncScheduleWriteRepository? _syncScheduleRepository;
 
-        // Saved SnapshotIntervalSeconds per account, used as a spacing floor that SetRequestPacing must not drop below.
+        // Saved SnapshotIntervalMinutes per account, used as a spacing floor that SetRequestPacing must not drop below.
         // Loaded once per account per process (see EnsureStoredSpacingLoadedAsync); raised again after each saved incident.
         private readonly ConcurrentDictionary<Guid, TimeSpan> _storedSpacingFloors = new();
         private readonly ConcurrentDictionary<Guid, Lazy<Task>> _storedSpacingLoads = new();
@@ -342,9 +342,9 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// Saves one second more than the account's current snapshot spacing as its SnapshotIntervalSeconds. The current spacing is the
-        /// stored value when set, otherwise the pacer's spacing before this incident. Failures are logged, never thrown, so a settings
-        /// write cannot fail the download that triggered it.
+        /// Saves one minute more than the account's current snapshot spacing as its SnapshotIntervalMinutes. The current spacing is the
+        /// stored value when set, otherwise the pacer's spacing before this incident, rounded up to a whole minute. Failures are logged,
+        /// never thrown, so a settings write cannot fail the download that triggered it.
         /// </summary>
         private async Task SaveSnapshotIntervalAfterIncidentAsync(Guid accountId, TimeSpan spacingBeforeIncident, CancellationToken cancellationToken)
         {
@@ -356,12 +356,12 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 SyncSchedule? schedule = await _syncScheduleRepository.GetByProviderAccountIdAsync(accountId, cancellationToken);
-                int currentSeconds = schedule?.SnapshotIntervalSeconds ?? (int)Math.Ceiling(spacingBeforeIncident.TotalSeconds);
-                int raisedSeconds = currentSeconds + 1;
-                await _syncScheduleRepository.SetSnapshotIntervalSecondsAsync(accountId, raisedSeconds, cancellationToken);
-                _storedSpacingFloors[accountId] = TimeSpan.FromSeconds(raisedSeconds);
-                _logger.LogInformation("{AccountName} snapshot interval raised to {IntervalSeconds}s after a rate limit",
-                    RingAccountDisplayName, raisedSeconds);
+                int currentMinutes = schedule?.SnapshotIntervalMinutes ?? Math.Max(1, (int)Math.Ceiling(spacingBeforeIncident.TotalMinutes));
+                int raisedMinutes = currentMinutes + 1;
+                await _syncScheduleRepository.SetSnapshotIntervalMinutesAsync(accountId, raisedMinutes, cancellationToken);
+                _storedSpacingFloors[accountId] = TimeSpan.FromMinutes(raisedMinutes);
+                _logger.LogInformation("{AccountName} snapshot interval raised to {IntervalMinutes} min after a rate limit",
+                    RingAccountDisplayName, raisedMinutes);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -370,7 +370,7 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// Loads the account's saved SnapshotIntervalSeconds once per process and raises its pacer to at least that spacing, so a
+        /// Loads the account's saved SnapshotIntervalMinutes once per process and raises its pacer to at least that spacing, so a
         /// restart keeps the spacing the last rate-limit incident saved. Concurrent callers share one load. A load that fails is
         /// logged and not retried in this process; the pacer keeps its base spacing.
         /// </summary>
@@ -391,17 +391,17 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 SyncSchedule? schedule = await _syncScheduleRepository!.GetByProviderAccountIdAsync(accountId, cancellationToken);
-                int? storedSeconds = schedule?.SnapshotIntervalSeconds;
-                if (storedSeconds is not > 0)
+                int? storedMinutes = schedule?.SnapshotIntervalMinutes;
+                if (storedMinutes is not > 0)
                 {
                     return;
                 }
 
-                _storedSpacingFloors[accountId] = TimeSpan.FromSeconds(storedSeconds.Value);
+                _storedSpacingFloors[accountId] = TimeSpan.FromMinutes(storedMinutes.Value);
                 MediaRequestPacer pacer = GetPacerForAccount(accountId);
                 pacer.MinInterval = ApplyStoredSpacingFloor(accountId, pacer.MinInterval);
-                _logger.LogInformation("{AccountName} spacing restored to {IntervalSeconds}s from the saved snapshot interval",
-                    RingAccountDisplayName, storedSeconds.Value);
+                _logger.LogInformation("{AccountName} spacing restored to {IntervalMinutes} min from the saved snapshot interval",
+                    RingAccountDisplayName, storedMinutes.Value);
             }
             catch (OperationCanceledException)
             {
@@ -517,7 +517,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly IReferenceDataCache? _referenceCache;
 
         public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null,
-            INotificationDispatcher? notificationDispatcher = null, ISyncScheduleRepository? syncScheduleRepository = null,
+            INotificationDispatcher? notificationDispatcher = null, ISyncScheduleWriteRepository? syncScheduleRepository = null,
             IMediaPathResolver? mediaPaths = null, IReferenceDataCache? referenceCache = null)
         {
             _mediaPaths = mediaPaths ?? PassThroughMediaPathResolver.Instance;
@@ -636,6 +636,11 @@ namespace VideoForensics.Providers.Ring.Services
 
                 try
                 {
+                    // Every event's Events row is written in one transaction before any download starts. One commit per page
+                    // instead of one per concurrent task: those queued behind the write gate and timed out, and their rows were lost.
+                    Dictionary<Entities.DoorbotHistoryEvent, DiscoveryOutcome> discoveries =
+                        await RecordDiscoveriesAsync(relevantEvents, deviceId, deviceGuid, rateLimitCts.Token);
+
                     IEnumerable<Task> downloadTasks = relevantEvents.Select(async (@event) =>
                     {
                         if (rateLimitCts.Token.IsCancellationRequested)
@@ -650,29 +655,18 @@ namespace VideoForensics.Providers.Ring.Services
                         string fileName = Path.Combine(outputPath,
                             MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, fileTypeSegment, "mp4"));
                         // The Events row and download key use the string ding id. The doorbot id equals the ding id exactly, so a row with no exact match is skipped.
-                        DingIdMatchResult dingLink = await ResolveDingIdAsync(@event, rateLimitCts.Token);
-                        if (dingLink.Outcome != DingIdMatchOutcome.Matched)
+                        // Discovery (the Events row) was recorded for the whole page before the downloads started.
+                        DiscoveryOutcome discovery = discoveries[@event];
+                        if (!discovery.Matched)
                         {
-                            _logger.LogInformation("Skipped doorbot event for {CameraName}: {Outcome}, no string ding id to link yet", SanitizeForLog(cameraName), dingLink.Outcome);
                             return;
                         }
 
-                        string eventIdStr = dingLink.DingId!;
+                        string eventIdStr = discovery.DingId;
                         DateTime eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
                         int previousAttemptCount = 0;
                         DownloadEvent? existingRecord = null;
-
-                        // Record this event in the Events table independent of download outcome —
-                        // Timeline/Integrity/Correlation/Audit forensic tools all read from Events,
-                        // not DownloadEvents, so an event must land here the moment it's discovered
-                        // (not only once/if it's successfully downloaded) or gaps and missing-download
-                        // detection have nothing to compare against.
-                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
-                            @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
-                        if (eventDbId != Guid.Empty)
-                        {
-                            await LinkDoorbotEventAsync(@event, eventDbId, rateLimitCts.Token);
-                        }
+                        Guid eventDbId = discovery.EventDbId;
 
                         // Use the device GUID resolved at batch start; all events are for this same device
                         // (filtered by deviceId above). Avoids per-item redundant lookups.
@@ -923,6 +917,7 @@ namespace VideoForensics.Providers.Ring.Services
                                             FileName = Path.GetFileName(fileName),
                                             FilePath = await _mediaPaths.ToStoredAsync(fileName, cancellationToken),
                                             MediaFormat = "mp4",
+                                            MediaKind = VideoForensics.Data.Common.Entities.MediaKinds.Clip,
                                             FileSizeBytes = downloadedSize,
                                             RecordedAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime(),
                                             DownloadedAtUtc = DateTime.UtcNow,
@@ -1358,7 +1353,9 @@ namespace VideoForensics.Providers.Ring.Services
                             AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
                         };
 
-                        (string Json, string Hash) = SerializeMetadata(new { eventId = snapshotEventId, type = "snapshot", deviceId, timestamp = DateTime.UtcNow });
+                        // eventId is the DownloadEvent's ProviderEventId, deviceId is MediaItem.DeviceId and the timestamp is RecordedAtUtc:
+                        // only the app marker stays in the JSON.
+                        (string Json, string Hash) = SerializeMetadata(new { type = "snapshot" });
                         var mediaItem = new MediaItem
                         {
                             Id = mediaItemId,
@@ -1367,6 +1364,7 @@ namespace VideoForensics.Providers.Ring.Services
                             FileName = Path.GetFileName(fileName),
                             FilePath = await _mediaPaths.ToStoredAsync(fileName, cancellationToken),
                             MediaFormat = "jpg",
+                            MediaKind = VideoForensics.Data.Common.Entities.MediaKinds.Snapshot,
                             FileSizeBytes = fileSize,
                             RecordedAtUtc = DateTime.UtcNow,
                             DownloadedAtUtc = DateTime.UtcNow,
@@ -1485,6 +1483,85 @@ namespace VideoForensics.Providers.Ring.Services
         /// Resolves a doorbot history row to its string ding id. The doorbot id is exactly the ding id, so only one exact
         /// match on the device's own candidates counts. Zero or several equal candidates are left unlinked.
         /// </summary>
+        /// <summary>What discovery recorded for one history event: whether it has a ding id, its ding id, and its Events row.</summary>
+        private sealed record DiscoveryOutcome(bool Matched, string DingId, Guid EventDbId);
+
+        /// <summary>
+        /// Resolves each event's ding id, then writes every Events row in one transaction. Ding-id lookups stay outside the
+        /// transaction because they can call Ring, and a held write gate must not wait on the network.
+        /// </summary>
+        private async Task<Dictionary<Entities.DoorbotHistoryEvent, DiscoveryOutcome>> RecordDiscoveriesAsync(
+            IReadOnlyList<Entities.DoorbotHistoryEvent> events, string deviceId, Guid deviceGuid, CancellationToken ct)
+        {
+            var resolved = new List<(Entities.DoorbotHistoryEvent Event, DingIdMatchResult Link)>(events.Count);
+            foreach (Entities.DoorbotHistoryEvent @event in events)
+            {
+                resolved.Add((@event, await ResolveDingIdAsync(@event, ct)));
+            }
+
+            var outcomes = new Dictionary<Entities.DoorbotHistoryEvent, DiscoveryOutcome>(ReferenceEqualityComparer.Instance);
+            await _dataClient.RunInBatchAsync(async () =>
+            {
+                foreach ((Entities.DoorbotHistoryEvent @event, DingIdMatchResult dingLink) in resolved)
+                {
+                    string cameraName = @event.Doorbot?.Description ?? deviceId;
+                    outcomes[@event] = await RecordDiscoveryAsync(@event, dingLink, cameraName, deviceGuid, ct);
+                }
+            }, ct);
+            return outcomes;
+        }
+
+        private async Task<DiscoveryOutcome> RecordDiscoveryAsync(
+            Entities.DoorbotHistoryEvent @event, DingIdMatchResult dingLink, string cameraName, Guid deviceGuid, CancellationToken ct)
+        {
+            string eventType = @event.Kind ?? "video";
+            if (dingLink.Outcome != DingIdMatchOutcome.Matched)
+            {
+                // Why: the event exists at the provider but has no ding id yet, so it cannot be downloaded. Its row is stored now,
+                // keyed by the doorbot id, so it is kept and can be linked to its ding once Ring assigns one.
+                _logger.LogInformation("Stored unmatched doorbot event for {CameraName}: {Outcome}, awaiting its string ding id", SanitizeForLog(cameraName), dingLink.Outcome);
+                if (@event.Id is { } doorbotHistoryId)
+                {
+                    DateTime unmatchedOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                    Guid unmatchedDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, doorbotHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        eventType, unmatchedOccurredAtUtc, @event.SnapshotUrl, downloadedAtUtc: null, hash: null, ct,
+                        apiResponse: @event, awaitingDingId: true);
+                    if (unmatchedDbId != Guid.Empty)
+                    {
+                        await LinkDoorbotEventAsync(@event, unmatchedDbId, ct);
+                    }
+                }
+
+                return new DiscoveryOutcome(false, string.Empty, Guid.Empty);
+            }
+
+            string eventIdStr = dingLink.DingId!;
+            DateTime eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+
+            // Record this event in the Events table independent of download outcome —
+            // Timeline/Integrity/Correlation/Audit forensic tools all read from Events,
+            // not DownloadEvents, so an event must land here the moment it's discovered
+            // (not only once/if it's successfully downloaded) or gaps and missing-download
+            // detection have nothing to compare against.
+            // Why: a row stored under the doorbot id before its ding id was known must be kept, not duplicated. Rekeying it to the
+            // ding id lets the upsert below update that same row.
+            if (@event.Id is { } matchedHistoryId
+                && await _dataClient.GetLinkedEventAsync(matchedHistoryId.ToString(System.Globalization.CultureInfo.InvariantCulture), ct) is { } linkedRow
+                && linkedRow.ProviderEventId != eventIdStr)
+            {
+                await _dataClient.RekeyLinkedEventAsync(linkedRow.Id, eventIdStr, ct);
+            }
+
+            Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
+                @event.SnapshotUrl, downloadedAtUtc: null, hash: null, ct, apiResponse: @event);
+            if (eventDbId != Guid.Empty)
+            {
+                await LinkDoorbotEventAsync(@event, eventDbId, ct);
+            }
+
+            return new DiscoveryOutcome(true, eventIdStr, eventDbId);
+        }
+
         internal async Task<DingIdMatchResult> ResolveDingIdAsync(Entities.DoorbotHistoryEvent doorbotEvent, CancellationToken ct)
         {
             if (doorbotEvent.Id is not { } historyId || doorbotEvent.Doorbot is null)
@@ -1515,7 +1592,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string deviceName, string providerEventId, string eventType,
             DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct,
-            object? apiResponse = null)
+            object? apiResponse = null, bool awaitingDingId = false)
         {
             try
             {
@@ -1533,7 +1610,8 @@ namespace VideoForensics.Providers.Ring.Services
                     EventIntegrityHash = hash,
                     MetadataJson = Json,
                     ApiSourceHash = Hash,
-                    RecordingStatus = (apiResponse as Entities.DoorbotHistoryEvent)?.Recording?.Status
+                    RecordingStatus = (apiResponse as Entities.DoorbotHistoryEvent)?.Recording?.Status,
+                    AwaitingDingId = awaitingDingId,
                 };
 
                 // Extract detection metadata if the API response is a DoorbotHistoryEvent

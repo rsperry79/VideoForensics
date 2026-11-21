@@ -1,10 +1,8 @@
+@using VideoForensics.Core.Api.Contracts.Repositories
 @page "/cases/{CaseId:guid}"
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Data.Common.Contracts
-@using VideoForensics.Data.Common.Entities
-@using VideoForensics.Data.Core.Contracts
-@using VideoForensics.Data.Core.Models
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Client.Ui.Shared.Components.Case
 @using VideoForensics.Client.Ui.Shared.Components.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Scope
@@ -33,7 +31,7 @@
     @if (_case is not null)
     {
         <span>@_case.CaseNumber · @_case.Title</span>
-        <span class="badge" style="background-color: @(_case.Status == CaseStatus.Closed ? "#6c757d" : "#198754")">
+        <span class="badge" style="background-color: @(_case.Status == CaseStatusDto.Closed.ToString() ? "#6c757d" : "#198754")">
             @StatusText(_case.Status)
         </span>
     }
@@ -82,7 +80,7 @@ else
                         data-testid="review-selected-evidence">@L["ReviewSelectedEvidence"]</button>
             </div>
 
-            @if (_case.Status == CaseStatus.Open)
+            @if (_case.Status == CaseStatusDto.Open.ToString())
             {
                 <div class="mt-3">
                     @if (CanClose)
@@ -92,7 +90,7 @@ else
                     <button class="btn btn-primary" @onclick="ActivateCase" data-testid="activate-case">@L["WorkOnCase"]</button>
                 </div>
             }
-            else if (_case.Status == CaseStatus.Closed && CanClose)
+            else if (_case.Status == CaseStatusDto.Closed.ToString() && CanClose)
             {
                 <div class="mt-3">
                     <button class="btn btn-success" @onclick="ReopenCase" data-testid="reopen-case">@L["ReopenCase"]</button>
@@ -155,7 +153,7 @@ else
                     </Columns>
                 </ForensicGrid>
 
-                @if (CanEdit && _selectedItem is not null && _case.Status != CaseStatus.Closed)
+                @if (CanEdit && _selectedItem is not null && _case.Status != CaseStatusDto.Closed.ToString())
                 {
                     <div class="mt-3">
                         <input type="text" class="form-control mb-2" placeholder="@L["RemovalReasonPlaceholder"]" @bind="_removalReason" data-testid="remove-reason" />
@@ -166,7 +164,7 @@ else
         </div>
     </div>
 
-    <CaseNotes CaseId="@CaseId" CanAdd="@CanEdit" IsOpen="@(_case.Status == CaseStatus.Open)" />
+    <CaseNotes CaseId="@CaseId" CanAdd="@CanEdit" IsOpen="@(_case.Status == CaseStatusDto.Open.ToString())" />
 }
 </div>
 
@@ -179,33 +177,33 @@ else
     [Parameter]
     public Guid CaseId { get; set; }
 
-    private ForensicCase? _case;
+    private ForensicCaseDto? _case;
     private IReadOnlyList<CaseItemRow>? _caseItems;
     private CaseItemRow? _selectedItem;
     private bool _showRemoved = false;
     private string? _error;
     private string _removalReason = "";
 
-    private string StatusText(CaseStatus status) => status switch
+    private string StatusText(string status) => status switch
     {
-        CaseStatus.Open => L["StatusOpen"],
-        CaseStatus.Closed => L["StatusClosed"],
+        nameof(CaseStatusDto.Open) => L["StatusOpen"],
+        nameof(CaseStatusDto.Closed) => L["StatusClosed"],
         _ => status.ToString()
     };
 
     private bool CanEdit =>
         SessionState.OperatorId.HasValue &&
-        Enum.TryParse(SessionState.Role, out OperatorRole role) &&
-        role >= OperatorRole.Review;
+        Enum.TryParse(SessionState.Role, out OperatorRoleDto role) &&
+        role >= OperatorRoleDto.Review;
 
     /// <summary>
-    /// Closing/reopening a case is an evidence-lifecycle action (see <see cref="OperatorRole"/>),
+    /// Closing/reopening a case is an evidence-lifecycle action (see <see cref="OperatorRoleDto"/>),
     /// which requires Admin or above - Review may pin/annotate but may not close or reopen a case.
     /// </summary>
     private bool CanClose =>
         SessionState.OperatorId.HasValue &&
-        Enum.TryParse(SessionState.Role, out OperatorRole role) &&
-        role >= OperatorRole.Admin;
+        Enum.TryParse(SessionState.Role, out OperatorRoleDto role) &&
+        role >= OperatorRoleDto.Admin;
 
     protected override async Task OnInitializedAsync()
     {
@@ -246,7 +244,7 @@ else
                 rows.Add(new CaseItemRow
                 {
                     Id = item.Id,
-                    Kind = item.Kind,
+                    Kind = Enum.Parse<CaseItemKindDto>(item.Kind),
                     Label = label,
                     Reason = item.Reason,
                     AddedBy = item.AddedBy,
@@ -264,27 +262,27 @@ else
         }
     }
 
-    private async Task<string> GetItemLabel(CaseItem item)
+    private async Task<string> GetItemLabel(CaseItemDto item)
     {
         try
         {
-            if (item.Kind == CaseItemKind.Event && item.EventId.HasValue)
+            if (item.Kind == nameof(CaseItemKindDto.Event))
             {
-                var @event = await EventRepository.GetAsync(item.EventId.Value, CancellationToken.None);
+                var @event = await EventRepository.GetAsync(item.TargetId, CancellationToken.None);
                 if (@event is not null)
                 {
                     return $"{@event.EventType} · {Zone.Format(@event.OccurredAtUtc, "yyyy-MM-dd HH:mm")}";
                 }
             }
-            else if (item.Kind == CaseItemKind.Media && item.MediaItemId.HasValue)
+            else if (item.Kind == nameof(CaseItemKindDto.Media))
             {
-                var media = await MediaItemRepository.GetAsync(item.MediaItemId.Value, CancellationToken.None);
+                var media = await MediaItemRepository.GetAsync(item.TargetId, CancellationToken.None);
                 if (media is not null)
                 {
                     return media.FileName;
                 }
             }
-            else if (item.Kind == CaseItemKind.Snapshot && item.SnapshotCaptureId.HasValue)
+            else if (item.Kind == nameof(CaseItemKindDto.Snapshot))
             {
                 return L["SnapshotItemLabel"];
             }
@@ -297,13 +295,13 @@ else
         return L["Unavailable"];
     }
 
-    private async Task<PinIntegrity> GetItemIntegrity(CaseItem item)
+    private async Task<PinIntegrity> GetItemIntegrity(CaseItemDto item)
     {
         try
         {
-            if (item.Kind == CaseItemKind.Media && item.MediaItemId.HasValue)
+            if (item.Kind == nameof(CaseItemKindDto.Media))
             {
-                var media = await MediaItemRepository.GetAsync(item.MediaItemId.Value, CancellationToken.None);
+                var media = await MediaItemRepository.GetAsync(item.TargetId, CancellationToken.None);
                 return CaseItemIntegrity.Compare(item, media);
             }
         }
@@ -453,12 +451,12 @@ else
     internal record CaseItemRow
     {
         public Guid Id { get; set; }
-        public CaseItemKind Kind { get; set; }
+        public CaseItemKindDto Kind { get; set; }
         public string Label { get; set; } = "";
         public string Reason { get; set; } = "";
         public string AddedBy { get; set; } = "";
         public DateTime AddedAtUtc { get; set; }
         public PinIntegrity Integrity { get; set; }
-        public CaseItem Item { get; set; } = null!;
+        public CaseItemDto Item { get; set; } = null!;
     }
 }

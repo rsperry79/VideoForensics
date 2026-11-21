@@ -17,9 +17,8 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// </summary>
 public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
 {
-    // Syncfusion's Splitter JS identifiers for CollapseAsync / ExpandAsync.
-    private const string CollapseIdentifier = "sfBlazor.Splitter.collapse";
-    private const string ExpandIdentifier = "sfBlazor.Splitter.expand";
+    // The left pane is hidden or shown through vfLayoutPrefs.setLeftNavHidden(hidden).
+    private const string SetHiddenIdentifier = "vfLayoutPrefs.setLeftNavHidden";
     private const string LeftNavKey = "vf.layout.leftNavCollapsed";
     private const string SetPrefIdentifier = "vfLayoutPrefs.set";
 
@@ -31,9 +30,9 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
     [Theory]
     [InlineData("http://localhost/media")]
     [InlineData("http://localhost/media/review")]
-    public void MainLayout_MediaPage_DoesNotCollapseLeftNavWhenPrefIsExpanded(string uri)
+    public void MainLayout_MediaPage_CollapsesLeftNavWhenPrefIsExpanded(string uri)
     {
-        // Arrange
+        // Arrange: the review tabs moved to the page header, so /media collapses the left nav (U-D2)
         _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("false");
         NavigateTo(uri);
 
@@ -41,28 +40,41 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         _ = Render<MainLayout>();
 
         // Assert
-        Assert.Equal(0, CountInvocations(CollapseIdentifier));
+        Assert.Equal(1, CountHidden(true));
     }
 
     [Theory]
     [InlineData("http://localhost/media")]
     [InlineData("http://localhost/media/review")]
-    [InlineData("http://localhost/live-view")]
-    public void MainLayout_MediaPage_KeepsLeftNavOpenWhenPrefIsCollapsed(string uri)
+    public void MainLayout_MediaPage_StaysCollapsedWhenPrefIsCollapsed(string uri)
     {
-        // Arrange - the media menu lives in the left pane, so the pane opens even with a collapsed saved preference
+        // Arrange
         _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
         NavigateTo(uri);
 
         // Act
         _ = Render<MainLayout>();
 
-        // Assert - the pane stays open; it is never collapsed on these pages
-        Assert.Equal(0, CountInvocations(CollapseIdentifier));
+        // Assert
+        Assert.Equal(1, CountHidden(true));
     }
 
     [Fact]
-    public async Task MainLayout_LeavingMediaWithExpandedPref_DoesNotTouchThePane()
+    public void MainLayout_LiveViewPage_KeepsLeftNavOpenWhenPrefIsCollapsed()
+    {
+        // Arrange - Live view still hosts its own menu in the left pane
+        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
+        NavigateTo("http://localhost/live-view");
+
+        // Act
+        _ = Render<MainLayout>();
+
+        // Assert
+        Assert.Equal(0, CountHidden(true));
+    }
+
+    [Fact]
+    public async Task MainLayout_LeavingMediaWithExpandedPref_ExpandsThePane()
     {
         // Arrange
         _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("false");
@@ -73,9 +85,9 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         NavigateTo("http://localhost/");
         await component.InvokeAsync(() => Task.CompletedTask);
 
-        // Assert
-        Assert.Equal(0, CountInvocations(CollapseIdentifier));
-        Assert.Equal(0, CountInvocations(ExpandIdentifier));
+        // Assert: /media collapsed the pane; leaving it brings the saved (expanded) preference back
+        Assert.Equal(1, CountHidden(true));
+        Assert.Equal(1, CountHidden(false));
     }
 
     [Fact]
@@ -91,7 +103,7 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         await component.InvokeAsync(() => Task.CompletedTask);
 
         // Assert
-        Assert.Equal(0, CountInvocations(ExpandIdentifier));
+        Assert.Equal(0, CountHidden(false));
     }
 
     [Fact]
@@ -107,8 +119,8 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         await component.InvokeAsync(() => Task.CompletedTask);
 
         // Assert - the pane collapses for this visit only; the saved preference is untouched
-        Assert.Equal(1, CountInvocations(CollapseIdentifier));
-        Assert.Equal(0, CountInvocations(SetPrefIdentifier));
+        Assert.Equal(1, CountHidden(true));
+        Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == SetPrefIdentifier));
     }
 
     private void NavigateTo(string uri)
@@ -116,8 +128,8 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
         Services.GetRequiredService<NavigationManager>().NavigateTo(uri);
     }
 
-    private int CountInvocations(string identifier)
+    private int CountHidden(bool hidden)
     {
-        return JSInterop.Invocations.Count(i => i.Identifier == identifier);
+        return JSInterop.Invocations.Count(i => i.Identifier == SetHiddenIdentifier && i.Arguments.Count == 1 && i.Arguments[0] is bool value && value == hidden);
     }
 }

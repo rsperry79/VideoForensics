@@ -37,7 +37,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
             await using RealtimeHub hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
-            var received = new List<LiveViewSession>();
+            var received = new List<LiveViewSessionDto>();
             using IDisposable subscription = source.SessionChanged.Subscribe(received.Add);
             var sessionId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
@@ -48,11 +48,11 @@ namespace VideoForensics.Client.Hosting.Tests
 
             hub.EmitLiveViewSessionChanged(dto);
 
-            LiveViewSession mapped = Assert.Single(received);
+            LiveViewSessionDto mapped = Assert.Single(received);
             Assert.Equal(sessionId, mapped.Id);
             Assert.Equal(deviceId, mapped.DeviceId);
-            Assert.Equal(LiveViewTriggerReason.JammingSuspected, mapped.TriggerReason);
-            Assert.Equal(LiveViewSessionState.Active, mapped.State);
+            Assert.Equal("JammingSuspected", mapped.TriggerReason);
+            Assert.Equal("Active", mapped.State);
             Assert.True(mapped.IsSustained);
             Assert.Equal(operatorId, mapped.OperatorId);
             Assert.Equal("provider-ref", mapped.ProviderSessionRef);
@@ -64,7 +64,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
             await using RealtimeHub hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
-            var received = new List<LiveViewTelemetrySample>();
+            var received = new List<LiveViewTelemetrySampleDto>();
             using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
             var dto = new LiveViewTelemetrySampleDto(
                 Guid.NewGuid(), Guid.NewGuid(), Start,
@@ -72,7 +72,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
             hub.EmitLiveViewTelemetry(dto);
 
-            LiveViewTelemetrySample mapped = Assert.Single(received);
+            LiveViewTelemetrySampleDto mapped = Assert.Single(received);
             Assert.Equal(dto.Id, mapped.Id);
             Assert.Equal(dto.SessionId, mapped.SessionId);
             Assert.Equal(Start, mapped.CapturedAtUtc);
@@ -89,7 +89,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
             await using RealtimeHub hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
-            var received = new List<LiveViewTelemetrySample>();
+            var received = new List<LiveViewTelemetrySampleDto>();
             using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
             var dto = new LiveViewTelemetrySampleDto(
                 Guid.NewGuid(), Guid.NewGuid(), Start,
@@ -97,7 +97,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
             hub.EmitLiveViewTelemetry(dto);
 
-            LiveViewTelemetrySample mapped = Assert.Single(received);
+            LiveViewTelemetrySampleDto mapped = Assert.Single(received);
             Assert.Null(mapped.FractionLost);
             Assert.Null(mapped.CumulativePacketsLost);
             Assert.Null(mapped.JitterTicks);
@@ -111,7 +111,7 @@ namespace VideoForensics.Client.Hosting.Tests
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
             await using RealtimeHub hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
-            var received = new List<LiveViewTelemetrySample>();
+            var received = new List<LiveViewTelemetrySampleDto>();
             using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
 
             hub.EmitLiveViewTelemetry(new LiveViewTelemetrySampleDto(Guid.NewGuid(), Guid.NewGuid(), Start, null, null, null, null, null));

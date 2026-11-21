@@ -9,14 +9,14 @@ namespace VideoForensics.Data.Core.Services
     /// <inheritdoc />
     public sealed class MediaThumbnailBackfill : IMediaThumbnailBackfill
     {
-        private readonly IMediaItemRepository _items;
+        private readonly IMediaItemWriteRepository _items;
         private readonly IMediaThumbnailService _thumbnails;
         private readonly ILogger<MediaThumbnailBackfill> _logger;
         private readonly IMediaPathResolver _paths;
 
         /// <summary>Creates the backfill.</summary>
         public MediaThumbnailBackfill(
-            IMediaItemRepository items,
+            IMediaItemWriteRepository items,
             IMediaThumbnailService thumbnails,
             ILogger<MediaThumbnailBackfill> logger,
             IMediaPathResolver? paths = null)

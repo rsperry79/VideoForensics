@@ -48,7 +48,13 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.HasIndex(m => m.DeviceId);
             _ = builder.HasIndex(m => m.DownloadEventId);
 
-            _ = builder.HasIndex(m => new { m.DeviceId, m.RecordedAtUtc }).IsUnique();
+            _ = builder.Property(m => m.MediaKind)
+                .IsRequired()
+                .HasMaxLength(32)
+                .HasDefaultValue("Clip");
+
+            // Why: a loop starts at an event time and snapshots start at capture times, so the instant alone can collide across kinds.
+            _ = builder.HasIndex(m => new { m.DeviceId, m.RecordedAtUtc, m.MediaKind }).IsUnique();
         }
     }
 }

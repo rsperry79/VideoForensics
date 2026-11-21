@@ -24,69 +24,77 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<ICredentialEncryptionProvider, CredentialEncryptionProvider>();
 
             // Register repository implementations (per-call pattern with IDbContextFactory)
-            services.TryAddScoped<IUserRepository, UserRepository>();
-            services.TryAddScoped<IProviderAccountRepository, ProviderAccountRepository>();
+            services.TryAddScoped<IUserWriteRepository, UserRepository>();
+            services.TryAddScoped<IProviderAccountWriteRepository, ProviderAccountRepository>();
             services.TryAddScoped<IAccountDeviceRepository, AccountDeviceRepository>();
-            services.TryAddScoped<ISyncScheduleRepository, SyncScheduleRepository>();
+            services.TryAddScoped<ISyncScheduleWriteRepository, SyncScheduleRepository>();
             services.TryAddScoped<IProviderSyncRunRepository, ProviderSyncRunRepository>();
             services.TryAddScoped<IRingAccountRepository, RingAccountRepository>();
             services.TryAddScoped<IRingAccountSettingsWriter, RingAccountSettingsWriter>();
             services.TryAddScoped<IRingAccountSyncState, RingAccountSyncStateRepository>();
             services.TryAddScoped<IRingEventHistoryWriter, RingEventHistoryWriter>();
-            services.TryAddScoped<ILocationRepository, LocationRepository>();
+            services.TryAddScoped<ILocationWriteRepository, LocationRepository>();
             services.TryAddScoped<ILocationMetadataRepository, LocationMetadataRepository>();
-            services.TryAddScoped<IDeviceRepository, DeviceRepository>();
-            services.TryAddScoped<IMediaItemRepository, MediaItemRepository>();
+            services.TryAddScoped<IDeviceWriteRepository, DeviceRepository>();
+            services.TryAddScoped<IMediaItemWriteRepository, MediaItemRepository>();
             services.TryAddScoped<IDownloadEventRepository, DownloadEventRepository>();
             services.TryAddScoped<ICredentialRepository, CredentialRepository>();
-            services.TryAddScoped<IEventRepository, EventRepository>();
-            services.TryAddScoped<IEventDetailRepository, EventDetailRepository>();
+            services.TryAddScoped<IEventWriteRepository, EventRepository>();
+            services.TryAddScoped<IEventDetailWriteRepository, EventDetailRepository>();
             services.TryAddScoped<IDeviceConfigRepository, DeviceConfigRepository>();
-            services.TryAddScoped<IDeviceTypedSettingsReader, DeviceTypedSettingsReader>();
+            services.TryAddScoped<IDeviceTypedSettingsDataReader, DeviceTypedSettingsReader>();
             services.TryAddScoped<IDeviceSettingChangeRepository, DeviceSettingChangeRepository>();
             services.TryAddScoped<IDeviceLightEventRepository, DeviceLightEventRepository>();
-            services.TryAddScoped<IDeviceHealthRepository, DeviceHealthRepository>();
-            services.TryAddScoped<ISnapshotCaptureRepository, SnapshotCaptureRepository>();
+            services.TryAddScoped<IDeviceHealthWriteRepository, DeviceHealthRepository>();
+            services.TryAddScoped<ISnapshotCaptureWriteRepository, SnapshotCaptureRepository>();
+            services.TryAddScoped<ITimelapseGapQueries, TimelapseGapQueries>();
             services.TryAddScoped<IDeviceDetailsRepository, DeviceDetailsRepository>();
             services.TryAddScoped<IDeviceModelRepository, DeviceModelRepository>();
             services.TryAddScoped<IProviderReconciliationRepository, ProviderReconciliationRepository>();
             services.TryAddScoped<IExportRecordRepository, ExportRecordRepository>();
             services.TryAddScoped<IActionLogRepository, ActionLogRepository>();
             services.TryAddScoped<IAppSettingRepository, AppSettingRepository>();
-            services.TryAddScoped<IJammingRepository, JammingRepository>();
+            services.TryAddScoped<IJammingWriteRepository, JammingRepository>();
             services.TryAddScoped<ILiveViewSessionRepository, LiveViewSessionRepository>();
             services.TryAddScoped<ILiveViewTelemetryRepository, LiveViewTelemetryRepository>();
             services.TryAddScoped<ICameraBitrateBaselineRepository, CameraBitrateBaselineRepository>();
             services.TryAddScoped<IIntegrityRecordRepository, IntegrityRecordRepository>();
-            services.TryAddScoped<ILegalHoldRepository, LegalHoldRepository>();
-            services.TryAddScoped<IMediaFlagRepository, MediaFlagRepository>();
-            services.TryAddScoped<ICaseRepository, CaseRepository>();
-            services.TryAddScoped<INoteRepository, NoteRepository>();
-            services.TryAddScoped<ICaseNoteRepository, CaseNoteAdapter>();
+            services.TryAddScoped<ILegalHoldWriteRepository, LegalHoldRepository>();
+            services.TryAddScoped<IMediaFlagWriteRepository, MediaFlagRepository>();
+            services.TryAddScoped<IMediaFlagDeviationRepository, MediaFlagRepository>();
+            services.TryAddScoped<ICaseWriteRepository, CaseRepository>();
+            services.TryAddScoped<INoteWriteRepository, NoteRepository>();
+            services.TryAddScoped<ICaseNoteWriteRepository, CaseNoteAdapter>();
             services.TryAddScoped<IMediaStillRepository, MediaStillRepository>();
-            services.TryAddScoped<IOperatorRepository, OperatorRepository>();
+            services.TryAddScoped<IOperatorWriteRepository, OperatorRepository>();
             services.TryAddScoped<IPairedDeviceRepository, PairedDeviceRepository>();
             services.TryAddScoped<IOperatorCredentialRepository, OperatorCredentialRepository>();
             services.TryAddScoped<ISecurityAuditLogRepository, SecurityAuditLogRepository>();
             services.TryAddScoped<IProviderApiCallLogRepository, ProviderApiCallLogRepository>();
             services.TryAddScoped<IProviderApiErrorLogRepository, ProviderApiErrorLogRepository>();
-            services.TryAddScoped<IOperatorPreferencesRepository, OperatorPreferencesRepository>();
+            services.TryAddScoped<IOperatorPreferencesWriteRepository, OperatorPreferencesRepository>();
             services.TryAddScoped<IAccessAuditLogRepository, AccessAuditLogRepository>();
             services.TryAddScoped<IExportAuditRecordRepository, ExportAuditRecordRepository>();
-            services.TryAddScoped<INoticeRepository, NoticeRepository>();
-            services.TryAddScoped<INoticeDismissalRepository, NoticeDismissalRepository>();
+            services.TryAddScoped<INoticeWriteRepository, NoticeRepository>();
+            services.TryAddScoped<INoticeDismissalWriteRepository, NoticeDismissalRepository>();
             services.TryAddScoped<IOperatorNotificationPreferenceRepository, OperatorNotificationPreferenceRepository>();
             services.TryAddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
             services.TryAddScoped<IBannedIpRangeRepository, BannedIpRangeRepository>();
             services.TryAddScoped<ILockoutPolicySettingsRepository, LockoutPolicySettingsRepository>();
             services.TryAddScoped<ITwoFactorRoleRequirementRepository, TwoFactorRoleRequirementRepository>();
+            services.TryAddScoped<IDingIdLinkRepository, DingIdLinkRepository>();
+            services.TryAddScoped<EventBackfillService>();
+            services.TryAddScoped<IDetectionEntityProvider, DetectionEntityRepository>();
 
             // Register security audit service (Phase 0.5)
             services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
 
             // Register unit of work. One tracker is shared by every scope, so the watchdog sees transactions from all of them.
             services.TryAddSingleton<VideoForensics.Data.Common.Diagnostics.InFlightTransactions>();
+            services.TryAddSingleton<VideoForensics.Data.Database.Logs.ILogsDbGate>(sp => new VideoForensics.Data.Database.Logs.LogsDbGate(sp.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<VideoForensics.Data.Database.DbContext.VideoForensicsLogsDbContext>>()));
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();
+            services.TryAddScoped<ITransactionlessWriteGate>(sp => sp.GetRequiredService<IUnitOfWork>() as ITransactionlessWriteGate
+                ?? throw new InvalidOperationException("IUnitOfWork must be the UnitOfWork implementation to provide ITransactionlessWriteGate."));
 
             return services;
         }

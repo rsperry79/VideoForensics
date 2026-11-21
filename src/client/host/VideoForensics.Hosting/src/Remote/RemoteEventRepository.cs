@@ -8,13 +8,13 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
-    /// HTTP-backed <see cref="IEventRepository"/> that calls the server's Minimal API
+    /// HTTP-backed <see cref="IEventWriteRepository"/> that calls the server's Minimal API
     /// (see VideoForensics.WebApp/Api/EventEndpoints.cs) instead of a local database - the MAUI
     /// client's implementation of the "thin client talks to a server API" half of the plan's client/
     /// server split (§4/M5). Read methods that have server endpoints are implemented; write operations
     /// and reads without endpoints throw <see cref="NotSupportedException"/>.
     /// </summary>
-    public class RemoteEventRepository : IEventRepository
+    public class RemoteEventRepository : IEventWriteRepository
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -77,6 +77,18 @@ namespace VideoForensics.Client.Hosting.Remote
             _ = response.EnsureSuccessStatusCode();
             EventDto? resultDto = await response.Content.ReadFromJsonAsync<EventDto>(JsonOptions, ct);
             return (resultDto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+        }
+
+        /// <summary>The backfill queue runs on the server only; a remote client never counts its passes.</summary>
+        public Task RecordRetryPassAsync(Guid eventId, int maxAttempts, CancellationToken ct)
+        {
+            throw new NotSupportedException("The backfill queue is counted on the server, not by a remote client.");
+        }
+
+        /// <summary>The backfill queue runs on the server only; a remote client never reads it.</summary>
+        public Task<IReadOnlyList<Event>> ListAwaitingDingIdAsync(Guid deviceId, int maxAttempts, CancellationToken ct)
+        {
+            throw new NotSupportedException("The backfill queue is read on the server, not by a remote client.");
         }
 
         /// <inheritdoc />

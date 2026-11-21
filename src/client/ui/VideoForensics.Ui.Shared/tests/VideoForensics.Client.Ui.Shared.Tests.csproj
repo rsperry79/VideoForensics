@@ -11,19 +11,25 @@
     <RootNamespace>VideoForensics.Client.Ui.Shared.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.12.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit.analyzers" Version="2.3.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="xunit.v3" Version="4.0.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.21.0" />
-    <PackageReference Include="bunit" Version="2.13.3" />
+    <PackageReference Include="bunit" Version="2.15.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="..\src\VideoForensics.Client.Ui.Shared.csproj" />
+    <ProjectReference Include="../../../core/VideoForensics.Client.Core/src/VideoForensics.Client.Core.csproj" />
+    <ProjectReference Include="../../../../server/core/src/VideoForensics.Server.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />

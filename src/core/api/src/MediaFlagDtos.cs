@@ -18,7 +18,9 @@ namespace VideoForensics.Core.Api.Contracts
         DateTime? ReviewedAtUtc,
         string? ReviewNote,
         Guid? NoticeId,
-        int RowVersion);
+        int RowVersion,
+        string? EventType,
+        double? DeviationSigma);
 
     /// <summary>One page of media flags plus the total number matching the filter.</summary>
     public sealed record MediaFlagPageDto(IReadOnlyList<MediaFlagDto> Items, int TotalCount);
@@ -48,4 +50,16 @@ namespace VideoForensics.Core.Api.Contracts
     /// now, and who reviewed it, so the client can say "already reviewed by X".
     /// </summary>
     public sealed record FlagStatusConflictDto(string ExpectedStatus, string ActualStatus, string? ReviewedBy, DateTime? ReviewedAtUtc);
+}
+
+namespace VideoForensics.Core.Api.Contracts
+{
+    /// <summary>Direction in the flag list order, as sent over the wire.</summary>
+    public enum MediaFlagNeighbourDto
+    {
+        /// <summary>The preceding, newer flag.</summary>
+        Previous,
+        /// <summary>The following, older flag.</summary>
+        Next
+    }
 }

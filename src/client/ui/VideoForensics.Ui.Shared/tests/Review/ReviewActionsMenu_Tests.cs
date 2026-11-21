@@ -18,7 +18,7 @@ using VideoForensics.Client.Ui.Shared.Services.Evidence;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 using VideoForensics.Data.Common.Entities;
 
-using Xunit;
+using VideoForensics.Core.Api.Contracts;using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests.Review;
 
@@ -148,7 +148,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
 
         // Assert
         PendingTag tag = Assert.Single(Services.GetRequiredService<PendingEvidenceTags>().Items);
-        Assert.Equal(CaseItemKind.Event, tag.Kind);
+        Assert.Equal(CaseItemKindDto.Event, tag.Kind);
         Assert.Equal(_eventId, tag.TargetId);
         Assert.Equal(_deviceId, tag.DeviceId);
         Assert.Equal(L["TagDefaultReason"].Value, tag.Reason);
@@ -167,7 +167,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
 
         // Assert
         PendingTag tag = Assert.Single(Services.GetRequiredService<PendingEvidenceTags>().Items);
-        Assert.Equal(CaseItemKind.Media, tag.Kind);
+        Assert.Equal(CaseItemKindDto.Media, tag.Kind);
         Assert.Equal(_clipId, tag.TargetId);
     }
 
@@ -192,7 +192,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     {
         // Arrange
         SelectClipAtCursor();
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         var pinned = new List<Guid>();
         CaseRepositoryDouble = PendingTagFakes.CreateRepository(openCase, pinnedTargets: pinned).Object;
         _ = await Services.GetRequiredService<CaseState>().ActivateAsync(openCase.Id, CancellationToken.None);
@@ -212,19 +212,10 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     {
         // Arrange
         SelectClipAtCursor();
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
-        var existing = new List<CaseItem>
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
+        var existing = new List<CaseItemDto>
         {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                CaseId = openCase.Id,
-                Kind = CaseItemKind.Media,
-                MediaItemId = _clipId,
-                Reason = PendingTagFakes.Reason,
-                AddedBy = "test",
-                AddedAtUtc = FixedNowUtc,
-            },
+            new CaseItemDto(Guid.NewGuid(), openCase.Id, CaseItemKindDto.Media.ToString(), _clipId, PendingTagFakes.Reason, "test", FixedNowUtc, null, null, null, null),
         };
         var pinned = new List<Guid>();
         CaseRepositoryDouble = PendingTagFakes.CreateRepository(openCase, existingItems: existing, pinnedTargets: pinned).Object;
@@ -244,7 +235,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
     {
         // Arrange
         SelectClipAtCursor();
-        ForensicCase openCase = PendingTagFakes.CreateOpenCase();
+        ForensicCaseDto openCase = PendingTagFakes.CreateOpenCase();
         CaseRepositoryDouble = PendingTagFakes.CreateRepository(openCase, failingTargets: new HashSet<Guid> { _clipId }).Object;
         _ = await Services.GetRequiredService<CaseState>().ActivateAsync(openCase.Id, CancellationToken.None);
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
@@ -333,7 +324,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         SelectClipAtCursor();
         _ = LegalHoldRepositoryMock
             .Setup(r => r.PlaceAsync(_clipId, "LegalHold", operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "LegalHold", CreatedBy = operatorId.ToString() });
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "LegalHold", CreatedBy = operatorId.ToString() }.ToDto());
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
 
@@ -341,7 +332,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         Assert.True(cut.Find("[data-testid='review-hold-confirm']").HasAttribute("disabled"));
 
         // Act
-        await PickReasonAsync(cut, EvidenceHoldReason.LegalHold);
+        await PickReasonAsync(cut, EvidenceHoldReasonDto.LegalHold);
         await ClickAsync(cut, "[data-testid='review-hold-confirm']");
 
         // Assert
@@ -349,7 +340,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
             r => r.PlaceAsync(_clipId, "LegalHold", operatorId.ToString(), It.IsAny<CancellationToken>()),
             Times.Once);
         Assert.Equal(L["HoldPlaced"].Value, MessageText(cut));
-        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReason>>());
+        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReasonDto>>());
         _ = Assert.Single(cut.FindAll("[data-testid='review-action-release']"));
     }
 
@@ -361,10 +352,10 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         SelectClipAtCursor();
         _ = LegalHoldRepositoryMock
             .Setup(r => r.PlaceAsync(_clipId, "Other: camera was moved", operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "Other: camera was moved", CreatedBy = operatorId.ToString() });
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "Other: camera was moved", CreatedBy = operatorId.ToString() }.ToDto());
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
-        await PickReasonAsync(cut, EvidenceHoldReason.Other);
+        await PickReasonAsync(cut, EvidenceHoldReasonDto.Other);
 
         // Assert: Other alone is not enough
         Assert.True(cut.Find("[data-testid='review-hold-confirm']").HasAttribute("disabled"));
@@ -386,7 +377,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         // Arrange
         Guid operatorId = await SignInOperatorAsAsync("Admin");
         SelectClipAtCursor();
-        var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "r", CreatedBy = "op" };
+        var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = _clipId, Reason = "r", CreatedBy = "op" }.ToDto();
         _ = LegalHoldRepositoryMock
             .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([activeHold]);
@@ -397,9 +388,9 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
 
         // Act
         await ClickAsync(cut, "[data-testid='review-action-release']");
-        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReason>>());
-        _ = Assert.Single(cut.FindComponents<ReasonPicker<EvidenceReleaseReason>>());
-        await PickReasonAsync(cut, EvidenceReleaseReason.ResolvedNoLongerNeeded);
+        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReasonDto>>());
+        _ = Assert.Single(cut.FindComponents<ReasonPicker<EvidenceReleaseReasonDto>>());
+        await PickReasonAsync(cut, EvidenceReleaseReasonDto.ResolvedNoLongerNeeded);
         await ClickAsync(cut, "[data-testid='review-hold-confirm']");
 
         // Assert
@@ -418,13 +409,13 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
         SelectClipAtCursor();
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
-        await PickReasonAsync(cut, EvidenceHoldReason.Other);
+        await PickReasonAsync(cut, EvidenceHoldReasonDto.Other);
 
         // Act
         await ClickAsync(cut, "[data-testid='review-hold-cancel']");
 
         // Assert
-        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReason>>());
+        Assert.Empty(cut.FindComponents<ReasonPicker<EvidenceHoldReasonDto>>());
         LegalHoldRepositoryMock.Verify(
             r => r.PlaceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -501,7 +492,7 @@ public class ReviewActionsMenu_Tests : ReviewTestContext
             .ThrowsAsync(new InvalidOperationException("boom"));
         IRenderedComponent<ReviewActionsMenu> cut = await OpenMenuAsync();
         await ClickAsync(cut, "[data-testid='review-action-hold']");
-        await PickReasonAsync(cut, EvidenceHoldReason.LegalHold);
+        await PickReasonAsync(cut, EvidenceHoldReasonDto.LegalHold);
 
         // Act
         await ClickAsync(cut, "[data-testid='review-hold-confirm']");

@@ -1,4 +1,4 @@
-using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
@@ -8,7 +8,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>A roll-up loop (snapshots built into an MP4) is labelled Time Lapse; other videos stay Video.</summary>
 public class EvidenceTimeLapseLabelTests
 {
-    private static EvidenceItem Video(string? metadata)
+    private static EvidenceItem Video(string? metadata, string kind = MediaKinds.Clip)
     {
         return new()
         {
@@ -27,15 +27,16 @@ public class EvidenceTimeLapseLabelTests
                 Sha256Hash = "h",
                 RecordedAtUtc = DateTime.UtcNow,
                 DownloadedAtUtc = DateTime.UtcNow,
+                MediaKind = kind,
                 MetadataJson = metadata,
-            },
+            }.ToDto(),
         };
     }
 
     [Fact]
     public void RollUpLoop_IsLabelledTimeLapse()
     {
-        EvidenceItem item = Video("{\"type\":\"snapshot-rollup\"}");
+        EvidenceItem item = Video("{\"type\":\"snapshot-rollup\"}", MediaKinds.Timelapse);
 
         Assert.True(item.IsTimeLapse);
         Assert.Equal("Time Lapse", item.Label);
@@ -69,7 +70,7 @@ public class EvidenceTimeLapseLabelTests
                 EventType = "timelapse",
                 OccurredAtUtc = DateTime.UtcNow,
                 DiscoveredAtUtc = DateTime.UtcNow,
-            },
+            }.ToDto(),
         };
 
         Assert.Equal("Time Lapse", item.Label);

@@ -153,13 +153,13 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             var handler = new FakeHttpMessageHandler(_ => Task.FromResult(JsonResponse(json)));
             var repo = new RemoteEventDetailRepository(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
 
-            IReadOnlyList<EventDetail> details = await repo.GetDetailsAsync(new[] { eventId, otherId }, CancellationToken.None);
+            IReadOnlyList<EventDetailDto> details = await repo.GetDetailsAsync(new[] { eventId, otherId }, CancellationToken.None);
 
             Uri uri = handler.CapturedRequest!.RequestUri!;
             Assert.Equal("/api/v1/events/details", uri.AbsolutePath);
             Assert.Equal(new[] { eventId.ToString("D"), otherId.ToString("D") }, ParseQuery(uri)["eventIds"]);
 
-            EventDetail detail = Assert.Single(details);
+            EventDetailDto detail = Assert.Single(details);
             Assert.Equal(eventId, detail.EventId);
             Assert.Equal("Motion", detail.Detection!.DetectionType);
             Assert.Equal("zone-1", Assert.Single(detail.Zones).ZoneId);

@@ -33,7 +33,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         _ = MediaItemRepositoryMock.Setup(m => m.GetRecentByDeviceAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
         _ = LocationRepositoryMock.Setup(m => m.ListByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([_location]);
+            .ReturnsAsync([_location.ToDto()]);
     }
 
     private IRenderedComponent<AccountDevicesTab> RenderDevices()
@@ -45,7 +45,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
     {
         var device = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = name, Name = name, Type = "stickup_cam" };
         _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([device]);
+            .ReturnsAsync([device.ToDto()]);
         return device;
     }
 
@@ -55,8 +55,8 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         SetEmptyLists();
         Device device = AddDevice("Porch");
         _ = DeviceHealthRepositoryMock.SetupSequence(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow })
-            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) });
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow }.ToDto())
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) }.ToDto());
 
         IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid='device-offline-warning']")));
@@ -72,7 +72,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         SetEmptyLists();
         Device device = AddDevice("Porch");
         _ = DeviceHealthRepositoryMock.Setup(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) });
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-30) }.ToDto());
 
         IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
 
@@ -85,21 +85,38 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
         SetEmptyLists();
         Device device = AddDevice("Porch");
         _ = DeviceHealthRepositoryMock.Setup(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow });
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow }.ToDto());
 
         IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
 
         cut.WaitForAssertion(() => Assert.Contains("Porch", cut.Find("#account-devices").TextContent));
         Assert.Empty(cut.FindAll("[data-testid='device-offline-warning']"));
     }
+
+    [Fact]
+    public void DeviceTable_HeaderOrderMatchesCellOrder()
+    {
+        SetEmptyLists();
+        Device device = AddDevice("Porch");
+        _ = DeviceHealthRepositoryMock.Setup(m => m.GetLatestAsync(device.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeviceHealth { Id = Guid.NewGuid(), DeviceId = device.Id, CapturedAtUtc = DateTime.UtcNow }.ToDto());
+
+        IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
+
+        cut.WaitForAssertion(() => Assert.Contains("Porch", cut.Find("#account-devices").TextContent));
+        string[] headers = cut.FindAll("#account-devices thead th").Select(th => th.TextContent.Trim()).ToArray();
+        Assert.Equal("Type", headers[1]);
+        Assert.Equal("Status", headers[2]);
+    }
+
     [Fact]
     public void DeviceWithSnapshotAndLoop_ShowsOnlyTheLatestOfEach()
     {
         SetEmptyLists();
         Device device = AddDevice("Porch");
-        var snapshot = new MediaItem { Id = Guid.NewGuid(), DeviceId = device.Id, FileName = "s.jpg", FilePath = "s", MediaFormat = "jpg", RecordedAtUtc = DateTime.UtcNow.AddMinutes(-1), Sha256Hash = "h", MetadataJson = "{\"type\":\"snapshot\"}" };
-        var loop = new MediaItem { Id = Guid.NewGuid(), DeviceId = device.Id, FileName = "l.mp4", FilePath = "l", MediaFormat = "mp4", RecordedAtUtc = DateTime.UtcNow.AddMinutes(-2), Sha256Hash = "h", MetadataJson = "{\"type\":\"snapshot-rollup\"}" };
-        _ = MediaItemRepositoryMock.Setup(m => m.GetRecentByDeviceAsync(device.Id, It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([snapshot, loop]);
+        var snapshot = new MediaItem { Id = Guid.NewGuid(), DeviceId = device.Id, FileName = "s.jpg", FilePath = "s", MediaFormat = "jpg", MediaKind = MediaKinds.Snapshot, RecordedAtUtc = DateTime.UtcNow.AddMinutes(-1), Sha256Hash = "h", MetadataJson = "{\"type\":\"snapshot\"}" };
+        var loop = new MediaItem { Id = Guid.NewGuid(), DeviceId = device.Id, FileName = "l.mp4", FilePath = "l", MediaFormat = "mp4", MediaKind = MediaKinds.Timelapse, RecordedAtUtc = DateTime.UtcNow.AddMinutes(-2), Sha256Hash = "h", MetadataJson = "{\"type\":\"snapshot-rollup\"}" };
+        _ = MediaItemRepositoryMock.Setup(m => m.GetRecentByDeviceAsync(device.Id, It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync([snapshot.ToDto(), loop.ToDto()]);
         _ = MediaUrlProviderMock.Setup(m => m.GetContentUrlsAsync(It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string> { [snapshot.Id] = "/snap.jpg", [loop.Id] = "/loop.mp4" });
 
@@ -114,7 +131,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
         var chime = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "chime", Name = "Hall Chime", Type = "chime" };
-        _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chime]);
+        _ = DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chime.ToDto()]);
 
         IRenderedComponent<AccountDevicesTab> cut = RenderDevices();
 

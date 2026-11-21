@@ -62,12 +62,6 @@
   <data name="FailedToLoadCases" xml:space="preserve">
     <value>Failed to load cases: {0}</value>
   </data>
-  <data name="RecipientDescriptionPlaceholder" xml:space="preserve">
-    <value>Recipient description</value>
-  </data>
-  <data name="PassphrasePlaceholder" xml:space="preserve">
-    <value>Passphrase</value>
-  </data>
   <data name="ExportButton" xml:space="preserve">
     <value>Export</value>
   </data>

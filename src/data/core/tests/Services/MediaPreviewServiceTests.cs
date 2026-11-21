@@ -17,7 +17,7 @@ namespace VideoForensics.Data.Core.Tests.Services;
 public class MediaPreviewServiceTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "vf-preview-" + Guid.NewGuid());
-    private readonly Mock<IMediaItemRepository> _items = new();
+    private readonly Mock<IMediaItemWriteRepository> _items = new();
     private readonly FakePreviewRunner _runner = new();
 
     public MediaPreviewServiceTests()

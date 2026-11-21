@@ -8,75 +8,92 @@ namespace VideoForensics.Data.Database.Repositories
 {
     public class AppSettingRepository : IAppSettingRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _contextFactory;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public AppSettingRepository(IDbContextFactory<VideoForensicsDbContext> contextFactory)
+        public AppSettingRepository(IUnitOfWork unitOfWork)
         {
-            _contextFactory = contextFactory;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<string?> GetAsync(string key, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            AppSetting? setting = await db.AppSettings.FirstOrDefaultAsync(s => s.Key == key, ct);
-            return setting?.Value;
+            return await _unitOfWork.ReadAsync(async context =>
+            {
+                AppSetting? setting = await context.Db().AppSettings.FirstOrDefaultAsync(s => s.Key == key, ct);
+                return setting?.Value;
+            }, ct);
         }
 
         public async Task SetAsync(string key, string value, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            AppSetting? existing = await db.AppSettings.FirstOrDefaultAsync(s => s.Key == key, ct);
-
-            // Only write when the setting doesn't exist yet or its value actually changed - avoids
-            // needless UpdatedAtUtc churn and WAL growth from callers that re-save unchanged config
-            // on every startup/save (e.g. ConfigurationLoader).
-            if (existing != null)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                if (existing.Value == value)
+                VideoForensicsDbContext db = context.Db();
+                AppSetting? existing = await db.AppSettings.FirstOrDefaultAsync(s => s.Key == key, ct);
+
+                // Only write when the setting doesn't exist yet or its value actually changed - avoids
+                // needless UpdatedAtUtc churn and WAL growth from callers that re-save unchanged config
+                // on every startup/save (e.g. ConfigurationLoader).
+                if (existing != null)
                 {
-                    return;
+                    if (existing.Value == value)
+                    {
+                        return null;
+                    }
+
+                    existing.Value = value;
+                    existing.UpdatedAtUtc = DateTime.UtcNow;
+                    _ = db.AppSettings.Update(existing);
+                }
+                else
+                {
+                    _ = await db.AppSettings.AddAsync(new AppSetting
+                    {
+                        Id = Guid.NewGuid(),
+                        Key = key,
+                        Value = value,
+                        UpdatedAtUtc = DateTime.UtcNow
+                    }, ct);
                 }
 
-                existing.Value = value;
-                existing.UpdatedAtUtc = DateTime.UtcNow;
-                _ = db.AppSettings.Update(existing);
-            }
-            else
-            {
-                _ = await db.AppSettings.AddAsync(new AppSetting
-                {
-                    Id = Guid.NewGuid(),
-                    Key = key,
-                    Value = value,
-                    UpdatedAtUtc = DateTime.UtcNow
-                }, ct);
-            }
-
-            _ = await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
 
         public async Task<IReadOnlyList<AppSetting>> ListAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            return (await db.AppSettings.ToListAsync(ct)).AsReadOnly();
+            return await _unitOfWork.ReadAsync<IReadOnlyList<AppSetting>>(async context =>
+            {
+                return (await context.Db().AppSettings.ToListAsync(ct)).AsReadOnly();
+            }, ct);
         }
 
         public async Task DeleteAsync(string key, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            AppSetting? setting = await db.AppSettings.FirstOrDefaultAsync(s => s.Key == key, ct);
-            if (setting != null)
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                _ = db.AppSettings.Remove(setting);
-                _ = await db.SaveChangesAsync(ct);
-            }
+                VideoForensicsDbContext db = context.Db();
+                AppSetting? setting = await db.AppSettings.FirstOrDefaultAsync(s => s.Key == key, ct);
+                if (setting != null)
+                {
+                    _ = db.AppSettings.Remove(setting);
+                    _ = await db.SaveChangesAsync(ct);
+                }
+
+                return null;
+            }, ct);
         }
 
         public async Task ClearAllAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _contextFactory.CreateDbContextAsync(ct);
-            db.AppSettings.RemoveRange(await db.AppSettings.ToListAsync(ct));
-            _ = await db.SaveChangesAsync(ct);
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                db.AppSettings.RemoveRange(await db.AppSettings.ToListAsync(ct));
+                _ = await db.SaveChangesAsync(ct);
+                return null;
+            }, ct);
         }
     }
 }

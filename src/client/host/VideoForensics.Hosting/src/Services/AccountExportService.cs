@@ -90,7 +90,7 @@ namespace VideoForensics.Client.Hosting.Services
                 string folder = await ResolveExportsFolderAsync(sp, ct);
                 _ = Directory.CreateDirectory(folder);
 
-                IProviderAccountRepository accounts = sp.GetRequiredService<IProviderAccountRepository>();
+                IProviderAccountWriteRepository accounts = sp.GetRequiredService<IProviderAccountWriteRepository>();
                 ProviderAccount? account = await accounts.GetAsync(job.AccountId, ct);
                 if (account == null)
                 {
@@ -219,12 +219,12 @@ namespace VideoForensics.Client.Hosting.Services
         private async Task WriteDocumentAsync(Stream stream, IServiceProvider sp, ProviderAccount account, CancellationToken ct)
         {
             // Credentials are deliberately never read: the export contains no secrets or tokens.
-            IReadOnlyList<Location> locations = await sp.GetRequiredService<ILocationRepository>().ListByProviderAccountIdAsync(account.Id, ct);
+            IReadOnlyList<Location> locations = await sp.GetRequiredService<ILocationWriteRepository>().ListByProviderAccountIdAsync(account.Id, ct);
             IReadOnlyList<ProviderSyncRun> syncRuns = await sp.GetRequiredService<IProviderSyncRunRepository>().ListByProviderAccountIdAsync(account.Id, ct);
 
-            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
-            IEventRepository eventRepository = sp.GetRequiredService<IEventRepository>();
-            IMediaItemRepository mediaRepository = sp.GetRequiredService<IMediaItemRepository>();
+            IDeviceWriteRepository deviceRepository = sp.GetRequiredService<IDeviceWriteRepository>();
+            IEventWriteRepository eventRepository = sp.GetRequiredService<IEventWriteRepository>();
+            IMediaItemWriteRepository mediaRepository = sp.GetRequiredService<IMediaItemWriteRepository>();
             IDownloadEventRepository downloadRepository = sp.GetRequiredService<IDownloadEventRepository>();
 
             // Devices are few; only the per-device event/media/download rows are large.

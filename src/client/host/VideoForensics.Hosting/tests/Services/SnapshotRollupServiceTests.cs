@@ -7,6 +7,7 @@ using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Core;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
@@ -23,15 +24,17 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
         private readonly string _root = Path.Combine(Path.GetTempPath(), "vf-rollup-tests-" + Guid.NewGuid().ToString("N"));
         private readonly Guid _accountId = Guid.NewGuid();
-        private readonly Mock<ILocationRepository> _locations = new();
-        private readonly Mock<IDeviceRepository> _devices = new();
-        private readonly Mock<IMediaItemRepository> _media = new();
+        private readonly Mock<ILocationWriteRepository> _locations = new();
+        private readonly Mock<IDeviceWriteRepository> _devices = new();
+        private readonly Mock<IMediaItemWriteRepository> _media = new();
         private readonly Mock<ITimelineVideoBuilder> _builder = new();
-        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IProviderAccountWriteRepository> _accounts = new();
         private readonly Mock<IStorageLocationProvider> _storage = new();
         private readonly Mock<IForensicsConfigurationService> _configuration = new();
         private readonly Mock<IForensicsConfiguration> _config = new();
-        private readonly Mock<IEventRepository> _events = new();
+        private readonly Mock<IEventWriteRepository> _events = new();
+        private readonly Mock<IUnitOfWorkContext> _context = new();
+        private readonly FakeUnitOfWork _unitOfWork;
         private readonly Location _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
         private readonly Device _device;
 
@@ -49,6 +52,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _storage.Setup(s => s.GetEffectiveRoot(StorageCategory.Media, It.IsAny<string?>()))
                 .Returns<StorageCategory, string?>((_, configuredOverride) => string.IsNullOrWhiteSpace(configuredOverride) ? MediaRoot : configuredOverride);
             _ = _configuration.Setup(s => s.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(_config.Object);
+            _ = _context.SetupGet(c => c.MediaItems).Returns(_media.Object);
+            _ = _context.SetupGet(c => c.Events).Returns(_events.Object);
+            _unitOfWork = new FakeUnitOfWork(_context.Object);
         }
 
         public void Dispose()
@@ -70,6 +76,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _builder.Object,
             NullLogger<SnapshotRollupService>.Instance,
             _events.Object,
+            _unitOfWork,
             configurationService: _configuration.Object);
         }
 
@@ -89,6 +96,11 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             return path;
         }
 
+        /// <summary>The partial file the builder writes before the rename to the final name.</summary>
+        private static string BuildingPathOf(string finalPath)
+        {
+            return Path.Combine(Path.GetDirectoryName(finalPath)!, Path.GetFileNameWithoutExtension(finalPath) + ".building.mp4");
+        }
         private static MediaItem Snapshot(string path, DateTime recordedAt, string metadata = SnapshotMetadata)
         {
             return new()
@@ -169,7 +181,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 
-            Assert.Equal(expected, sent!.OutputPath);
+            Assert.Equal(BuildingPathOf(expected), sent!.OutputPath);
         }
 
         [Fact]
@@ -185,7 +197,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
 
-            Assert.Equal(expected, sent!.OutputPath);
+            Assert.Equal(BuildingPathOf(expected), sent!.OutputPath);
             _media.Verify(m => m.AddAsync(It.Is<MediaItem>(i => i.FilePath == expected), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -236,7 +248,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         public async Task RollUp_WindowWithCapturesButNoUsableStill_LogsWhyNothingWasBuilt()
         {
             // Production symptom: roll-ups record success but write no loop. An empty window must say why, not stay silent.
-            var captures = new Mock<ISnapshotCaptureRepository>();
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
             _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(
             [
                 SnapshotCapture.Create(_device.Id, From.AddMinutes(1), "fresh", 200, "gone.jpg", null),
@@ -246,6 +258,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 logger.Object,
                 _events.Object,
+                _unitOfWork,
                 captures: captures.Object,
                 stillMapper: new SnapshotStillMapper(),
                 mediaPaths: RootedPaths());
@@ -275,7 +288,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         {
             // A 200 at +1 min, a failed attempt at +3 min, then a 200 at +10 min. The first still must end at the failure,
             // not run on to the next image, so the outage is a gap rather than a frame that looks current.
-            var captures = new Mock<ISnapshotCaptureRepository>();
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
             _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(
             [
                 SnapshotCapture.Create(_device.Id, From.AddMinutes(1), "fresh", 200, "a.jpg", null),
@@ -293,6 +306,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 NullLogger<SnapshotRollupService>.Instance,
                 _events.Object,
+                _unitOfWork,
                 captures: captures.Object,
                 stillMapper: new SnapshotStillMapper(),
                 mediaPaths: RootedPaths());
@@ -326,6 +340,49 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
+        public async Task RollUp_RecordsLoopAndEventInOneUnitOfWork()
+        {
+            // The loop row and its event row must commit together, so the Events tab never shows one without the other.
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+            BuildSucceeds();
+
+            SnapshotRollupResult result = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Equal(1, result.DevicesRolledUp);
+            Assert.Equal(1, _unitOfWork.ExecuteCount);
+            _media.Verify(m => m.AddAsync(
+                It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker),
+                It.IsAny<CancellationToken>()), Times.Once);
+            _events.Verify(e => e.UpsertAsync(
+                It.Is<Event>(ev => ev.DeviceId == _device.Id && ev.EventType == "timelapse"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        /// <summary>Runs each unit of work once against a context that forwards to the test mocks, and counts the runs.</summary>
+        private sealed class FakeUnitOfWork : IUnitOfWork
+        {
+            private readonly IUnitOfWorkContext _context;
+
+            public FakeUnitOfWork(IUnitOfWorkContext context)
+            {
+                _context = context;
+            }
+
+            public int ExecuteCount { get; private set; }
+
+            public async Task<T> ExecuteAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, CancellationToken ct)
+            {
+                ExecuteCount++;
+                return await work(_context);
+            }
+
+            public Task<T> ReadAsync<T>(Func<IUnitOfWorkContext, Task<T>> read, CancellationToken ct)
+            {
+                return read(_context);
+            }
+        }
+
+        [Fact]
         public async Task RollUp_SuccessfulLoop_LogsInformationWithDeviceAndFrameCount()
         {
             // A successful loop must leave a trace: the device, how many snapshots went in, and the file name.
@@ -336,6 +393,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 logger.Object,
                 _events.Object,
+                _unitOfWork,
                 configurationService: _configuration.Object);
 
             _ = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
@@ -345,35 +403,25 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 && i.Arguments[2].ToString()!.Contains("Porch", StringComparison.Ordinal)
                 && i.Arguments[2].ToString()!.Contains("2 snapshots", StringComparison.Ordinal));
         }
-    }
-
-    /// <summary>When a roll-up is due: never rolled up, or the interval has passed since the last one.</summary>
-    public class ScheduleRollupDueTests
-    {
-        private static readonly DateTime Now = new(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
 
         [Fact]
-        public void NeverRolledUp_IsDue()
+        public async Task RollUpSegment_WritesToBuildingFileAndRegistersLoopWithTheSpan()
         {
-            Assert.True(ScheduleCalculator.IsRollupDue(SyncSchedule.CreateDefault(Guid.NewGuid()), Now));
-        }
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+            TimelineVideoRequest? sent = null;
+            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+                .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
+                .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 3));
 
-        [Fact]
-        public void WithinInterval_IsNotDue()
-        {
-            var schedule = SyncSchedule.CreateDefault(Guid.NewGuid());
-            schedule.LastRollupUtc = Now.AddMinutes(-14);
+            SnapshotRollupResult result = await Build().RollUpSegmentAsync(_accountId, _device.Id, From, To, CancellationToken.None);
 
-            Assert.False(ScheduleCalculator.IsRollupDue(schedule, Now));
-        }
-
-        [Fact]
-        public void AtInterval_IsDue()
-        {
-            var schedule = SyncSchedule.CreateDefault(Guid.NewGuid());
-            schedule.LastRollupUtc = Now.AddMinutes(-15);
-
-            Assert.True(ScheduleCalculator.IsRollupDue(schedule, Now));
-        }
-    }
+            Assert.Equal(1, result.DevicesRolledUp);
+            Assert.Null(result.ErrorMessage);
+            Assert.NotNull(sent);
+            Assert.Contains(".building.mp4", sent!.OutputPath, StringComparison.Ordinal);
+            Assert.Empty(Directory.GetFiles(_root, "*.building.mp4", SearchOption.AllDirectories));
+            _media.Verify(m => m.AddAsync(It.Is<MediaItem>(i => i.RecordedAtUtc == From
+                && i.DurationSeconds == (To - From).TotalSeconds
+                && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker), It.IsAny<CancellationToken>()), Times.Once);
+        }    }
 }

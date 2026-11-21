@@ -27,12 +27,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.12.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.14" />
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.14" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15" />
         <PackageReference Include="NodaTime" Version="3.3.7" />
         <PackageReference Include="SharpZipLib" Version="1.4.2" />
         <PackageReference Include="Syncfusion.Licensing" Version="35.1.43" />
@@ -54,8 +54,7 @@
     <ItemGroup>
         <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
         <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
-        <ProjectReference Include="../../../../data/common/src/VideoForensics.Data.Common.csproj" />
-        <ProjectReference Include="../../../../data/core/src/VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="../../../../core/api/mapping/src/VideoForensics.Core.Api.Mapping.csproj" />
         <ProjectReference Include="../../../../core/providers/common/src/VideoForensics.Core.Providers.Common.csproj" />
         <ProjectReference Include="../../../../core/providers/core/src/VideoForensics.Core.Providers.Core.csproj" />
         <ProjectReference Include="../../../../providers/ring/provider/src/VideoForensics.Providers.Ring.csproj" />

@@ -5,7 +5,9 @@
 
 @if (_hasMain)
 {
-    <ReviewPlayer @ref="_mainPlayer" Clips="Cameras[SelectedIndex].Clips" ContentUrlFor="Cameras[SelectedIndex].ContentUrlFor" Cursor="Cursor" />
+    <div class="single-camera-stage" tabindex="0" data-testid="single-camera-stage" aria-label="@L["SingleCameraKeysLabel"]" @onkeydown="OnStageKeyDownAsync">
+        <ReviewPlayer @ref="_mainPlayer" Clips="Cameras[SelectedIndex].Clips" ContentUrlFor="Cameras[SelectedIndex].ContentUrlFor" Cursor="Cursor" OnPlaybackUtc="OnPlaybackUtc" />
+    </div>
 }
 
 @if (_previewIndexes.Count > 0)
@@ -21,7 +23,7 @@
             <button type="button" class="single-camera-preview" data-testid="single-camera-preview" data-camera-index="@index" title="@camera.Label" @onclick="() => OnSelect.InvokeAsync(index)">
                 @if (previewUrl is null)
                 {
-                    <div class="single-camera-placeholder" data-testid="single-camera-placeholder">@L["ReviewPlayerGap"]</div>
+                    <span class="single-camera-placeholder" data-testid="single-camera-placeholder">@L["ReviewPlayerGap"]</span>
                 }
                 else
                 {
@@ -33,7 +35,18 @@
     </div>
 }
 
+@if (_hasMain)
+{
+    <MediaTransportControls OnPlayPause="TogglePlayMainAsync" OnStep="StepMainAsync" Disabled="_mainPlayer is null" />
+}
+
 @code {
+    /// <summary>Plays or pauses the main video. Does nothing when no video is rendered.</summary>
+    private Task TogglePlayMainAsync() => _mainPlayer is null ? Task.CompletedTask : _mainPlayer.TogglePlayAsync();
+
+    /// <summary>Steps the main video by a number of seconds (negative goes back).</summary>
+    private Task StepMainAsync(double seconds) => _mainPlayer is null ? Task.CompletedTask : _mainPlayer.StepAsync(seconds);
+
     // The main player, read by the timeline tab's Grab still button for the playback position.
     private ReviewPlayer? _mainPlayer;
 
@@ -57,6 +70,48 @@
 
     /// <summary>Raised with the index (into <see cref="Cameras"/>) of a preview tile the user clicked.</summary>
     [Parameter] public EventCallback<int> OnSelect { get; set; }
+
+    /// <summary>The main player's playback position (UTC) as the video plays, for the timeline's playback cursor.</summary>
+    [Parameter] public EventCallback<DateTime> OnPlaybackUtc { get; set; }
+
+    /// <summary>Raised by the S key. The timeline tab runs Grab still from it.</summary>
+    [Parameter] public EventCallback OnGrabStill { get; set; }
+
+    /// <summary>
+    /// Keys on the focused player: Space plays or pauses, the arrow keys move five seconds, and S grabs a still. Other keys pass
+    /// through untouched, so Tab still leaves the stage.
+    /// </summary>
+    private async Task OnStageKeyDownAsync(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case " ":
+                if (_mainPlayer is not null)
+                {
+                    await _mainPlayer.TogglePlayAsync();
+                }
+
+                break;
+            case "ArrowLeft":
+                if (_mainPlayer is not null)
+                {
+                    await _mainPlayer.NudgeAsync(-5);
+                }
+
+                break;
+            case "ArrowRight":
+                if (_mainPlayer is not null)
+                {
+                    await _mainPlayer.NudgeAsync(5);
+                }
+
+                break;
+            case "s":
+            case "S":
+                await OnGrabStill.InvokeAsync();
+                break;
+        }
+    }
 
     private bool _hasMain => SelectedIndex >= 0 && SelectedIndex < Cameras.Count;
 

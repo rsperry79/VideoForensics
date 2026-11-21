@@ -22,11 +22,12 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            _reader = new DeviceTypedSettingsReader(_fixture.Factory);
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            var unitOfWork = new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>());
+            _reader = new DeviceTypedSettingsReader(unitOfWork);
 
-            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            var locationRepository = new LocationRepository(_fixture.Factory, loggerFactory.CreateLogger<LocationRepository>());
-            var deviceRepository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
+            var locationRepository = new LocationRepository(new UnitOfWork(_fixture.Factory, new Repositories.TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<LocationRepository>());
+            var deviceRepository = new DeviceRepository(new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, loggerFactory), loggerFactory.CreateLogger<UnitOfWork>()), loggerFactory.CreateLogger<DeviceRepository>());
             Location location = TestDataBuilder.BuildLocation();
             await locationRepository.AddAsync(location, CancellationToken.None);
             _device = TestDataBuilder.BuildDevice(locationId: location.Id);
@@ -63,7 +64,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task DeviceTypedSettingsReader_GetAsync_DeviceWithNoRows_ReturnsEmptyGroups()
         {
             Device empty = TestDataBuilder.BuildDevice(locationId: _device.LocationId);
-            await new DeviceRepository(_fixture.Factory, Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<DeviceRepository>()).AddAsync(empty, CancellationToken.None);
+            await new DeviceRepository(new UnitOfWork(_fixture.Factory, new TestServiceProvider(_fixture, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<UnitOfWork>.Instance), Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<DeviceRepository>()).AddAsync(empty, CancellationToken.None);
 
             DeviceTypedSettings settings = await _reader.GetAsync(empty.Id, CancellationToken.None);
 

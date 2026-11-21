@@ -33,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapGet("/paired-devices", async (IPairedDeviceRepository devices, CancellationToken ct) =>
                 Results.Ok(await devices.ListAsync(ct)));
 
-            _ = group.MapGet("/operators", async (IOperatorRepository operators, CancellationToken ct) =>
+            _ = group.MapGet("/operators", async (IOperatorWriteRepository operators, CancellationToken ct) =>
                 Results.Ok(await operators.ListAsync(ct)));
 
             _ = group.MapGet("/operators/{id:guid}", GetOperatorAsync);
@@ -87,7 +87,7 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapPost("/operators/{id:guid}/deactivate", async (
                 Guid id,
                 RevokeDeviceRequest request,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 IPairedDeviceRepository devices,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
@@ -114,7 +114,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = group.MapPost("/operators/{id:guid}/approve", async (
                 Guid id,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
                 HttpContext context,
@@ -132,7 +132,7 @@ namespace VideoForensics.Client.WebApp.Api
 
             _ = group.MapPost("/operators/{id:guid}/reset-password", async (
                 Guid id,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
                 HttpContext context,
@@ -196,7 +196,7 @@ namespace VideoForensics.Client.WebApp.Api
             // Each row carries the operator's name. The page shows a name, and the credential itself only has the operator id.
             _ = credentialGroup.MapGet("/pending", async (
                 IOperatorCredentialRepository credentials,
-                IOperatorRepository operators,
+                IOperatorWriteRepository operators,
                 CancellationToken ct) =>
             {
                 IReadOnlyList<OperatorCredential> pending = await credentials.ListPendingApprovalAsync(ct);
@@ -295,7 +295,7 @@ namespace VideoForensics.Client.WebApp.Api
         /// Gets one operator's details for the operator-details page. Returns the secret-free
         /// <see cref="OperatorDetailsDto"/> projection, never the raw entity (which carries PasswordHash).
         /// </summary>
-        internal static async Task<IResult> GetOperatorAsync(Guid id, IOperatorRepository operators, CancellationToken ct)
+        internal static async Task<IResult> GetOperatorAsync(Guid id, IOperatorWriteRepository operators, CancellationToken ct)
         {
             Operator? op = await operators.GetAsync(id, ct);
             return op is null
@@ -313,8 +313,8 @@ namespace VideoForensics.Client.WebApp.Api
         /// </summary>
         private static async Task<IResult> GetUiModeAsync(
             Guid id,
-            IOperatorRepository operators,
-            IOperatorPreferencesRepository preferences,
+            IOperatorWriteRepository operators,
+            IOperatorPreferencesWriteRepository preferences,
             CancellationToken ct)
         {
             Operator? op = await operators.GetAsync(id, ct);
@@ -336,8 +336,8 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> SetUiModeAsync(
             Guid id,
             SetOperatorUiModeRequest request,
-            IOperatorRepository operators,
-            IOperatorPreferencesRepository preferences,
+            IOperatorWriteRepository operators,
+            IOperatorPreferencesWriteRepository preferences,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
@@ -370,7 +370,7 @@ namespace VideoForensics.Client.WebApp.Api
 
         private static async Task<IResult> UnlockAsync(
             Guid id,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
@@ -400,7 +400,7 @@ namespace VideoForensics.Client.WebApp.Api
             op.LastName,
             op.Email,
             op.Phone,
-            op.Role,
+            op.Role.ToDto(),
             op.Active,
             op.IsApproved,
             op.CreatedAtUtc,
@@ -408,7 +408,7 @@ namespace VideoForensics.Client.WebApp.Api
             op.PasswordUpdatedAtUtc,
             op.FailedLoginAttemptCount,
             op.LockedOutUntilUtc,
-            op.TwoFactorRequirementOverride,
+            op.TwoFactorRequirementOverride.ToDto(),
             op.IsPrimarySuperAdmin,
             op.PasskeyRequired);
         }

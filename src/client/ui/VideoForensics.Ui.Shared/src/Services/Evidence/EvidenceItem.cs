@@ -1,5 +1,6 @@
-using VideoForensics.Data.Common.Entities;
 
+
+using VideoForensics.Core.Api.Contracts;
 namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
@@ -53,12 +54,12 @@ public sealed class EvidenceItem
     /// <summary>
     /// The event, if this is an event-based item (null for media-only).
     /// </summary>
-    public Event? Event { get; init; }
+    public EventDto? Event { get; init; }
 
     /// <summary>
     /// The media item, if one is attached (optional even for events, null for pure events).
     /// </summary>
-    public MediaItem? Media { get; init; }
+    public MediaItemDto? Media { get; init; }
 
     /// <summary>
     /// Human-readable label for the item: event type for events, or "Snapshot"/"Time Lapse"/"Video"/"File" for media.
@@ -78,8 +79,7 @@ public sealed class EvidenceItem
     /// True for a roll-up loop: an MP4 built from a camera's snapshots. The media view calls these Time Lapse.
     /// </summary>
     public bool IsTimeLapse =>
-        Media is not null && Media.MetadataJson is not null
-        && Media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal);
+        Media is not null && string.Equals(Media.MediaKind, MediaKindNames.Timelapse, StringComparison.Ordinal);
 
     /// <summary>
     /// True if this item has viewable media (image or video).

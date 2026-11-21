@@ -6,7 +6,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services
 {
@@ -239,7 +238,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
         private async Task LoadSettingsAccessAsync(HttpClient client)
         {
             SettingsOpenToAdmin = RestrictedSettings.None;
-            if (Role != nameof(OperatorRole.Admin))
+            if (Role != nameof(OperatorRoleDto.Admin))
             {
                 return;
             }

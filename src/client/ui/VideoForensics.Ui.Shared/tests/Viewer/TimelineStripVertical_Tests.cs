@@ -35,9 +35,10 @@ public class TimelineStripVertical_Tests : BunitContext
     /// <summary>Reads one pixel value (for example "top" or "height") from an inline style string.</summary>
     private static double StylePx(string style, string name)
     {
-        Match match = Regex.Match(style, @"(?:^|;)\s*" + name + @"\s*:\s*(-?[\d.]+)px");
-        Assert.True(match.Success, $"Style '{style}' has no '{name}' value.");
-        return double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+        // Positions are percent of the strip; convert to pixels of the 600px strip under test.
+        Match match = Regex.Match(style, @"(?:^|;)\s*" + name + @"\s*:\s*(-?[\d.]+)%");
+        Assert.True(match.Success, $"Style '{style}' has no '{name}' percent value.");
+        return double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) * Length / 100;
     }
 
     private IRenderedComponent<TimelineStrip> RenderVertical(

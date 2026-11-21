@@ -23,6 +23,12 @@ public class SyncRequestBuilderTests
     }
 
     [Fact]
+    public void SyncTypes_OffersNoSnapshotsChoice()
+    {
+        Assert.DoesNotContain("Snapshots", SyncRequestBuilder.SyncTypes);
+    }
+
+    [Fact]
     public void Build_AllRange_UsesAllKind()
     {
         Assert.Equal("All", Json(SyncRequestBuilder.Build("All", "All", null, null)).GetProperty("rangeKind").GetString());

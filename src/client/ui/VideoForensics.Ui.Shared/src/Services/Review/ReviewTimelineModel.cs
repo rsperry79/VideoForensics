@@ -19,6 +19,9 @@ public sealed class ReviewTimelineModel
     /// <summary>The clips of the primary camera, oldest first, as last published.</summary>
     public IReadOnlyList<ClipWindow> Clips { get; private set; } = [];
 
+    /// <summary>Events with no playable media in the window. Drawn on the timeline, never played.</summary>
+    public IReadOnlyList<ClipWindow> UnavailableClips { get; private set; } = [];
+
     /// <summary>Start of the range the clips were loaded for (UTC).</summary>
     public DateTime FromUtc { get; private set; }
 
@@ -30,7 +33,7 @@ public sealed class ReviewTimelineModel
     /// <see cref="OnChange"/> only when the clips or the range differ from what is already published.
     /// </summary>
     /// <exception cref="ArgumentException">The range is empty or reversed.</exception>
-    public void Publish(IReadOnlyList<ClipWindow> clips, DateTime fromUtc, DateTime toUtc)
+    public void Publish(IReadOnlyList<ClipWindow> clips, DateTime fromUtc, DateTime toUtc, IReadOnlyList<ClipWindow>? unavailable = null)
     {
         ArgumentNullException.ThrowIfNull(clips);
         if (toUtc <= fromUtc)
@@ -39,13 +42,15 @@ public sealed class ReviewTimelineModel
         }
 
         var copy = clips.ToList();
-        bool changed = fromUtc != FromUtc || toUtc != ToUtc || !Clips.SequenceEqual(copy);
+        var unavailableCopy = (unavailable ?? []).ToList();
+        bool changed = fromUtc != FromUtc || toUtc != ToUtc || !Clips.SequenceEqual(copy) || !UnavailableClips.SequenceEqual(unavailableCopy);
         if (!changed)
         {
             return;
         }
 
         Clips = copy;
+        UnavailableClips = unavailableCopy;
         FromUtc = fromUtc;
         ToUtc = toUtc;
         OnChange?.Invoke();
@@ -54,12 +59,13 @@ public sealed class ReviewTimelineModel
     /// <summary>Removes the published clips. Raises <see cref="OnChange"/> only when there were clips to remove.</summary>
     public void Clear()
     {
-        if (Clips.Count == 0)
+        if (Clips.Count == 0 && UnavailableClips.Count == 0)
         {
             return;
         }
 
         Clips = [];
+        UnavailableClips = [];
         OnChange?.Invoke();
     }
 }

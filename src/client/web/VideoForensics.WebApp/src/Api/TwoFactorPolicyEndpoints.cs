@@ -67,7 +67,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> UpdateOperatorOverrideAsync(
             Guid id,
             UpdateOperatorTwoFactorOverrideRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
@@ -79,7 +79,7 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.NotFound(new { error = "Operator not found" });
             }
 
-            await operators.SetTwoFactorRequirementOverrideAsync(id, request.Override, ct);
+            await operators.SetTwoFactorRequirementOverrideAsync(id, request.Override.ToDomain(), ct);
 
             string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             string details = $"Operator: {op.DisplayName}, Override: {request.Override}";
@@ -96,7 +96,7 @@ namespace VideoForensics.Client.WebApp.Api
         private static async Task<IResult> UpdatePasskeyRequiredAsync(
             Guid id,
             UpdatePasskeyRequiredRequest request,
-            IOperatorRepository operators,
+            IOperatorWriteRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             HttpContext context,
