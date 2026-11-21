@@ -158,7 +158,7 @@ namespace VideoForensics.Providers.Ring.Tests.Services
             RingDeviceDetails d = Load("1001");
 
             Assert.DoesNotContain(d.UnstoredNotes!, n => n.Contains("TestNet") || n.Contains("bat-fake-1"));
-            Assert.Contains(d.UnstoredNotes!, n => n.Contains("health.batteries.battery_id is null"));
+            Assert.DoesNotContain(d.UnstoredNotes!, n => n.Contains("health.batteries.battery_id is null"));
             RingDeviceDetails stickup = Load("2001");
             Assert.Contains(stickup.UnstoredNotes!, n => n.StartsWith("ring_net_id is null"));
         }
