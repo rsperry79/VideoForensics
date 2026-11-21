@@ -1,14 +1,6 @@
 "use strict";
 // Viewport width detection and live change notification for DefaultViewportService's
 // mobile/desktop form-factor detection.
-// Keeps the review address in step with the page state. replaceState changes the address bar without a navigation,
-// so no Blazor navigation (and no hidden JS call) runs for each state change.
-window.vfHistory = {
-    replaceUrl: function (url) {
-        history.replaceState(history.state, '', url);
-    }
-};
-
 window.vfViewport = {
     getIsMobile: function () {
         try {
@@ -35,7 +27,6 @@ window.vfViewport = {
                 // Older WebView2/Safari fallback.
                 mql.addListener(listener);
             }
-
             // Window size: one notification per animation frame, so a drag-resize does not flood the circuit.
             let frame = 0;
             window.addEventListener('resize', function () {
@@ -52,5 +43,11 @@ window.vfViewport = {
             // Best-effort - viewport won't live-update on hosts where matchMedia isn't available;
             // the initial getIsMobile() snapshot still applies.
         }
+    }
+};
+// Keeps the review address in step with the page state. replaceState changes the address bar without a navigation.
+window.vfHistory = {
+    replaceUrl: function (url) {
+        history.replaceState(history.state, '', url);
     }
 };
