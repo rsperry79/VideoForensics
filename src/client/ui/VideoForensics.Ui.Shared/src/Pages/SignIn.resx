@@ -44,6 +44,9 @@
   <data name="RestrictedAccessNotice" xml:space="preserve">
     <value>Restricted access. Authorized users only.</value>
   </data>
+  <data name="SessionEndedNotice" xml:space="preserve">
+    <value>Your session ended. Sign in again.</value>
+  </data>
   <data name="PasswordLabel" xml:space="preserve">
     <value>Password</value>
   </data>

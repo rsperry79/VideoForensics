@@ -21,6 +21,11 @@
         <p class="alert alert-warning small" role="note" data-testid="restricted-access-notice">@L["RestrictedAccessNotice"]</p>
     }
 
+    @if (!_requiresTwoFactor && string.Equals(Reason, "expired", StringComparison.Ordinal))
+    {
+        <p class="alert alert-info small" role="status" data-testid="session-ended-notice">@L["SessionEndedNotice"]</p>
+    }
+
     @if (_isLoading)
     {
         <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
@@ -125,6 +130,10 @@
 @code {
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
+
+    /// <summary>Set to "expired" when the operator was sent here because their session ended.</summary>
+    [SupplyParameterFromQuery]
+    public string? Reason { get; set; }
 
     private string _username = string.Empty;
     /// <summary>Marks the username field as a username for password managers and passkey autofill (conditional UI).</summary>

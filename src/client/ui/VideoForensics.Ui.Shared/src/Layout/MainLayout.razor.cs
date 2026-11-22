@@ -238,7 +238,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             _ = InvokeAsync(() =>
             {
-                Nav.NavigateTo(Nav.SignInPathWithReturnUrl());
+                Nav.NavigateTo(Nav.SignInPathForExpiredSession());
                 StateHasChanged();
             });
         }

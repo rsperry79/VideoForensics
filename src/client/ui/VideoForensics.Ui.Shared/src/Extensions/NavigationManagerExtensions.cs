@@ -15,5 +15,14 @@ namespace VideoForensics.Client.Ui.Shared.Extensions
             string returnUrl = "/" + navigationManager.ToBaseRelativePath(navigationManager.Uri);
             return $"/signin?returnUrl={Uri.EscapeDataString(returnUrl)}";
         }
+
+        /// <summary>
+        /// The sign-in path used when the session expired mid-use. Same return URL as <see cref="SignInPathWithReturnUrl"/>,
+        /// plus a reason the sign-in page turns into a "session ended" notice.
+        /// </summary>
+        public static string SignInPathForExpiredSession(this NavigationManager navigationManager)
+        {
+            return navigationManager.SignInPathWithReturnUrl() + "&reason=expired";
+        }
     }
 }
