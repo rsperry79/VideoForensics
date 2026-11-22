@@ -42,6 +42,6 @@
     <ProjectReference Include="..\..\..\..\client\platform\VideoForensics.Client.Platform.Windows\src\VideoForensics.Client.Platform.Windows.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.2" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.3" />
   </ItemGroup>
 </Project>
