@@ -61,6 +61,9 @@ namespace VideoForensics.Client.Hosting
     {
         private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(12);
 
+        /// <summary>Response header carrying a renewed session token back to the client.</summary>
+        public const string RenewedTokenHeader = "X-VF-Session-Renewed";
+
         /// <summary>Longest a session can last from its original sign-in, however often it renews.</summary>
         public static readonly TimeSpan AbsoluteSessionLifetime = TimeSpan.FromHours(24);
 

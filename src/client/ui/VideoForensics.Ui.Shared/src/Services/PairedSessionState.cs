@@ -279,6 +279,20 @@ namespace VideoForensics.Client.Ui.Shared.Services
             ApplyServerSessionKind(localTier, passkeySession, known: true, passwordSession, twoFactorRequired);
         }
 
+        /// <summary>
+        /// Swaps in a renewed session token from the server, keeping the operator and tier state as they are.
+        /// </summary>
+        public async Task ReplaceSessionTokenAsync(string renewedToken)
+        {
+            if (string.IsNullOrEmpty(renewedToken) || SessionToken is null)
+            {
+                return;
+            }
+
+            SessionToken = renewedToken;
+            await PersistAsync();
+        }
+
         public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false, bool passkeySetupOnly = false)
         {
             SessionToken = sessionToken;
