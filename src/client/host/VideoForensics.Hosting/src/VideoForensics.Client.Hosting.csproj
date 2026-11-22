@@ -54,7 +54,7 @@
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
         <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.14" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
