@@ -31,4 +31,15 @@ public class NavigationManagerExtensionsTests : BunitContext
 
         Assert.Equal("/signin?returnUrl=%2F", nav.SignInPathWithReturnUrl());
     }
+
+    [Fact]
+    public void SignInPathForExpiredSession_CurrentPage_AddsExpiredReasonToSignInPath()
+    {
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("http://localhost/cases/42");
+
+        Assert.Equal(
+            "/signin?returnUrl=" + Uri.EscapeDataString("/cases/42") + "&reason=expired",
+            nav.SignInPathForExpiredSession());
+    }
 }
