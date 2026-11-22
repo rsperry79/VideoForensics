@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Hosting.Tests
         public void Renew_PastHalfLife_ReturnsTokenWithSameIdentityAndLaterExpiry()
         {
             var service = new SessionTokenService(new EphemeralDataProtectionProvider());
-            DateTime issued = new DateTime(2026, 11, 22, 0, 0, 0, DateTimeKind.Utc);
+            DateTime issued = DateTime.UtcNow;
             SessionPrincipal current = Principal(issued, issued.AddHours(12));
             DateTime now = issued.AddHours(7);
 
@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Hosting.Tests
         public void Renew_BeforeHalfLife_ReturnsNull()
         {
             var service = new SessionTokenService(new EphemeralDataProtectionProvider());
-            DateTime issued = new DateTime(2026, 11, 22, 0, 0, 0, DateTimeKind.Utc);
+            DateTime issued = DateTime.UtcNow;
             SessionPrincipal current = Principal(issued, issued.AddHours(12));
 
             Assert.Null(service.Renew(current, issued.AddHours(3)));
@@ -49,7 +49,7 @@ namespace VideoForensics.Client.Hosting.Tests
         public void Renew_PasskeySetupOnlySession_ReturnsNull()
         {
             var service = new SessionTokenService(new EphemeralDataProtectionProvider());
-            DateTime issued = new DateTime(2026, 11, 22, 0, 0, 0, DateTimeKind.Utc);
+            DateTime issued = DateTime.UtcNow;
             SessionPrincipal current = Principal(issued, issued.AddMinutes(15), passkeySetupOnly: true);
 
             Assert.Null(service.Renew(current, issued.AddMinutes(10)));
@@ -59,7 +59,7 @@ namespace VideoForensics.Client.Hosting.Tests
         public void Renew_PastAbsoluteCap_ReturnsNull()
         {
             var service = new SessionTokenService(new EphemeralDataProtectionProvider());
-            DateTime issued = new DateTime(2026, 11, 22, 0, 0, 0, DateTimeKind.Utc);
+            DateTime issued = DateTime.UtcNow;
             SessionPrincipal current = Principal(issued, issued.AddHours(12));
 
             Assert.Null(service.Renew(current, issued.AddHours(24)));
@@ -69,7 +69,7 @@ namespace VideoForensics.Client.Hosting.Tests
         public void Renew_NeverExtendsPastAbsoluteCap()
         {
             var service = new SessionTokenService(new EphemeralDataProtectionProvider());
-            DateTime issued = new DateTime(2026, 11, 22, 0, 0, 0, DateTimeKind.Utc);
+            DateTime issued = DateTime.UtcNow;
             // Renewed earlier, so the session is still live at +20h with less than half its lifetime left.
             SessionPrincipal current = Principal(issued, issued.AddHours(23));
 
