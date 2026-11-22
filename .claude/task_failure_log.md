@@ -84,3 +84,8 @@ Watch (flaky under full-run load; rerun alone before calling it a regression): R
 - HistogramTimeline_Playback PlaybackTimeline_MarkerClick: failed in a full Ui.Shared run, passes alone.
 - FolderPicker_Tests.FolderPicker_Cancel_InvokesOnClosedWithNull: failed once in a full Ui.Shared run (Actual unset), passes alone and in the next full run. Earlier FolderPicker and WriteGateTests failures were also seen.
 - Rule: when one of these fails, rerun it alone before treating it as a regression, and record the run.
+
+## 2026-11-22 RingMediaDownloadServiceTests failed in one gate run, not reproduced
+- Symptom: 4 tests failed (DownloadVideosAsync_MatchedEventLinkedToUnmatchedRow_RekeysThatRowInsteadOfAddingOne, _MotionEventWithPersonDetection_NamesFileWithDetectionType, _UnmatchedEvent_StoresEventRowKeyedByDoorbotId, _NewVideo_ReleasesFileHandle) in a full-gate run on a worktree from earlier wip.
+- Not reproduced: the same project passes on origin/wip (cb14696a) and on the plan branch, on repeat runs.
+- Cause: not found. Rule: if it recurs, capture the first failure's message and stack before rerunning.
