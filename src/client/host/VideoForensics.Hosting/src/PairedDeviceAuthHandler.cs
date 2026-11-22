@@ -40,12 +40,23 @@ namespace VideoForensics.Client.Hosting
                 tokenWasAttached = true;
             }
 
-                    HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
+                            HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
 
             // If we sent a token and the server rejected it, clear the stale credential and notify listeners.
             if (tokenWasAttached && response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 await _sessionState.NotifyAuthenticationExpiredAsync();
+            }
+
+            // The server renews an active session by returning a new token; keep the stored one current.
+            if (tokenWasAttached && response.IsSuccessStatusCode
+                && response.Headers.TryGetValues(SessionTokenService.RenewedTokenHeader, out IEnumerable<string>? renewedValues))
+            {
+                string? renewed = renewedValues.FirstOrDefault();
+                if (!string.IsNullOrEmpty(renewed))
+                {
+                    await _sessionState.ReplaceSessionTokenAsync(renewed);
+                }
             }
 
             return response;

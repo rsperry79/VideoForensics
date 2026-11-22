@@ -211,6 +211,14 @@ namespace VideoForensics.Client.WebApp.Auth
                     claims = claims.Append(new Claim(VideoForensicsClaimTypes.PasskeySetupOnly, "true")).ToArray();
                 }
 
+                // Sliding renewal, only after every check above has passed (so a revoked device or a reset password
+                // never receives a fresh token). The browser replaces its stored token with this one.
+                string? renewed = _tokenService.Renew(principal, DateTime.UtcNow);
+                if (renewed != null)
+                {
+                    Context.Response.Headers[SessionTokenService.RenewedTokenHeader] = renewed;
+                }
+
                 var identity = new ClaimsIdentity(claims, PairedDeviceAuthenticationDefaults.SchemeName);
                 var claimsPrincipal = new ClaimsPrincipal(identity);
                 var ticket = new AuthenticationTicket(claimsPrincipal, PairedDeviceAuthenticationDefaults.SchemeName);
