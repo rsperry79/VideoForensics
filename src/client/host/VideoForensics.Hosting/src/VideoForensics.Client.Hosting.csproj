@@ -52,7 +52,7 @@
         <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
         <PackageReference Include="MailKit" Version="5.0.0" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="11.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.14" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
             <PrivateAssets>all</PrivateAssets>
