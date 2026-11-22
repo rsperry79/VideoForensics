@@ -17,8 +17,14 @@
     </DataCollectors>
   </DataCollectionRunSettings>
 
+  <LoggerRunSettings>
+    <Loggers>
+      <Logger friendlyName="trx" enabled="true" />
+    </Loggers>
+  </LoggerRunSettings>
+
   <RunConfiguration>
     <MaxCpuCount>4</MaxCpuCount>
-    <ResultsDirectory>.\TestResults</ResultsDirectory>
+    <ResultsDirectory>..\TestResults</ResultsDirectory>
   </RunConfiguration>
 </RunSettings>
