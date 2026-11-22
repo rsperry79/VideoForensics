@@ -49,11 +49,20 @@ namespace VideoForensics.Client.Hosting
         /// <summary>Issues a limited session that PairedDeviceAuthenticationHandler accepts only for passkey setup endpoints.</summary>
         string IssuePasskeySetupOnly(Guid operatorId, OperatorRole role, Guid securityStamp);
         SessionPrincipal? Validate(string token);
+
+        /// <summary>
+        /// Returns a renewed token for an active session once less than half its lifetime remains, or null when renewal
+        /// does not apply. A renewal keeps the same identity and never extends past the absolute cap from sign-in.
+        /// </summary>
+        string? Renew(SessionPrincipal current, DateTime nowUtc);
     }
 
     public class SessionTokenService : ISessionTokenService
     {
         private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(12);
+
+        /// <summary>Longest a session can last from its original sign-in, however often it renews.</summary>
+        public static readonly TimeSpan AbsoluteSessionLifetime = TimeSpan.FromHours(24);
 
         /// <summary>Lifetime of a limited passkey-setup session. PairedDeviceAuthenticationHandler also enforces it from IssuedAtUtc.</summary>
         public static readonly TimeSpan PasskeySetupSessionLifetime = TimeSpan.FromMinutes(15);
@@ -81,6 +90,39 @@ namespace VideoForensics.Client.Hosting
                 PasskeySetupOnly = true
             };
             return _protector.Protect(JsonSerializer.Serialize(principal));
+        }
+
+        public string? Renew(SessionPrincipal current, DateTime nowUtc)
+        {
+            ArgumentNullException.ThrowIfNull(current);
+
+            // Passkey-setup sessions are short and never extended.
+            if (current.PasskeySetupOnly || current.ExpiresAtUtc <= nowUtc)
+            {
+                return null;
+            }
+
+            DateTime absoluteCap = current.IssuedAtUtc + AbsoluteSessionLifetime;
+            if (nowUtc >= absoluteCap)
+            {
+                return null;
+            }
+
+            // Renew only once less than half the lifetime remains, so an active operator is not re-issued on every request.
+            if (current.ExpiresAtUtc - nowUtc >= SessionLifetime / 2)
+            {
+                return null;
+            }
+
+            DateTime newExpiry = nowUtc + SessionLifetime;
+            if (newExpiry > absoluteCap)
+            {
+                newExpiry = absoluteCap;
+            }
+
+            // Same identity and original IssuedAtUtc, so the absolute cap keeps counting from sign-in.
+            var renewed = new SessionPrincipal(current.OperatorId, current.CredentialId, current.Kind, current.Role, current.SecurityStampAtIssuance, current.IssuedAtUtc, newExpiry);
+            return _protector.Protect(JsonSerializer.Serialize(renewed));
         }
 
         public SessionPrincipal? Validate(string token)
