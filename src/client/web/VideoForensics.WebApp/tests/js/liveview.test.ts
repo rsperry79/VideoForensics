@@ -144,10 +144,9 @@ describe("liveview", () => {
             document.head.innerHTML = "";
         });
 
-        it("builds and starts a connection to the hub url and returns a reference to it", async () => {
+        it("builds and starts a connection to the hub url and returns the connection itself", async () => {
             const { connection, builder, lib } = fakeSignalR();
-            const ref = { __jsObjectId: 7 };
-            const createJSObjectReference = vi.fn(() => ref);
+            const createJSObjectReference = vi.fn(() => ({ __jsObjectId: 7 }));
             vi.stubGlobal("signalR", lib);
             vi.stubGlobal("DotNet", { createJSObjectReference });
 
@@ -159,8 +158,9 @@ describe("liveview", () => {
             const options = builder.withUrl.mock.calls[0][1] as { accessTokenFactory: () => string };
             expect(options.accessTokenFactory()).toBe("session-token");
             expect(connection.start).toHaveBeenCalledTimes(1);
-            expect(createJSObjectReference).toHaveBeenCalledWith(connection);
-            expect(result).toBe(ref);
+            // startLiveView calls .on and .invoke on this value, so it must be the connection, not a DotNet wrapper.
+            expect(createJSObjectReference).not.toHaveBeenCalled();
+            expect(result).toBe(connection);
         });
 
         it("loads the vendored SignalR client script when the global is missing", async () => {

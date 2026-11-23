@@ -33,7 +33,8 @@ export async function initializeHubConnection(hubUrl: string, accessToken: strin
         .withAutomaticReconnect()
         .build();
     await connection.start();
-    return DotNet.createJSObjectReference(connection);
+    // Return the connection itself: startLiveView calls .on and .invoke on it. A DotNet reference is a wrapper without them.
+    return connection;
 }
 
 /**
