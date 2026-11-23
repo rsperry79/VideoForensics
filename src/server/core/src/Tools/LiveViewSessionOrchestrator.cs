@@ -506,7 +506,15 @@ namespace VideoForensics.Client.Core.Tools
             _logger.LogDebug("Extended live view session {SessionId} timeout", sessionId);
         }
 
-        public async Task<LiveViewSession> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct)
+        /// <summary>Moves a session to sustained mode with no background duration; the safety valve alone applies.</summary>
+        public Task<LiveViewSession> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct) =>
+            PromoteToSustainedAsync(sessionId, reason, null, ct);
+
+        /// <summary>
+        /// Moves a session to sustained (background) mode. With <paramref name="backgroundFor"/> the session ends on its own
+        /// after that long, clamped to the configured safety limit; without it the safety valve alone applies.
+        /// </summary>
+        public async Task<LiveViewSession> PromoteToSustainedAsync(Guid sessionId, string reason, TimeSpan? backgroundFor, CancellationToken ct)
         {
             using IServiceScope scope = _scopeFactory.CreateScope();
             ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
@@ -521,8 +529,14 @@ namespace VideoForensics.Client.Core.Tools
                 return session;
             }
 
+            DateTime sustainedSince = DateTime.UtcNow;
             session.IsSustained = true;
-            session.SustainedSinceUtc = DateTime.UtcNow;
+            session.SustainedSinceUtc = sustainedSince;
+            session.SustainedUntilUtc = backgroundFor is null
+                ? null
+                : LiveViewBackgroundPolicy.DeadlineFor(
+                    sustainedSince,
+                    LiveViewBackgroundPolicy.Clamp(backgroundFor, TimeSpan.FromMinutes(_config.SustainedModeMaxDurationMinutes)));
             session.PromotionReason = reason;
             session.State = LiveViewSessionState.Sustained;
 

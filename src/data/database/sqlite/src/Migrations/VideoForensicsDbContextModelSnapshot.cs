@@ -2622,6 +2622,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("SustainedSinceUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("SustainedUntilUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("TriggerReason")
                         .HasColumnType("INTEGER");
 

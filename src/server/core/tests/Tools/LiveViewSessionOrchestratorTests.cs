@@ -387,6 +387,59 @@ namespace VideoForensics.Client.Core.Tests.Tools
         }
 
         [Fact]
+        public async Task PromoteToSustainedAsync_WithBackgroundDuration_SetsSustainedUntilFromRequest()
+        {
+            // Arrange: 5-minute background run, well under the 240-minute cap.
+            var sessionId = Guid.NewGuid();
+            var session = new LiveViewSession { Id = sessionId, DeviceId = Guid.NewGuid(), State = LiveViewSessionState.Active };
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
+
+            // Act
+            LiveViewSession result = await orchestrator.PromoteToSustainedAsync(sessionId, "Background", TimeSpan.FromMinutes(5), CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result.SustainedSinceUtc);
+            Assert.Equal(result.SustainedSinceUtc!.Value.AddMinutes(5), result.SustainedUntilUtc);
+        }
+
+        [Fact]
+        public async Task PromoteToSustainedAsync_BackgroundDurationAboveCap_ClampsToCap()
+        {
+            // Arrange: 10 hours requested against the 240-minute cap.
+            var sessionId = Guid.NewGuid();
+            var session = new LiveViewSession { Id = sessionId, DeviceId = Guid.NewGuid(), State = LiveViewSessionState.Active };
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
+
+            // Act
+            LiveViewSession result = await orchestrator.PromoteToSustainedAsync(sessionId, "Background", TimeSpan.FromHours(10), CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result.SustainedSinceUtc);
+            Assert.Equal(result.SustainedSinceUtc!.Value.AddMinutes(240), result.SustainedUntilUtc);
+        }
+
+        [Fact]
+        public async Task PromoteToSustainedAsync_NoBackgroundDuration_LeavesSustainedUntilNull()
+        {
+            var sessionId = Guid.NewGuid();
+            var session = new LiveViewSession { Id = sessionId, DeviceId = Guid.NewGuid(), State = LiveViewSessionState.Active };
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
+
+            LiveViewSession result = await orchestrator.PromoteToSustainedAsync(sessionId, "Background", CancellationToken.None);
+
+            Assert.Null(result.SustainedUntilUtc);
+        }
+
+        [Fact]
         public async Task PromoteToSustainedAsync_AlreadySustained_IsIdempotent()
         {
             // Arrange

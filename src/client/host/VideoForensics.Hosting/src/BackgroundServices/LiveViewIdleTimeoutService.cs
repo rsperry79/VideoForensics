@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -99,6 +100,15 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                                 session.Id, _config.LiveViewIdleTimeoutMinutes);
                             continue;
                         }
+                    }
+
+                    // A background session with its own duration ends when that duration passes; no notification.
+                    if (session.State == LiveViewSessionState.Sustained && session.IsSustained &&
+                        LiveViewBackgroundPolicy.IsExpired(session.SustainedUntilUtc, DateTime.UtcNow))
+                    {
+                        await sessionService.StopAsync(session.Id, "BackgroundDurationElapsed", ct);
+                        _logger.LogInformation("Live view background session {SessionId} ended at its requested duration", session.Id);
+                        continue;
                     }
 
                     // Check safety valve for Sustained sessions

@@ -12,6 +12,8 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime LastExtendedAtUtc { get; set; }
         public bool IsSustained { get; set; }
         public DateTime? SustainedSinceUtc { get; set; }
+        /// <summary>When a background (sustained) session ends on its own. Null means the configured safety valve applies.</summary>
+        public DateTime? SustainedUntilUtc { get; set; }
         public string? PromotionReason { get; set; }
         public Guid? OperatorId { get; set; }
         public string? StopReason { get; set; }
