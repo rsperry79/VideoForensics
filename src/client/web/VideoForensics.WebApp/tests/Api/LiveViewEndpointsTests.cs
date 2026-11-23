@@ -292,7 +292,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         public async Task Promote_Valid_Returns200WithDto()
         {
             await using LiveViewHost host = await StartAsync();
-            _ = host.Service.Setup(s => s.PromoteToSustainedAsync(SessionId, "Sustained bitrate degradation", It.IsAny<CancellationToken>()))
+            _ = host.Service.Setup(s => s.PromoteToSustainedAsync(SessionId, "Sustained bitrate degradation", null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(SampleSession(LiveViewSessionState.Sustained));
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, PromoteUrl, "Admin",
@@ -301,7 +301,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
             LiveViewSessionDto? dto = await resp.Content.ReadFromJsonAsync<LiveViewSessionDto>();
             Assert.Equal("Sustained", dto!.State);
-            host.Service.Verify(s => s.PromoteToSustainedAsync(SessionId, "Sustained bitrate degradation", It.IsAny<CancellationToken>()), Times.Once);
+            host.Service.Verify(s => s.PromoteToSustainedAsync(SessionId, "Sustained bitrate degradation", null, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

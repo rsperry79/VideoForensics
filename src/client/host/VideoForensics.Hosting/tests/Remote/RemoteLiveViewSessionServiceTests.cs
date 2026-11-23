@@ -200,6 +200,40 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             }
         }
 
+        [Fact]
+        public async Task PromoteToSustainedAsync_WithBackgroundFor_SendsBackgroundMinutesQuery()
+        {
+            string? capturedQuery = null;
+            var handler = new CaptureHttpMessageHandler((request, _) =>
+            {
+                capturedQuery = request.RequestUri?.Query;
+                var sessionDto = new LiveViewSessionDto(
+                    Id: Guid.NewGuid(),
+                    DeviceId: Guid.NewGuid(),
+                    TriggerReason: "Manual",
+                    State: "Sustained",
+                    StartedAtUtc: DateTime.UtcNow,
+                    EndedAtUtc: null,
+                    LastExtendedAtUtc: DateTime.UtcNow,
+                    IsSustained: true,
+                    SustainedSinceUtc: DateTime.UtcNow,
+                    PromotionReason: "reason",
+                    OperatorId: null,
+                    StopReason: null,
+                    ProviderSessionRef: null);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(sessionDto), System.Text.Encoding.UTF8, "application/json")
+                });
+            });
+
+            var service = new RemoteLiveViewSessionService(new HttpClient(handler) { BaseAddress = BaseUri });
+
+            _ = await service.PromoteToSustainedAsync(Guid.NewGuid(), "reason", TimeSpan.FromMinutes(5), CancellationToken.None);
+
+            Assert.Equal("?backgroundMinutes=5", capturedQuery);
+        }
+
         private class CaptureHttpMessageHandler : HttpMessageHandler
         {
             private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler;

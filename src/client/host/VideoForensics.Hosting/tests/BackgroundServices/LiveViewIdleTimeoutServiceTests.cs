@@ -283,5 +283,51 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             // Both sessions should have been attempted
             sessionService.Verify(s => s.StopAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
+
+        [Fact]
+        public async Task RunOneTickAsync_BackgroundSessionPastRequestedDuration_StopsWithBackgroundDurationElapsedAndNoNotification()
+        {
+            (LiveViewIdleTimeoutService? service, Mock<ILiveViewSessionRepository>? sessionRepo, Mock<ILiveViewSessionService>? sessionService, Mock<INotificationDispatcher>? notificationDispatcher) = CreateService(
+                new ForensicsConfiguration { SustainedModeMaxDurationMinutes = 240 });
+
+            var sessionId = Guid.NewGuid();
+
+            // Background session promoted 10 minutes ago with a 5-minute duration: its deadline has passed
+            LiveViewSession session = MakeLiveViewSession(
+                id: sessionId,
+                state: LiveViewSessionState.Sustained,
+                sustainedSinceUtc: DateTime.UtcNow.AddMinutes(-10),
+                isSustained: true);
+            session.SustainedUntilUtc = DateTime.UtcNow.AddMinutes(-5);
+
+            _ = sessionRepo.Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([session]);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            sessionService.Verify(s => s.StopAsync(sessionId, "BackgroundDurationElapsed", It.IsAny<CancellationToken>()), Times.Once);
+            notificationDispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_BackgroundSessionBeforeRequestedDuration_DoesNotStop()
+        {
+            (LiveViewIdleTimeoutService? service, Mock<ILiveViewSessionRepository>? sessionRepo, Mock<ILiveViewSessionService>? sessionService, _) = CreateService(
+                new ForensicsConfiguration { SustainedModeMaxDurationMinutes = 240 });
+
+            // Background session promoted 2 minutes ago with a 5-minute duration: still running
+            LiveViewSession session = MakeLiveViewSession(
+                state: LiveViewSessionState.Sustained,
+                sustainedSinceUtc: DateTime.UtcNow.AddMinutes(-2),
+                isSustained: true);
+            session.SustainedUntilUtc = DateTime.UtcNow.AddMinutes(3);
+
+            _ = sessionRepo.Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([session]);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            sessionService.Verify(s => s.StopAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
     }
 }

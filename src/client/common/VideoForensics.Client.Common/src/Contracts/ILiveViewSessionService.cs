@@ -43,6 +43,13 @@ namespace VideoForensics.Client.Common.Contracts
         Task<LiveViewSessionDto> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct);
 
         /// <summary>
+        /// Promotes a session to sustained mode and ends it on its own after <paramref name="backgroundFor"/>,
+        /// capped by the configured sustained-mode limit. Null means no requested duration (the cap applies).
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">The requested duration is zero or negative.</exception>
+        Task<LiveViewSessionDto> PromoteToSustainedAsync(Guid sessionId, string reason, TimeSpan? backgroundFor, CancellationToken ct);
+
+        /// <summary>
         /// Demotes a session from sustained mode back to active. Sets IsSustained=false, SustainedSinceUtc=null,
         /// and State=Active.
         /// </summary>

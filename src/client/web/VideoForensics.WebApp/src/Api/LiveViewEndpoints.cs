@@ -124,16 +124,23 @@ namespace VideoForensics.Client.WebApp.Api
             [FromBody] string reason,
             ILiveViewSessionService liveView,
             HttpContext context,
-            CancellationToken ct)
+            CancellationToken ct,
+            [FromQuery] int? backgroundMinutes = null)
         {
             if (!TryGetOperatorId(context, out _))
             {
                 return Results.Unauthorized();
             }
 
+            if (backgroundMinutes is <= 0)
+            {
+                return Results.BadRequest("backgroundMinutes must be positive.");
+            }
+
             try
             {
-                LiveViewSessionDto session = await liveView.PromoteToSustainedAsync(sessionId, reason, ct);
+                TimeSpan? backgroundFor = backgroundMinutes is { } minutes ? TimeSpan.FromMinutes(minutes) : null;
+                LiveViewSessionDto session = await liveView.PromoteToSustainedAsync(sessionId, reason, backgroundFor, ct);
                 return Results.Ok(session);
             }
             catch (Exception ex) when (TryMapFailure(ex) is { } failure)

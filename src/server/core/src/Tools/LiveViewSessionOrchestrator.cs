@@ -487,6 +487,9 @@ namespace VideoForensics.Client.Core.Tools
         async Task<LiveViewSessionDto> ILiveViewSessionService.PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct) =>
             (await PromoteToSustainedAsync(sessionId, reason, ct)).ToDto();
 
+        async Task<LiveViewSessionDto> ILiveViewSessionService.PromoteToSustainedAsync(Guid sessionId, string reason, TimeSpan? backgroundFor, CancellationToken ct) =>
+            (await PromoteToSustainedAsync(sessionId, reason, backgroundFor, ct)).ToDto();
+
         async Task<LiveViewSessionDto> ILiveViewSessionService.DemoteFromSustainedAsync(Guid sessionId, CancellationToken ct) =>
             (await DemoteFromSustainedAsync(sessionId, ct)).ToDto();
 

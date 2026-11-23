@@ -59,6 +59,17 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<LiveViewSessionDto> PromoteToSustainedAsync(Guid sessionId, string reason, TimeSpan? backgroundFor, CancellationToken ct)
+        {
+            string query = backgroundFor is { } duration ? $"?backgroundMinutes={(int)duration.TotalMinutes}" : string.Empty;
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync($"/api/v1/live-view/{sessionId:D}/promote{query}", reason, JsonOptions, ct);
+            ThrowIfUnknownSession(response, sessionId);
+            _ = response.EnsureSuccessStatusCode();
+            LiveViewSessionDto? dto = await response.Content.ReadFromJsonAsync<LiveViewSessionDto>(JsonOptions, ct);
+            return (dto ?? throw new InvalidOperationException("Response was null"));
+        }
+
+        /// <inheritdoc />
         public async Task<LiveViewSessionDto> DemoteFromSustainedAsync(Guid sessionId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.PostAsync($"/api/v1/live-view/{sessionId:D}/demote", null, ct);
