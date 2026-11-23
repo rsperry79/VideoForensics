@@ -76,36 +76,36 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Device config is SuperAdminLocal on the server, so this tab stays SuperAdmin on the Local tier.
                 ["/accounts/{Id:guid}/devices"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
-                ["/review/export"] = AccessPolicy.SuperAdminLocal,
+                ["/review/export"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 ["/cases/new"] = AccessPolicy.Review,
                 ["/settings/security-events"] = AccessPolicy.ReadOnly,
-                ["/settings/operators"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/operators/{Id:guid}"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/operators"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                ["/settings/operators/{Id:guid}"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 // Admins may open this page only when a Super Admin opens it on the Permissions page. Factory reset and
                 // key storage stay SuperAdminLocal inside the page, since they have no server policy behind them.
                 ["/settings/infrastructure"] = AccessPolicy.InfrastructureSettings,
                 // Database maintenance (stats, compact, repair, validate) is Super Admin only, on the local tier like Storage and Logs.
-                ["/settings/database"] = AccessPolicy.SuperAdminLocal,
-                ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/database"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                ["/tools/import-export"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 ["/settings/notifications"] = AccessPolicy.NotificationSettings,
                 // Each operator edits only their own preferences, so any signed-in operator (the lowest policy) may open it.
                 ["/settings/my-notifications"] = AccessPolicy.ReadOnly,
                 ["/settings/security-log"] = AccessPolicy.Admin,
-                ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/devices"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 // Writes go through /api/v1/permissions/provider-accounts (SuperAdminLocalOrPasskey, like the lockout policy).
                 ["/settings/permissions"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 // SuperAdmin by default; Admin only once the Permissions page opens the page to admins. The nav and the
                 // route guard hide it otherwise, and the server enforces the same setting on the writes.
                 ["/settings/reports"] = AccessPolicy.ReportSettings,
                 ["/settings/integrations/email"] = AccessPolicy.EmailSettings,
-                ["/settings/network"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/storage"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/storage/details"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/update-check"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/logs"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/network"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                ["/settings/storage"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                ["/settings/storage/details"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                ["/settings/update-check"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                ["/settings/logs"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 ["/settings/llm"] = AccessPolicy.LlmSettings,
-                ["/settings/lockout-policy"] = AccessPolicy.SuperAdminLocal,
-                ["/settings/auth-methods"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/lockout-policy"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                ["/settings/auth-methods"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 ["/settings/services"] = AccessPolicy.ServicesSettings,
             };
 
