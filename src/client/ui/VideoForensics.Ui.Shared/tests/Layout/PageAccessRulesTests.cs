@@ -26,10 +26,10 @@ public class PageAccessRules_Tests
     }
 
     [Fact]
-    public void IsAllowed_LocalOnlyPage_RemotePasskeySuperAdmin_Denied()
+    public void IsAllowed_LocalOnlyPage_RemotePasskeySuperAdmin_Allowed()
     {
-        // A passkey satisfies SuperAdminLocalOrPasskey only; pages on SuperAdminLocal stay Local-tier-only.
-        Assert.False(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRoleDto.SuperAdmin, passkey: true)));
+        // A passkey session on a remote (Cloudflare, https) tier opens the admin pages, matching the server policy.
+        Assert.True(PageAccessRules.IsAllowed("/settings/network", Ctx(OperatorRoleDto.SuperAdmin, passkey: true)));
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class PageAccessRules_Tests
     public void TryGetPolicy_ListedPath_ReturnsPolicy()
     {
         Assert.True(PageAccessRules.TryGetPolicy("/settings/operators", out AccessPolicy policy));
-        Assert.Equal(AccessPolicy.SuperAdminLocal, policy);
+        Assert.Equal(AccessPolicy.SuperAdminLocalOrPasskey, policy);
     }
 
     [Fact]
