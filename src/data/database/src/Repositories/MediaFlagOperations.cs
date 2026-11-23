@@ -30,7 +30,11 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
-        /// <summary>Finds the row a raised flag maps onto, including rows this context added but has not saved.</summary>
+        /// <summary>
+        /// Finds the row a raised flag maps onto, including rows this context added but has not saved. A row matches on
+        /// either unique key: (MediaItemId, FlagType), or (DeviceId, FlagType, WindowStartUtc). Matching only the first key
+        /// misses a clip-less row for the same window, and the insert then collides with the second key.
+        /// </summary>
         public static async Task<MediaFlag?> FindExistingAsync(VideoForensicsDbContext db, MediaFlag raised, CancellationToken ct)
         {
             Guid? mediaItemId = raised.MediaItemId;
@@ -38,14 +42,12 @@ namespace VideoForensics.Data.Database.Repositories
             Guid deviceId = raised.DeviceId;
             DateTime start = raised.WindowStartUtc;
 
-            MediaFlag? pending = mediaItemId is not null
-                ? db.MediaFlags.Local.FirstOrDefault(f => f.MediaItemId == mediaItemId && f.FlagType == type)
-                : db.MediaFlags.Local.FirstOrDefault(f => f.MediaItemId == null && f.DeviceId == deviceId && f.FlagType == type && f.WindowStartUtc == start);
-            return pending is not null
-                ? pending
-                : mediaItemId is not null
-                ? await db.MediaFlags.FirstOrDefaultAsync(f => f.MediaItemId == mediaItemId && f.FlagType == type, ct)
-                : await db.MediaFlags.FirstOrDefaultAsync(f => f.DeviceId == deviceId && f.FlagType == type && f.WindowStartUtc == start, ct);
+            MediaFlag? pending = db.MediaFlags.Local.FirstOrDefault(f =>
+                (mediaItemId is not null && f.MediaItemId == mediaItemId && f.FlagType == type)
+                || (f.DeviceId == deviceId && f.FlagType == type && f.WindowStartUtc == start));
+            return pending ?? await db.MediaFlags.FirstOrDefaultAsync(f =>
+                (mediaItemId != null && f.MediaItemId == mediaItemId && f.FlagType == type)
+                || (f.DeviceId == deviceId && f.FlagType == type && f.WindowStartUtc == start), ct);
         }
 
         /// <summary>Adds the flag or refreshes the matching Unreviewed row. Reviewed rows are returned as they are.</summary>

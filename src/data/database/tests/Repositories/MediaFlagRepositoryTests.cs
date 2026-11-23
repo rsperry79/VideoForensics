@@ -113,6 +113,21 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         [Fact]
+        public async Task MediaFlagRepository_UpsertRaisedAsync_ClipRaiseMatchesClipLessRowOnSameWindow()
+        {
+            // The unique index is (DeviceId, FlagType, WindowStartUtc). A clip-less row for the same window must be reused,
+            // not collided with: the backfill raises with a clip, and the lookup has to match on the index key too.
+            var device = Guid.NewGuid();
+            MediaFlag clipless = await _repository.UpsertRaisedAsync(Raised(device, null, MediaFlagType.BitrateCollapse, 0), Ct);
+            MediaItem item = await AddMediaAsync(device);
+
+            MediaFlag clip = await _repository.UpsertRaisedAsync(Raised(device, item.Id, MediaFlagType.BitrateCollapse, 0), Ct);
+
+            Assert.Equal(clipless.Id, clip.Id);
+            Assert.Equal(1, await _repository.CountAsync(new MediaFlagFilter(), Ct));
+        }
+
+        [Fact]
         public async Task MediaFlagRepository_UpsertRaisedAsync_NoMediaSameDeviceTypeStart_StoresOneRow()
         {
             var device = Guid.NewGuid();
