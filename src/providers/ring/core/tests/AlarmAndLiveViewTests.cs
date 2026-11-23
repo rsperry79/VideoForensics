@@ -272,6 +272,33 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
+        public async Task StartLiveView_Offer_HasNoBareFmtpLines()
+        {
+            // A fmtp line with no parameters ("a=fmtp:111") fails SDP parsing in Chrome: "Expects at least 2 fields".
+            // The browser then rejects the offer and the live view never starts.
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
+            mockHandler.SetupResponse(
+                "prd-api-us.prd.rings.solutions/api/v1/clap/ticket/request/signalsocket",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""ticket"": ""signal-ticket-abc"" }");
+            _ = await _mockSession.Authenticate();
+
+            var transport = new FakeWebSocketTransport();
+            RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport);
+
+            string sdp = transport.SentMessages
+                .Select(m => JsonDocument.Parse(m).RootElement)
+                .First(el => el.GetProperty("method").GetString() == "live_view")
+                .GetProperty("body").GetProperty("sdp").GetString()!;
+            string[] bare = sdp.Split('\n', StringSplitOptions.TrimEntries)
+                .Where(line => System.Text.RegularExpressions.Regex.IsMatch(line, @"^a=fmtp:\d+$"))
+                .ToArray();
+            Assert.Empty(bare);
+
+            await liveView.CloseAsync();
+        }
+
+        [Fact]
         public async Task StartLiveView_IceCandidates_AreSentOnlyAfterTheOffer()
         {
             // Ring closes a session whose ICE arrives before its live_view offer ("key 'config' not found"). The reference
