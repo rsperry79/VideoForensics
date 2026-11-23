@@ -307,7 +307,9 @@ if ($useService) {
     if (-not $SkipAttach -and -not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         Write-Host 'Attaching to the LocalSystem service needs elevation. Relaunching this script with sudo (UAC prompt).'
         if (-not (Get-Command sudo -ErrorAction SilentlyContinue)) {
-            throw 'sudo was not found. Turn on Settings > System > For developers > Enable sudo, or run this script from an elevated shell.'
+            Write-Host 'sudo was not found. Enable it under Settings > System > For developers > Enable sudo, or run this script from an elevated shell.' -ForegroundColor Red
+            if ([Environment]::UserInteractive) { Read-Host 'Press Enter to close this window' | Out-Null }
+            exit 1
         }
 
         # sudo takes each argument as is, so no quoting is added. Bound parameters are passed on, except -WhatIf and -Confirm.
@@ -325,8 +327,14 @@ if ($useService) {
 
         $shell = (Get-Process -Id $PID).Path
         & sudo $shell @relaunchArguments
-        # A declined UAC prompt or a failed elevated run ends here, before anything is staged by this shell.
-        exit $LASTEXITCODE
+        # The elevated run holds its own window on an error and closes on success. A declined UAC prompt or a failed
+        # launch has nothing to show there, so this shell holds instead.
+        $sudoExit = $LASTEXITCODE
+        if ($sudoExit -ne 0 -and [Environment]::UserInteractive) {
+            Write-Host "The elevated run did not complete (exit code $sudoExit)." -ForegroundColor Red
+            Read-Host 'Press Enter to close this window' | Out-Null
+        }
+        exit $sudoExit
     }
 }
 else {
@@ -449,6 +457,7 @@ try {
 catch {
     Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     if ([Environment]::UserInteractive) { Read-Host 'Press Enter to close this window' | Out-Null }
+    exit 1
 }
 finally {
     if ($stage) {
