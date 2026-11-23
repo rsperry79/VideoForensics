@@ -13,7 +13,7 @@ If the service is not installed, the build is copied to -DebugDirectory (appsett
 configuration exists) and started as a plain process, and the debugger attaches to that process. A previous process
 started from -DebugDirectory is stopped first. -Publish applies only in this case.
 
-The attach needs an elevated Visual Studio when the service runs as LocalSystem.
+The attach needs an elevated debugger when the service runs as LocalSystem, so the script relaunches itself with sudo\n(Windows sudo must be enabled under Settings > System > For developers).
 Use -WhatIf to see what would happen without staging, copying, starting, or attaching.
 
 .PARAMETER ServiceName
@@ -305,8 +305,15 @@ if ($useService) {
     # anything is staged, so a declined prompt changes nothing.
     $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
     if (-not $SkipAttach -and -not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        Write-Host 'Attaching to the LocalSystem service needs elevation. Relaunching this script elevated (UAC prompt).'
-        $relaunchArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
+        Write-Host 'Attaching to the LocalSystem service needs elevation. Relaunching this script with sudo (UAC prompt).'
+        if (-not (Get-Command sudo -ErrorAction SilentlyContinue)) {
+            Write-Host 'sudo was not found. Enable it under Settings > System > For developers > Enable sudo, or run this script from an elevated shell.' -ForegroundColor Red
+            if ([Environment]::UserInteractive) { Read-Host 'Press Enter to close this window' | Out-Null }
+            exit 1
+        }
+
+        # sudo takes each argument as is, so no quoting is added. Bound parameters are passed on, except -WhatIf and -Confirm.
+        $relaunchArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath)
         foreach ($name in $PSBoundParameters.Keys) {
             if ($name -in 'WhatIf', 'Confirm') { continue }
             $value = $PSBoundParameters[$name]
@@ -314,26 +321,20 @@ if ($useService) {
                 if ($value.IsPresent) { $relaunchArguments += "-$name" }
             }
             else {
-                $relaunchArguments += "-$name", "`"$value`""
+                $relaunchArguments += "-$name", "$value"
             }
         }
 
         $shell = (Get-Process -Id $PID).Path
-        $wt = Get-WindowsTerminalPath
-        try {
-            if ($wt) {
-                # One elevated Windows Terminal window holds the script and the log viewer. Windows Terminal returns at once,
-                # so this shell exits without waiting and the script's own exit code is not passed back.
-                $tabCommand = "`"$shell`" " + ($relaunchArguments -join " ")
-                Start-Process -FilePath $wt -ArgumentList "-w vf-debug new-tab --title `"VideoForensics debug`" $tabCommand" -Verb RunAs | Out-Null
-                exit 0
-            }
-            $elevated = Start-Process -FilePath $shell -ArgumentList $relaunchArguments -Verb RunAs -Wait -PassThru
+        & sudo $shell @relaunchArguments
+        # The elevated run holds its own window on an error and closes on success. A declined UAC prompt or a failed
+        # launch has nothing to show there, so this shell holds instead.
+        $sudoExit = $LASTEXITCODE
+        if ($sudoExit -ne 0 -and [Environment]::UserInteractive) {
+            Write-Host "The elevated run did not complete (exit code $sudoExit)." -ForegroundColor Red
+            Read-Host 'Press Enter to close this window' | Out-Null
         }
-        catch {
-            throw "Elevation was declined or failed, so nothing was staged or attached. $($_.Exception.Message)"
-        }
-        exit $elevated.ExitCode
+        exit $sudoExit
     }
 }
 else {
@@ -456,6 +457,7 @@ try {
 catch {
     Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     if ([Environment]::UserInteractive) { Read-Host 'Press Enter to close this window' | Out-Null }
+    exit 1
 }
 finally {
     if ($stage) {
