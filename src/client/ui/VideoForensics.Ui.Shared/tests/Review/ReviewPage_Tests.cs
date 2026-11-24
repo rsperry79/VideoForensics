@@ -154,9 +154,9 @@ public class ReviewPage_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewPage_DetailTab_RendersTheDetailComponentInPlaceOfThePlaceholder()
+    public void ReviewPage_DetailTabQuery_OpensTheTimelineTab()
     {
-        // Arrange
+        // Arrange: the Detail tab is removed, so an old tab=detail link falls back to the default tab
         AddDevices(2);
         NavigateToReview("tab=detail");
 
@@ -164,8 +164,9 @@ public class ReviewPage_Tests : ReviewTestContext
         IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
 
         // Assert
-        _ = Assert.Single(cut.FindComponents<ReviewDetailTab>());
-        Assert.DoesNotContain(L["TabPlaceholder", L["TabDetail"].Value].Value, cut.Find("[data-testid='review-tab-detail']").TextContent);
+        Assert.Equal(ReviewTab.Timeline, ReviewState.ActiveTab);
+        _ = Assert.Single(cut.FindAll("[data-testid='review-tab-timeline']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-tab-detail']"));
     }
 
     [Fact]
@@ -329,12 +330,12 @@ public class ReviewPage_Tests : ReviewTestContext
         ((IDisposable)cut.Instance).Dispose();
 
         // Act
-        Exception? error = await Record.ExceptionAsync(() => cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Detail)));
+        Exception? error = await Record.ExceptionAsync(() => cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events)));
 
         // Assert - the disposed page neither throws nor re-renders to the new tab
         Assert.Null(error);
         _ = Assert.Single(cut.FindAll("[data-testid='review-tab-timeline']"));
-        Assert.Empty(cut.FindAll("[data-testid='review-tab-detail']"));
+        Assert.Empty(cut.FindAll("[data-testid='review-tab-events']"));
     }
 
     [Fact]

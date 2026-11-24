@@ -5,5 +5,4 @@ public enum ReviewTab
 {
     Timeline,
     Events,
-    Detail,
 }

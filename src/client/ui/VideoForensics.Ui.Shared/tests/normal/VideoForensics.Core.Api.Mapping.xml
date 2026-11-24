@@ -1,0 +1,1063 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>VideoForensics.Core.Api.Mapping</name>
+    </assembly>
+    <members>
+        <member name="T:VideoForensics.Core.Api.Contracts.ExportJobDtoMapping">
+            <summary>Extension methods for mapping export job statuses to/from <see cref="T:VideoForensics.Core.Api.Contracts.ExportJobDto"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ExportJobDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.ExportJobStatus)">
+            <summary>Converts an export job status to its wire DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ExportJobDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.ExportJobDto)">
+            <summary>Converts an export job DTO back to the domain status.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.UserDtoMapping">
+            <summary>Extension methods for mapping User entities to/from UserDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.UserDtoMapping.ToDto(VideoForensics.Data.Common.Entities.User)">
+            <summary>
+            Converts a User entity to a UserDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.UserDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.UserDto)">
+            <summary>
+            Converts a UserDto to a User entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.ProviderAccountDtoMapping">
+            <summary>Extension methods for mapping ProviderAccount entities to/from ProviderAccountDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ProviderAccountDtoMapping.ToDto(VideoForensics.Data.Common.Entities.ProviderAccount)">
+            <summary>
+            Converts a ProviderAccount entity to a ProviderAccountDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ProviderAccountDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.ProviderAccountDto)">
+            <summary>
+            Converts a ProviderAccountDto to a ProviderAccount entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.SyncScheduleDtoMapping">
+            <summary>Extension methods for mapping SyncSchedule entities to/from SyncScheduleDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.SyncScheduleDtoMapping.ToDto(VideoForensics.Data.Common.Entities.SyncSchedule)">
+            <summary>
+            Converts a SyncSchedule entity to a SyncScheduleDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.SyncScheduleDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.SyncScheduleDto)">
+            <summary>
+            Converts a SyncScheduleDto to a SyncSchedule entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.BackupDtoMapping">
+            <summary>Extension methods for mapping backup result types to/from DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BackupDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.BackupImportStageResult)">
+            <summary>
+            Converts a BackupImportStageResult to a BackupImportStageResultDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BackupDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.BackupImportStageResultDto)">
+            <summary>
+            Converts a BackupImportStageResultDto to a BackupImportStageResult.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BackupDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.PrepareExportResult)">
+            <summary>
+            Converts a PrepareExportResult to a PrepareExportResultDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BackupDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.PrepareExportResultDto)">
+            <summary>
+            Converts a PrepareExportResultDto to a PrepareExportResult.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BackupDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.BackupExportResult)">
+            <summary>
+            Converts a BackupExportResult to a BackupExportResultDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BackupDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.BackupExportResultDto)">
+            <summary>
+            Converts a BackupExportResultDto to a BackupExportResult.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BackupDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.BackupImportResult)">
+            <summary>
+            Converts a BackupImportResult to a BackupImportResultDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BackupDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.BackupImportResultDto)">
+            <summary>
+            Converts a BackupImportResultDto to a BackupImportResult.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.BannedIpRangeDtoMapping">
+            <summary>Extension methods for mapping banned IP range domain entities to DTOs.</summary>
+        </member>
+        <member name="F:VideoForensics.Core.Api.Contracts.BannedIpRangeDtoMapping.SystemAutoBanOperatorId">
+            <summary>
+            Well-known CreatedByOperatorId that marks a ban as written by the system auto-ban tracker, not a person.
+            Single source of truth: FailedLoginIpTracker.SystemOperatorId and the UI's "Auto" badge both derive from this via BannedIpRangeDto.IsAutoBan.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.BannedIpRangeDtoMapping.ToDto(VideoForensics.Data.Common.Entities.BannedIpRange)">
+            <summary>
+            Converts a domain BannedIpRange to a BannedIpRangeDto.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository"/> that runs every case operation through <see cref="T:VideoForensics.Data.Common.Contracts.ICaseWriteRepository"/>
+            and maps entities, enums and jamming incidents to their DTOs. Device ids are read per case so ForensicCaseDto carries them.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.ICaseWriteRepository)">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ICaseRepository"/> that runs every case operation through <see cref="T:VideoForensics.Data.Common.Contracts.ICaseWriteRepository"/>
+            and maps entities, enums and jamming incidents to their DTOs. Device ids are read per case so ForensicCaseDto carries them.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.CreateAsync(System.String,System.String,System.String,System.Nullable{System.Guid},System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Collections.Generic.IReadOnlyCollection{System.Guid},System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.GetByNumberAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.ListAsync(System.Nullable{VideoForensics.Core.Api.Contracts.CaseStatusDto},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.ListForProviderAccountAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.UpdateDetailsAsync(System.Guid,System.String,System.String,System.Nullable{System.Guid},System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.SetScopeAsync(System.Guid,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Collections.Generic.IReadOnlyCollection{System.Guid},System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.GetDeviceIdsAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.CloseAsync(System.Guid,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.ReopenAsync(System.Guid,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.AddItemAsync(System.Guid,VideoForensics.Core.Api.Contracts.CaseItemKindDto,System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.RemoveItemAsync(System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.ListItemsAsync(System.Guid,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.ListCasesContainingAsync(VideoForensics.Core.Api.Contracts.CaseItemKindDto,System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseDtoRepository.CreateFromJammingDetectionAsync(VideoForensics.Core.Api.Contracts.JammingIncidentDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.CaseNoteDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ICaseNoteRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ICaseNoteWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseNoteDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.ICaseNoteWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ICaseNoteRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ICaseNoteWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseNoteDtoRepository.AddAsync(System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.CaseNoteDtoRepository.ListForCaseAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.DeviceDtoRepository">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IDeviceRepository"/> that reads devices through <see cref="T:VideoForensics.Data.Common.Contracts.IDeviceWriteRepository"/> and maps
+            each entity to a <see cref="T:VideoForensics.Core.Api.Contracts.DeviceDto"/>. Lets server code expose the DTO read surface without a second store.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.DeviceDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IDeviceWriteRepository)">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IDeviceRepository"/> that reads devices through <see cref="T:VideoForensics.Data.Common.Contracts.IDeviceWriteRepository"/> and maps
+            each entity to a <see cref="T:VideoForensics.Core.Api.Contracts.DeviceDto"/>. Lets server code expose the DTO read surface without a second store.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.DeviceDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.DeviceDtoRepository.GetByLocationIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.DeviceDtoRepository.GetByProviderDeviceIdAsync(System.Guid,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.DeviceDtoRepository.ListAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.DeviceTypedSettingsDtoRepository">
+            <summary>Server-side DTO view over the data-layer typed settings reader.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.DeviceTypedSettingsDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IDeviceTypedSettingsDataReader)">
+            <summary>Server-side DTO view over the data-layer typed settings reader.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.DeviceTypedSettingsDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.EventDetailDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IEventDetailRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IEventDetailWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDetailDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IEventDetailWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IEventDetailRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IEventDetailWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDetailDtoRepository.GetDetailsAsync(System.Collections.Generic.IReadOnlyCollection{System.Guid},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IEventRepository"/> that reads and writes events through <see cref="T:VideoForensics.Data.Common.Contracts.IEventWriteRepository"/>
+            and maps each entity, page and result to its DTO.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IEventWriteRepository)">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IEventRepository"/> that reads and writes events through <see cref="T:VideoForensics.Data.Common.Contracts.IEventWriteRepository"/>
+            and maps each entity, page and result to its DTO.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.UpsertAsync(VideoForensics.Core.Api.Contracts.EventDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.DeleteAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.ListByDeviceAndDateRangeAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.ListByLocationAndDateRangeAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.ListByDeviceEventTypeAndDateRangeAsync(System.Guid,System.String,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.ListByLocationEventTypeAndDateRangeAsync(System.Guid,System.String,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.GetEventTypeSummaryAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.ListUnansweredOrFlaggedAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.ListAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.ListPaginatedAsync(System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.EventDtoRepository.ListPageByDevicesAndDateRangeAsync(System.Collections.Generic.IReadOnlyCollection{System.Guid},System.DateTime,System.DateTime,System.Collections.Generic.IReadOnlyCollection{System.String},System.Collections.Generic.IReadOnlyCollection{System.String},System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IJammingRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IJammingWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IJammingWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IJammingRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IJammingWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository.UpsertIncidentAsync(VideoForensics.Core.Api.Contracts.JammingIncidentDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository.ListIncidentsAsync(System.Nullable{System.Guid},System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository.GetIncidentAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository.GetStatsAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository.ListStatsAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.JammingDtoRepository.RecomputeStatsAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.LegalHoldDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ILegalHoldRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ILegalHoldWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LegalHoldDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.ILegalHoldWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ILegalHoldRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ILegalHoldWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LegalHoldDtoRepository.PlaceAsync(System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LegalHoldDtoRepository.ReleaseAsync(System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LegalHoldDtoRepository.GetActiveByMediaItemIdsAsync(System.Collections.Generic.IEnumerable{System.Guid},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ILocationRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ILocationWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.ILocationWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ILocationRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ILocationWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.ListByProviderAccountIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.ListProviderAccountsForLocationAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.LinkToProviderAccountAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.GetByProviderLocationIdAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.GetByProviderLocationIdAsync(System.Guid,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.ListAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.AddAsync(VideoForensics.Core.Api.Contracts.LocationRecordDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.UpdateAsync(VideoForensics.Core.Api.Contracts.LocationRecordDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.LocationDtoRepository.DeleteAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository"/> that reads flags through <see cref="T:VideoForensics.Data.Common.Contracts.IMediaFlagWriteRepository"/> and maps
+            each entity, filter and page to its DTO.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IMediaFlagWriteRepository)">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IMediaFlagRepository"/> that reads flags through <see cref="T:VideoForensics.Data.Common.Contracts.IMediaFlagWriteRepository"/> and maps
+            each entity, filter and page to its DTO.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository.ListPageAsync(VideoForensics.Core.Api.Contracts.MediaFlagFilterDto,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository.CountAsync(VideoForensics.Core.Api.Contracts.MediaFlagFilterDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository.GetNeighbourAsync(System.Guid,VideoForensics.Core.Api.Contracts.MediaFlagFilterDto,VideoForensics.Core.Api.Contracts.MediaFlagNeighbourDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository.GetPositionAsync(System.Guid,VideoForensics.Core.Api.Contracts.MediaFlagFilterDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository.UpdateStatusAsync(System.Guid,System.String,System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaFlagDtoRepository.ReopenAsync(System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository"/> that reads media through <see cref="T:VideoForensics.Data.Common.Contracts.IMediaItemWriteRepository"/> and
+            maps each entity to its DTO. Gives the server the DTO read surface without a second store.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IMediaItemWriteRepository)">
+            <summary>
+            Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IMediaItemRepository"/> that reads media through <see cref="T:VideoForensics.Data.Common.Contracts.IMediaItemWriteRepository"/> and
+            maps each entity to its DTO. Gives the server the DTO read surface without a second store.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetByDeviceIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetDistinctVideoResolutionsAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetLatestRollupLoopAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetRecentByDeviceAsync(System.Guid,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetPageByDevicesAndDateRangeAsync(System.Collections.Generic.IReadOnlyCollection{System.Guid},System.DateTime,System.DateTime,System.Int32,System.Int32,System.Threading.CancellationToken,System.Boolean)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetByDeviceAndDateRangeAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetSnapshotsByDeviceAndDateRangeAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetMeasuredBitrateByDeviceAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.GetBitrateBaselineByDeviceAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.MediaItemDtoRepository.ListAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.NoteDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.INoteRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.INoteWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoteDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.INoteWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.INoteRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.INoteWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoteDtoRepository.AddAsync(VideoForensics.Core.Api.Contracts.NoteTargetKindDto,System.Guid,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoteDtoRepository.ListAsync(VideoForensics.Core.Api.Contracts.NoteTargetKindDto,System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.NoticeDtoMapping">
+            <summary>Maps the Notice entity to its wire DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoticeDtoMapping.ToDto(VideoForensics.Data.Common.Entities.Notice)">
+            <summary>Converts a Notice entity to a NoticeDto.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.NoticeDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.INoticeRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.INoticeWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoticeDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.INoticeWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.INoticeRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.INoticeWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoticeDtoRepository.ListForOperatorAsync(System.Guid,System.Boolean,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoticeDtoRepository.CountUndismissedForOperatorAsync(System.Guid,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.NoticeDismissalDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.INoticeDismissalRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.INoticeDismissalWriteRepository"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoticeDismissalDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.INoticeDismissalWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.INoticeDismissalRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.INoticeDismissalWriteRepository"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoticeDismissalDtoRepository.DismissAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.NoticeDismissalDtoRepository.DismissAllAsync(System.Collections.Generic.IEnumerable{System.Guid},System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.OperatorDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IOperatorRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IOperatorWriteRepository"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.OperatorDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IOperatorWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IOperatorRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IOperatorWriteRepository"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.OperatorDtoRepository.IsEmptyAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.OperatorPreferencesDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IOperatorPreferencesRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IOperatorPreferencesWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.OperatorPreferencesDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IOperatorPreferencesWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IOperatorPreferencesRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IOperatorPreferencesWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.OperatorPreferencesDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.OperatorPreferencesDtoRepository.UpsertAsync(VideoForensics.Core.Api.Contracts.OperatorPreferencesDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.OperatorPreferencesDtoRepository.SetUiModeAsync(System.Guid,System.String,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.OperatorPreferencesDtoRepository.SetEncryptionWarningDismissedAsync(System.Guid,System.Boolean,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IProviderAccountRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IProviderAccountWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IProviderAccountWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IProviderAccountRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IProviderAccountWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.GetByUserIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.GetByUserAndProviderAsync(System.Guid,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.ListAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.ListActiveAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.ListRemovedAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.RetireAsync(System.Guid,System.DateTime,System.Threading.CancellationToken,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.AddAsync(VideoForensics.Core.Api.Contracts.ProviderAccountDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.UpdateAsync(VideoForensics.Core.Api.Contracts.ProviderAccountDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.DeleteAsync(System.Guid,System.Threading.CancellationToken,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.RecordErrorAsync(System.Guid,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.ProviderAccountDtoRepository.RecordSuccessAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.SnapshotCaptureDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ISnapshotCaptureRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ISnapshotCaptureWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.SnapshotCaptureDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.ISnapshotCaptureWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ISnapshotCaptureRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ISnapshotCaptureWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.SnapshotCaptureDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.SnapshotCaptureDtoRepository.GetCurrentForDeviceAsync(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.SnapshotCaptureDtoRepository.GetAttemptsForDeviceAsync(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.SnapshotCaptureDtoRepository.GetDeviceIdsWithAttemptsAsync(System.Collections.Generic.IReadOnlyCollection{System.Guid},System.DateTimeOffset,System.DateTimeOffset,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.SyncScheduleDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ISyncScheduleWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.SyncScheduleDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.ISyncScheduleWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.ISyncScheduleRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.ISyncScheduleWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.SyncScheduleDtoRepository.GetByProviderAccountIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.SyncScheduleDtoRepository.UpsertAsync(VideoForensics.Core.Api.Contracts.SyncScheduleDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IUserRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IUserWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository.#ctor(VideoForensics.Data.Common.Contracts.IUserWriteRepository)">
+            <summary>Server-side <see cref="T:VideoForensics.Core.Api.Contracts.Repositories.IUserRepository"/> over <see cref="T:VideoForensics.Data.Common.Contracts.IUserWriteRepository"/>, mapping to DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository.GetAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository.GetByProviderKeyAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository.ListAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository.AddAsync(VideoForensics.Core.Api.Contracts.UserDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository.UpdateAsync(VideoForensics.Core.Api.Contracts.UserDto,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.Repositories.UserDtoRepository.DeleteAsync(System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.CaseNoteDtoMapping">
+            <summary>Extension methods for mapping case Note entities to/from CaseNoteDto.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.CaseNoteDtoMapping.ToDto(VideoForensics.Data.Common.Entities.Note)">
+            <summary>Converts a case Note entity to a CaseNoteDto. The note's target ID is the case ID.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.CaseNoteDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.CaseNoteDto)">
+            <summary>Converts a CaseNoteDto to a case Note entity (target kind Case).</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.ForensicCaseDtoMapping">
+            <summary>Extension methods for mapping ForensicCase entities to/from ForensicCaseDto and AccountCaseDto.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ForensicCaseDtoMapping.ToDto(VideoForensics.Data.Common.Entities.ForensicCase)">
+            <summary>Converts a ForensicCase entity to an AccountCaseDto, deriving CaseType from CaseNumber.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ForensicCaseDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.AccountCaseDto)">
+            <summary>Converts an AccountCaseDto back to a partial ForensicCase entity (list fields only).</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ForensicCaseDtoMapping.ToDto(VideoForensics.Data.Common.Entities.ForensicCase,System.Collections.Generic.IReadOnlyList{System.Guid})">
+            <summary>
+            Converts a ForensicCase entity to a ForensicCaseDto.
+            DeviceIds are provided separately by the caller (from GetDeviceIdsAsync).
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ForensicCaseDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.ForensicCaseDto)">
+            <summary>
+            Converts a ForensicCaseDto to a ForensicCase entity (without DeviceIds, which are managed separately).
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.CaseItemDtoMapping">
+            <summary>Extension methods for mapping CaseItem entities to/from CaseItemDto.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.CaseItemDtoMapping.ToDto(VideoForensics.Data.Common.Entities.CaseItem)">
+            <summary>
+            Converts a CaseItem entity to a CaseItemDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.CaseItemDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.CaseItemDto)">
+            <summary>
+            Converts a CaseItemDto to a CaseItem entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.ChatDtoMapping">
+            <summary>Extension methods for mapping chat entities to/from ChatDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ChatDtoMapping.ToDto(VideoForensics.Core.Api.Contracts.ChatTurn)">
+            <summary>
+            Converts a ChatTurn entity to a ChatMessageDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ChatDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.ChatMessageDto)">
+            <summary>
+            Converts a ChatMessageDto to a ChatTurn entity.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ChatDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.ChatResponseDto)">
+            <summary>
+            Converts a ChatResponseDto to a ChatTurnResult.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ChatDtoMapping.ToDto(VideoForensics.Core.Api.Contracts.ChatTurnResult)">
+            <summary>
+            Converts a ChatTurnResult to a ChatResponseDto.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.ClientConfigDtoMapping">
+            <summary>Extension methods for mapping configuration objects to/from ClientConfigDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ClientConfigDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.IForensicsConfiguration)">
+            <summary>
+            Converts an IForensicsConfiguration to a ClientConfigDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ClientConfigDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.ClientConfigDto)">
+            <summary>
+            Converts a ClientConfigDto back to a configuration object. Only the client-safe allowlist is set; every other
+            setting keeps its default, because the server never sends it. A client must not persist the result.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.DeviceConfigSnapshotDtoMapping">
+            <summary>Extension methods for mapping DeviceConfigSnapshot entities to/from DeviceConfigSnapshotDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.DeviceConfigSnapshotDtoMapping.ToDto(VideoForensics.Data.Common.Entities.DeviceConfigSnapshot)">
+            <summary>
+            Converts a DeviceConfigSnapshot entity to a DeviceConfigSnapshotDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.DeviceConfigSnapshotDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.DeviceConfigSnapshotDto)">
+            <summary>
+            Converts a DeviceConfigSnapshotDto to a DeviceConfigSnapshot entity.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.DeviceConfigSnapshotDtoMapping.ToCustomSettingsDictionary(VideoForensics.Data.Common.Entities.DeviceConfigSnapshot)">
+            <summary>Builds the custom settings object for a snapshot. A snapshot with no setting rows gives an empty object.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.DeviceConfigSnapshotDtoMapping.ToCustomSettingRows(System.Collections.Generic.Dictionary{System.String,System.Text.Json.JsonElement})">
+            <summary>Builds one setting row per key. A null object gives no rows.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.DeviceDtoMapping">
+            <summary>Extension methods for mapping Device entities to/from DeviceDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.DeviceDtoMapping.ToDto(VideoForensics.Data.Common.Entities.Device)">
+            <summary>
+            Converts a Device entity to a DeviceDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.DeviceDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.DeviceDto)">
+            <summary>
+            Converts a DeviceDto to a Device entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.DeviceTypedSettingsDtoMapping">
+            <summary>Maps the typed settings read model to its DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.DeviceTypedSettingsDtoMapping.ToDto(VideoForensics.Data.Common.Contracts.DeviceTypedSettings,System.Guid)">
+            <summary>Converts the typed rows for <paramref name="deviceId"/> to a DTO.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.EnumMappings">
+            <summary>Maps data-layer enums used in DTO signatures to their DTO enums, by member name.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EnumMappings.ToDto(VideoForensics.Data.Common.Entities.OperatorRole)">
+            <summary>Converts an OperatorRole to its DTO enum.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EnumMappings.ToDomain(VideoForensics.Core.Api.Contracts.OperatorRoleDto)">
+            <summary>Converts an OperatorRoleDto to the data-layer OperatorRole.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EnumMappings.ToDto(VideoForensics.Data.Common.Entities.TwoFactorRequirementOverride)">
+            <summary>Converts a TwoFactorRequirementOverride to its DTO enum.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EnumMappings.ToDomain(VideoForensics.Core.Api.Contracts.TwoFactorRequirementOverrideDto)">
+            <summary>Converts a TwoFactorRequirementOverrideDto to the data-layer enum.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EnumMappings.ToDto(VideoForensics.Data.Common.Entities.DiscrepancyType)">
+            <summary>Converts a DiscrepancyType to its DTO enum.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EnumMappings.ToDomain(VideoForensics.Core.Api.Contracts.DiscrepancyTypeDto)">
+            <summary>Converts a DiscrepancyTypeDto to the data-layer DiscrepancyType.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.EventDetailDtoMapping">
+            <summary>Extension methods for mapping event detail rows to <see cref="T:VideoForensics.Core.Api.Contracts.EventDetailDto"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EventDetailDtoMapping.ToDto(VideoForensics.Data.Common.Contracts.EventDetail)">
+            <summary>
+            Converts an <see cref="T:VideoForensics.Data.Common.Contracts.EventDetail"/> to its DTO. Child lists keep the order the repository returned them in,
+            so occurrences stay oldest first.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EventDetailDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.EventDetailDto)">
+            <summary>
+            Converts an <see cref="T:VideoForensics.Core.Api.Contracts.EventDetailDto"/> back to an <see cref="T:VideoForensics.Data.Common.Contracts.EventDetail"/> for client-side reads. The DTO does not
+            carry the row keys, so every entity id (and the detection id on child rows) is <see cref="F:System.Guid.Empty"/>; the
+            Detail tab reads values only and never writes these rows back.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.EventDtoMapping">
+            <summary>Extension methods for mapping Event entities to/from EventDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EventDtoMapping.ToDto(VideoForensics.Data.Common.Entities.Event)">
+            <summary>
+            Converts an Event entity to an EventDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.EventDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.EventDto)">
+            <summary>
+            Converts an EventDto to an Event entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.LegalHoldDtoMapping">
+            <summary>Extension methods for mapping LegalHold entities to/from LegalHoldDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LegalHoldDtoMapping.ToDto(VideoForensics.Data.Common.Entities.LegalHold)">
+            <summary>
+            Converts a LegalHold entity to a LegalHoldDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LegalHoldDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.LegalHoldDto)">
+            <summary>
+            Converts a LegalHoldDto to a LegalHold entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.ReconciliationDiscrepancyDtoMapping">
+            <summary>Extension methods for mapping ReconciliationDiscrepancy entities to/from ReconciliationDiscrepancyDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ReconciliationDiscrepancyDtoMapping.ToDto(VideoForensics.Data.Common.Entities.ReconciliationDiscrepancy)">
+            <summary>
+            Converts a ReconciliationDiscrepancy entity to a ReconciliationDiscrepancyDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ReconciliationDiscrepancyDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.ReconciliationDiscrepancyDto)">
+            <summary>
+            Converts a ReconciliationDiscrepancyDto to a ReconciliationDiscrepancy entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.IntegrityRecordDtoMapping">
+            <summary>Extension methods for mapping IntegrityRecord entities to/from IntegrityRecordDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.IntegrityRecordDtoMapping.ToDto(VideoForensics.Data.Common.Entities.IntegrityRecord)">
+            <summary>
+            Converts an IntegrityRecord entity to an IntegrityRecordDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.IntegrityRecordDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.IntegrityRecordDto)">
+            <summary>
+            Converts an IntegrityRecordDto to an IntegrityRecord entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.JammingConfidenceDtoMapping">
+            <summary>Maps the jamming confidence level between the data layer and its DTO, by member name.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingConfidenceDtoMapping.ToDto(VideoForensics.Data.Common.Entities.JammingConfidenceLevel)">
+            <summary>Converts a data-layer JammingConfidenceLevel to its DTO enum.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingConfidenceDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.JammingConfidenceLevelDto)">
+            <summary>Converts a JammingConfidenceLevelDto to the data-layer enum.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.JammingDtoMapping">
+            <summary>Extension methods for mapping jamming entities to/from their wire DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingDtoMapping.ToDto(VideoForensics.Data.Common.Entities.JammingIncidentRecord)">
+            <summary>Converts a <see cref="T:VideoForensics.Data.Common.Entities.JammingIncidentRecord"/> to a <see cref="T:VideoForensics.Core.Api.Contracts.JammingIncidentDto"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.JammingIncidentDto)">
+            <summary>Converts a <see cref="T:VideoForensics.Core.Api.Contracts.JammingIncidentDto"/> to a <see cref="T:VideoForensics.Data.Common.Entities.JammingIncidentRecord"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.UpsertJammingIncidentRequest)">
+            <summary>
+            Converts an <see cref="T:VideoForensics.Core.Api.Contracts.UpsertJammingIncidentRequest"/> to a <see cref="T:VideoForensics.Data.Common.Entities.JammingIncidentRecord"/>.
+            <c>Source</c> is parsed from the request (null = ManuallyRecorded; the server validates the name first);
+            <c>DetectedAtUtc</c> = default and <c>CaseId</c> = null are server-controlled and must be overlaid by the caller.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingDtoMapping.ToDto(VideoForensics.Data.Common.Entities.JammingStatsSummary)">
+            <summary>Converts a <see cref="T:VideoForensics.Data.Common.Entities.JammingStatsSummary"/> to a <see cref="T:VideoForensics.Core.Api.Contracts.JammingStatsSummaryDto"/>.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.JammingStatsSummaryDto)">
+            <summary>Converts a <see cref="T:VideoForensics.Core.Api.Contracts.JammingStatsSummaryDto"/> to a <see cref="T:VideoForensics.Data.Common.Entities.JammingStatsSummary"/>.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.LiveViewDtoMapping">
+            <summary>Extension methods for mapping live-view session entities to wire DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LiveViewDtoMapping.ToDto(VideoForensics.Data.Common.Entities.LiveViewSession)">
+            <summary>Converts a LiveViewSession entity to a LiveViewSessionDto, sending enums as their names.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LiveViewDtoMapping.ToDto(VideoForensics.Data.Common.Entities.LiveViewTelemetrySample)">
+            <summary>Converts a LiveViewTelemetrySample entity to a LiveViewTelemetrySampleDto.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.LiveViewTriggerReasonDtoMapping">
+            <summary>Maps the live-view trigger reason between the data layer and its DTO, by member name.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LiveViewTriggerReasonDtoMapping.ToDto(VideoForensics.Data.Common.Entities.LiveViewTriggerReason)">
+            <summary>Converts a data-layer LiveViewTriggerReason to its DTO enum.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LiveViewTriggerReasonDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.LiveViewTriggerReasonDto)">
+            <summary>Converts a LiveViewTriggerReasonDto to the data-layer enum.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.LocationRecordDtoMapping">
+            <summary>Maps the Location and OperatorPreferences entities to and from their DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LocationRecordDtoMapping.ToDto(VideoForensics.Data.Common.Entities.Location)">
+            <summary>Converts a Location entity to a LocationRecordDto.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LocationRecordDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.LocationRecordDto)">
+            <summary>Converts a LocationRecordDto to a Location entity.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LocationRecordDtoMapping.ToDto(VideoForensics.Data.Common.Entities.OperatorPreferences)">
+            <summary>Converts an OperatorPreferences entity to an OperatorPreferencesDto.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LocationRecordDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.OperatorPreferencesDto)">
+            <summary>Converts an OperatorPreferencesDto to an OperatorPreferences entity.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.LockoutPolicySettingsDtoMapping">
+            <summary>Extension methods for mapping lockout policy domain types to/from DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LockoutPolicySettingsDtoMapping.ToDto(VideoForensics.Data.Common.Entities.LockoutPolicySettings)">
+            <summary>
+            Converts a domain LockoutPolicySettings to a LockoutPolicySettingsDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.LockoutPolicySettingsDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.LockoutPolicySettingsDto,System.Nullable{System.Guid})">
+            <summary>
+            Converts a LockoutPolicySettingsDto to a domain LockoutPolicySettings.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.MediaBitrateDtoMapping">
+            <summary>Maps bitrate data-layer types to their DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.MediaBitrateDtoMapping.ToDto(VideoForensics.Data.Common.Contracts.MeasuredBitrate)">
+            <summary>Converts a MeasuredBitrate to its DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.MediaBitrateDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.MeasuredBitrateDto)">
+            <summary>Converts a MeasuredBitrateDto to the data-layer MeasuredBitrate.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.MediaBitrateDtoMapping.ToDto(VideoForensics.Data.Common.Contracts.AllTimeBitrateBaseline)">
+            <summary>Converts an AllTimeBitrateBaseline to its DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.MediaBitrateDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.AllTimeBitrateBaselineDto)">
+            <summary>Converts an AllTimeBitrateBaselineDto to the data-layer AllTimeBitrateBaseline.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.MediaItemDtoMapping">
+            <summary>Extension methods for mapping MediaItem entities to/from MediaItemDtos.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.MediaItemDtoMapping.ToDto(VideoForensics.Data.Common.Entities.MediaItem)">
+            <summary>
+            Converts a MediaItem entity to a MediaItemDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.MediaItemDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.MediaItemDto)">
+            <summary>
+            Converts a MediaItemDto to a MediaItem entity.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.MediaStillDtoMapping">
+            <summary>Extension methods for mapping MediaStillInfo to/from MediaStillDto.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.MediaStillDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.MediaStillInfo)">
+            <summary>Converts a MediaStillInfo (service-layer capture result) to a MediaStillDto.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.MediaStillDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.MediaStillDto)">
+            <summary>Converts a MediaStillDto back to a MediaStillInfo.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.NetworkTierDtoMapping">
+            <summary>Maps the network tier between the data layer and its DTO, by member name.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.NetworkTierDtoMapping.ToDto(VideoForensics.Data.Common.Entities.NetworkTier)">
+            <summary>Converts a data-layer NetworkTier to its DTO enum.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.NetworkTierDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.NetworkTierDto)">
+            <summary>Converts a NetworkTierDto to the data-layer enum.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.NoteDtoMapping">
+            <summary>Extension methods for mapping any-kind Note entities to NoteDto.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.NoteDtoMapping.ToNoteDto(VideoForensics.Data.Common.Entities.Note)">
+            <summary>Converts a Note entity of any target kind to a NoteDto.</summary>
+            <param name="note">The note entity to convert.</param>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.NoteDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.NoteDto)">
+            <summary>Converts a NoteDto to a Note entity of the DTO's target kind.</summary>
+            <param name="dto">The note DTO to convert.</param>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.NotificationPreferencesDtoMapping">
+            <summary>Extension methods for mapping notification preference entities to and from DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.NotificationPreferencesDtoMapping.ToDto(VideoForensics.Data.Common.Entities.OperatorNotificationPreference)">
+            <summary>
+            Converts a stored preference row to a DTO. Event type names are returned sorted so the response is stable.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.NotificationPreferencesDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.NotificationPreferencesDto)">
+            <summary>
+            Converts a DTO to a preference entity. <c>OperatorId</c> is left unset; the caller sets it from the authenticated operator.
+            The DTO must already be validated (see the endpoint), because an out-of-range severity is cast without checking.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.ProviderSyncRunDtoMapping">
+            <summary>Extension methods for mapping ProviderSyncRun entities to sync run DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ProviderSyncRunDtoMapping.ToDto(VideoForensics.Data.Common.Entities.ProviderSyncRun)">
+            <summary>
+            Converts a ProviderSyncRun entity to a ProviderSyncRunDetailDto.
+            </summary>
+            <param name="entity">The sync run entity to map.</param>
+            <returns>The detail DTO, including the error message.</returns>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.ProviderSyncRunDtoMapping.ToSummaryDto(VideoForensics.Data.Common.Entities.ProviderSyncRun)">
+            <summary>
+            Converts a ProviderSyncRun entity to a ProviderSyncRunSummaryDto for list views.
+            Named ToSummaryDto because C# cannot overload ToDto on return type alone.
+            </summary>
+            <param name="entity">The sync run entity to map.</param>
+            <returns>The summary DTO, without the account ID or error message.</returns>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.SnapshotCaptureDtoMapping">
+            <summary>Maps the SnapshotCapture entity to its wire DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.SnapshotCaptureDtoMapping.ToDto(VideoForensics.Data.Common.Entities.SnapshotCapture)">
+            <summary>Converts a SnapshotCapture entity to a SnapshotCaptureDto.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping">
+            <summary>Extension methods for mapping storage settings domain types to/from DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.StorageCategoryStatus)">
+            <summary>
+            Converts a domain StorageCategoryStatus to a StorageCategoryStatusDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.StorageCategoryStatusDto)">
+            <summary>
+            Converts a StorageCategoryStatusDto to a domain StorageCategoryStatus.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.StorageSettings)">
+            <summary>
+            Converts a domain StorageSettings to a StorageSettingsDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.StorageSettingsDto)">
+            <summary>
+            Converts a StorageSettingsDto to a domain StorageSettings.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.RelocateStorageCategoryRequest)">
+            <summary>
+            Converts a domain RelocateStorageCategoryRequest to a RelocateStorageCategoryRequestDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.RelocateStorageCategoryRequestDto)">
+            <summary>
+            Converts a RelocateStorageCategoryRequestDto to a domain RelocateStorageCategoryRequest.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping.ToDto(VideoForensics.Client.Common.Contracts.RelocateStorageCategoryResult)">
+            <summary>
+            Converts a domain RelocateStorageCategoryResult to a RelocateStorageCategoryResultDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.StorageSettingsDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.RelocateStorageCategoryResultDto)">
+            <summary>
+            Converts a RelocateStorageCategoryResultDto to a domain RelocateStorageCategoryResult.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.JammingScheduleWindowDtoMapping">
+            <summary>Maps jamming schedule windows between the data layer and their DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingScheduleWindowDtoMapping.ToDto(VideoForensics.Data.Common.Entities.JammingScheduleWindow)">
+            <summary>Converts a JammingScheduleWindow entity to its DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.JammingScheduleWindowDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.JammingScheduleWindowDto,System.Guid)">
+            <summary>Converts a JammingScheduleWindowDto to an entity owned by the given sync schedule.</summary>
+        </member>
+        <member name="T:VideoForensics.Core.Api.Contracts.TwoFactorPolicyDtoMapping">
+            <summary>Extension methods for mapping two-factor policy domain types to/from DTOs.</summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.TwoFactorPolicyDtoMapping.ToDto(VideoForensics.Data.Common.Entities.TwoFactorRoleRequirement)">
+            <summary>
+            Converts a domain TwoFactorRoleRequirement to a TwoFactorRoleRequirementDto.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Core.Api.Contracts.TwoFactorPolicyDtoMapping.ToDomain(VideoForensics.Core.Api.Contracts.TwoFactorRoleRequirementDto,System.Nullable{System.Guid})">
+            <summary>
+            Converts a TwoFactorRoleRequirementDto to a domain TwoFactorRoleRequirement.
+            </summary>
+        </member>
+        <member name="T:VideoForensics.Client.Hosting.Signal.MediaFlagMapping">
+            <summary>
+            Maps media flags between their domain types and the wire DTOs (<c>ToDto</c> / <c>ToDomain</c>). Enums cross the wire as
+            their names; an unknown name is an <see cref="T:System.ArgumentException"/> so the server can answer 400 and a client can fail loudly.
+            </summary>
+        </member>
+        <member name="M:VideoForensics.Client.Hosting.Signal.MediaFlagMapping.ToDto(VideoForensics.Data.Common.Entities.MediaFlag)">
+            <summary>Converts a domain media flag to its wire DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Client.Hosting.Signal.MediaFlagMapping.ToDomain(VideoForensics.Core.Api.Contracts.MediaFlagDto)">
+            <summary>Converts a wire media flag DTO to the domain type.</summary>
+        </member>
+        <member name="M:VideoForensics.Client.Hosting.Signal.MediaFlagMapping.ToDto(VideoForensics.Data.Common.Contracts.MediaFlagPage)">
+            <summary>Converts a domain page of media flags to its wire DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Client.Hosting.Signal.MediaFlagMapping.ToDomain(VideoForensics.Core.Api.Contracts.MediaFlagPageDto)">
+            <summary>Converts a wire page of media flags to the domain type.</summary>
+        </member>
+        <member name="M:VideoForensics.Client.Hosting.Signal.MediaFlagMapping.ToDto(VideoForensics.Data.Common.Contracts.MediaFlagFilter)">
+            <summary>Converts a domain media flag filter to its wire DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Client.Hosting.Signal.MediaFlagMapping.ToDomain(VideoForensics.Core.Api.Contracts.MediaFlagFilterDto)">
+            <summary>Builds the domain filter. Throws <see cref="T:System.ArgumentException"/> on an unknown flag type or status name.</summary>
+        </member>
+        <member name="M:VideoForensics.Client.Hosting.Signal.MediaFlagMapping.ToDto(VideoForensics.Data.Common.Contracts.FlagStatusConflictException)">
+            <summary>Converts a domain status conflict to its wire DTO.</summary>
+        </member>
+        <member name="M:VideoForensics.Client.Hosting.Signal.MediaFlagMapping.ToDomain(VideoForensics.Core.Api.Contracts.FlagStatusConflictDto,System.Guid)">
+            <summary>Rebuilds the conflict on the client, using the flag id the caller asked about.</summary>
+        </member>
+    </members>
+</doc>

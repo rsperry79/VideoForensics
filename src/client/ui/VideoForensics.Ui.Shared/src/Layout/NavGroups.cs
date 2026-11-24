@@ -68,7 +68,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
-            // The review tabs (Timeline, Events, Detail) live in the review page header. Only Live stays in the menu.
+            // The review tabs (Timeline, Events) live in the review page header. Only Live stays in the menu.
             new("media", "Media", "/media",
             [
                 new("Live", "/live-view")

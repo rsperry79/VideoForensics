@@ -721,7 +721,7 @@ public class ReviewEventsTab_Tests : ReviewTestContext
         await cut.InvokeAsync(() =>
         {
             ReviewState.SetCursor(Base.AddMinutes(5));
-            ReviewState.SetTab(ReviewTab.Detail);
+            ReviewState.SetTab(ReviewTab.Timeline);
             ReviewState.SelectEvent(evt.Id);
         });
 
