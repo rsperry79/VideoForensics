@@ -30,6 +30,9 @@
     /// <summary>Plays or pauses this preview.</summary>
     public Task TogglePlayAsync() => _player is null ? Task.CompletedTask : _player.TogglePlayAsync();
 
+    /// <summary>Starts this preview when it is paused.</summary>
+    public Task PlayAsync() => _player is null ? Task.CompletedTask : _player.PlayAsync();
+
     /// <summary>Steps this preview by a number of seconds.</summary>
     public Task StepAsync(double seconds) => _player is null ? Task.CompletedTask : _player.StepAsync(seconds);
 }

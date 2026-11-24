@@ -584,4 +584,13 @@
   <data name="FiltersButton" xml:space="preserve">
     <value>Filters</value>
   </data>
+  <data name="EventsSystemLoadFailed" xml:space="preserve">
+    <value>Some system events could not be loaded. The other events are shown.</value>
+  </data>
+  <data name="EventHoverLine" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="EventHoverRange" xml:space="preserve">
+    <value>{0} to {1}</value>
+  </data>
 </root>

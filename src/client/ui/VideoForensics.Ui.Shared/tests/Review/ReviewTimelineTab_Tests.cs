@@ -748,4 +748,86 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
         // Assert
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid='review-grab-still-status']")));
     }
+
+    private const string PlayerScript = "./_content/VideoForensics.Client.Ui.Shared/scripts/media-player.js";
+
+    /// <summary>Registers the media-player module. Without it the players never get their module, so no play reaches JS.</summary>
+    private void ServePlayerModule()
+    {
+        _ = JSInterop.SetupModule(PlayerScript);
+    }
+
+    /// <summary>The play calls the media-player module received.</summary>
+    private int PlayCalls => JSInterop.Invocations.Count(i => i.Identifier == "play");
+
+    [Fact]
+    public void ReviewTimelineTab_PlayOnArrivalPending_SingleCamera_PlaysOnceAndClearsTheRequest()
+    {
+        // Arrange
+        ServePlayerModule();
+        AddDevices(2);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ServeOneClipPerCamera();
+        ReviewState.RequestPlayOnArrival();
+
+        // Act
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Equal(1, PlayCalls));
+        Assert.False(ReviewState.PlayOnArrival);
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_PlayOnArrivalPending_Grid_PlaysAndClearsTheRequest()
+    {
+        // Arrange
+        ServePlayerModule();
+        AddDevices(2);
+        ReviewState.SetCameras(Devices.Select(d => d.Id));
+        ServeOneClipPerCamera();
+        ReviewState.RequestPlayOnArrival();
+
+        // Act
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<CameraGrid>()));
+        cut.WaitForAssertion(() => Assert.True(PlayCalls >= 1));
+        Assert.False(ReviewState.PlayOnArrival);
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_NoPlayOnArrival_DoesNotPlay()
+    {
+        // Arrange
+        ServePlayerModule();
+        AddDevices(2);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ServeOneClipPerCamera();
+
+        // Act
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => _ = Assert.Single(cut.FindComponents<SingleCameraView>()));
+        Assert.Equal(0, PlayCalls);
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_PlayOnArrivalPending_NoClips_ClearsTheRequestAndDoesNotPlay()
+    {
+        // Arrange: the load returns no clip for the selected camera
+        ServePlayerModule();
+        AddDevices(1);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ReviewState.RequestPlayOnArrival();
+
+        // Act
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+
+        // Assert: the request must not wait for a later clip to appear
+        cut.WaitForAssertion(() => Assert.False(ReviewState.PlayOnArrival));
+        Assert.Equal(0, PlayCalls);
+    }
 }

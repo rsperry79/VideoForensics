@@ -214,6 +214,7 @@
             _loaded = null;
             _tiles = [];
             _loadedDeviceIds = new HashSet<Guid>();
+            _ = State.TryConsumePlayOnArrival();
             StateHasChanged();
             return;
         }
@@ -233,6 +234,12 @@
             }
 
             Adopt(key, toLoad, set);
+
+            // No clip means nothing to play: drop a pending request now, so it cannot wait for a clip that arrives later.
+            if (_loaded?.HasSelectedClips != true)
+            {
+                _ = State.TryConsumePlayOnArrival();
+            }
             if (State.Cursor is null)
             {
                 SetDefaultCursor(key.Cameras.Count);
@@ -255,6 +262,7 @@
             _loaded = null;
             _tiles = [];
             _error = true;
+            _ = State.TryConsumePlayOnArrival();
         }
 
         if (IsCurrent(cts))
@@ -461,6 +469,41 @@
     protected override void OnAfterRender(bool firstRender)
     {
         PublishGrabStill();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await PlayOnArrivalAsync();
+    }
+
+    /// <summary>
+    /// Starts playback once for a request made on another tab (a row on the Events tab). It waits for the load of the current
+    /// state, so the URLs are cached and the player is rendered; until then the request stays pending. A grid starts all its
+    /// cameras, and a single view starts its main video. Each starts only when paused.
+    /// </summary>
+    private async Task PlayOnArrivalAsync()
+    {
+        if (_disposed || !State.PlayOnArrival || _loaded is null || !_loaded.Key.Matches(State))
+        {
+            return;
+        }
+
+        if (!State.TryConsumePlayOnArrival())
+        {
+            return;
+        }
+
+        if (State.CameraIds.Count == 1)
+        {
+            if (_singleCamera is not null)
+            {
+                await _singleCamera.PlayAsync();
+            }
+        }
+        else if (_grid is not null)
+        {
+            await _grid.PlayAsync();
+        }
     }
 
     /// <summary>

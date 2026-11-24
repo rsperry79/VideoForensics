@@ -134,9 +134,44 @@ public sealed class ReviewPageState
         }
     }
 
-    /// <summary>Switches the active tab.</summary>
+    /// <summary>
+    /// True when the next Timeline render should start playback: a row on another tab asked for it. The Timeline tab
+    /// consumes it once, after its first load, so it is not a standing setting.
+    /// </summary>
+    public bool PlayOnArrival { get; private set; }
+
+    /// <summary>
+    /// Asks the Timeline tab to start playback when it next renders with a loaded clip. Set it before
+    /// <see cref="SetTab"/> to Timeline, so the switch carries the request.
+    /// </summary>
+    public void RequestPlayOnArrival()
+    {
+        PlayOnArrival = true;
+    }
+
+    /// <summary>Returns true once per request, and clears it. Returns false when no request is pending.</summary>
+    public bool TryConsumePlayOnArrival()
+    {
+        if (!PlayOnArrival)
+        {
+            return false;
+        }
+
+        PlayOnArrival = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Switches the active tab. Leaving the Timeline tab drops a pending play request, so a request made on one tab never
+    /// starts playback on a later visit to the Timeline.
+    /// </summary>
     public void SetTab(ReviewTab tab)
     {
+        if (tab != ReviewTab.Timeline)
+        {
+            PlayOnArrival = false;
+        }
+
         if (ActiveTab == tab)
         {
             return;
