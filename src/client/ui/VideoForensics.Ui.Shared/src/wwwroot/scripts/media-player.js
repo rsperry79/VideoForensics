@@ -95,9 +95,12 @@ export function detach(element) {
     }
     players.delete(element);
 }
-/** Starts playback. A refused play (for example autoplay blocked) is not an error for the caller. */
+/**
+ * Starts playback when the video is paused. A video already playing is left alone, so a play request that arrives
+ * late never restarts it. A refused play (for example autoplay blocked) is not an error for the caller.
+ */
 export function play(element) {
-    if (isVideo(element)) {
+    if (isVideo(element) && element.paused) {
         element.play().catch(() => {
             // Autoplay blocked or the source is unplayable; the error event reports the latter.
         });

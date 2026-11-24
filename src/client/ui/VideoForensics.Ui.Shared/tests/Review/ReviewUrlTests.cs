@@ -116,10 +116,20 @@ public class ReviewUrl_Tests
     public void Parse_TabNameInAnyCase_ReturnsTab()
     {
         // Act
+        ReviewUrlState state = ReviewUrl.Parse("tab=EVENTS");
+
+        // Assert
+        Assert.Equal(ReviewTab.Events, state.Tab);
+    }
+
+    [Fact]
+    public void Parse_RemovedDetailTab_FallsBackToTimeline()
+    {
+        // Act: the Detail tab is gone, so no mapping exists and the default tab applies
         ReviewUrlState state = ReviewUrl.Parse("tab=DETAIL");
 
         // Assert
-        Assert.Equal(ReviewTab.Detail, state.Tab);
+        Assert.Equal(ReviewTab.Timeline, state.Tab);
     }
 
     [Fact]
@@ -211,7 +221,7 @@ public class ReviewUrl_Tests
             From,
             To,
             Cursor,
-            ReviewTab.Detail,
+            ReviewTab.Events,
             "Ring Co",
             Guid.NewGuid());
 

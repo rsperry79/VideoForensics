@@ -656,4 +656,61 @@ public class ReviewPageState_Tests
         // Assert
         Assert.Empty(state.EventTypes);
     }
+
+    [Fact]
+    public void PlayOnArrival_NoRequest_IsFalse()
+    {
+        Assert.False(NewState().PlayOnArrival);
+    }
+
+    [Fact]
+    public void RequestPlayOnArrival_Requested_IsTrue()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+
+        // Act
+        state.RequestPlayOnArrival();
+
+        // Assert
+        Assert.True(state.PlayOnArrival);
+    }
+
+    [Fact]
+    public void TryConsumePlayOnArrival_Requested_ReturnsTrueOnceThenFalse()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        state.RequestPlayOnArrival();
+
+        // Act
+        bool first = state.TryConsumePlayOnArrival();
+        bool second = state.TryConsumePlayOnArrival();
+
+        // Assert
+        Assert.True(first);
+        Assert.False(second);
+        Assert.False(state.PlayOnArrival);
+    }
+
+    [Fact]
+    public void TryConsumePlayOnArrival_NoRequest_ReturnsFalse()
+    {
+        Assert.False(NewState().TryConsumePlayOnArrival());
+    }
+
+    [Fact]
+    public void SetTab_Events_ClearsPlayOnArrival()
+    {
+        // Arrange
+        ReviewPageState state = NewState();
+        state.RequestPlayOnArrival();
+
+        // Act
+        state.SetTab(ReviewTab.Events);
+
+        // Assert: a stale request must not start playback on a later Timeline visit
+        Assert.False(state.PlayOnArrival);
+        Assert.False(state.TryConsumePlayOnArrival());
+    }
 }

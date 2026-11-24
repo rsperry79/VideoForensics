@@ -25,14 +25,18 @@ public class ReviewSidebarControls_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewSidebarControls_Render_ShowsTheThreeTabsInATablist()
+    public void ReviewSidebarControls_Render_ShowsTheTimelineAndEventsTabsInATablist()
     {
         // Arrange and Act
         IRenderedComponent<ReviewSidebarControls> cut = RenderControls();
 
-        // Assert
+        // Assert: Events shows every system event, so the Detail tab is gone
         Assert.Single(cut.FindAll("[data-testid='review-tabs'][role='tablist']"));
-        Assert.Equal(3, cut.FindAll("[data-testid='review-tabs'] [role='tab']").Count);
+        string[] tabIds = cut.FindAll("[data-testid='review-tabs'] [role='tab']")
+            .Select(tab => tab.GetAttribute("data-testid")!)
+            .ToArray();
+        Assert.Equal(["review-tab-button-timeline", "review-tab-button-events"], tabIds);
+        Assert.Empty(cut.FindAll("[data-testid='review-tab-button-detail']"));
     }
 
     [Fact]

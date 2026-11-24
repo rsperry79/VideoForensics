@@ -80,7 +80,7 @@ public class ReviewPersistence_Tests : ReviewTestContext
         _ = Render<ReviewPage>();
 
         // Assert
-        Assert.Equal(ReviewTab.Detail, ReviewState.ActiveTab);
+        Assert.Equal(ReviewTab.Timeline, ReviewState.ActiveTab);
     }
 
     [Fact]

@@ -65,13 +65,9 @@ else
                         <ReviewTimelineTab State="State" Devices="_visibleIds" DeviceNames="_deviceNames" />
                     </section>
                 }
-                else if (State.ActiveTab == ReviewTab.Events)
-                {
-                    <ReviewEventsTab State="State" DeviceNames="_deviceNames" />
-                }
                 else
                 {
-                    <ReviewDetailTab State="State" DeviceNames="_deviceNames" />
+                    <ReviewEventsTab State="State" DeviceNames="_deviceNames" />
                 }
             </div>
         </Stage>

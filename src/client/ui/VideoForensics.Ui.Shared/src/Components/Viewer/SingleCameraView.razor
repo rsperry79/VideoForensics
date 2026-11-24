@@ -44,6 +44,9 @@
     /// <summary>Plays or pauses the main video. Does nothing when no video is rendered.</summary>
     private Task TogglePlayMainAsync() => _mainPlayer is null ? Task.CompletedTask : _mainPlayer.TogglePlayAsync();
 
+    /// <summary>Starts the main video when it is paused. Does nothing when no video is rendered.</summary>
+    public Task PlayAsync() => _mainPlayer is null ? Task.CompletedTask : _mainPlayer.PlayAsync();
+
     /// <summary>Steps the main video by a number of seconds (negative goes back).</summary>
     private Task StepMainAsync(double seconds) => _mainPlayer is null ? Task.CompletedTask : _mainPlayer.StepAsync(seconds);
 

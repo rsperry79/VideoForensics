@@ -63,6 +63,15 @@ else
         }
     }
 
+    /// <summary>Starts every camera in the grid that is paused. Used when a selection arrives with play requested.</summary>
+    public async Task PlayAsync()
+    {
+        foreach (IPlaybackTarget target in Targets())
+        {
+            await target.PlayAsync();
+        }
+    }
+
     private readonly Dictionary<GridPreviewPlayer, bool> _previews = new();
 
     private void RegisterPreview(GridPreviewPlayer preview) => _previews[preview] = true;

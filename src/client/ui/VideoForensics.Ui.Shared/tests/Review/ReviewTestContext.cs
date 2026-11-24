@@ -75,9 +75,6 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The detail loader double the detail tab reads through.</summary>
     protected FakeReviewDetailLoader DetailLoader { get; } = new();
 
-    /// <summary>The detail tab's logger, so a test can check what was logged.</summary>
-    protected Mock<ILogger<ReviewDetailTab>> DetailLogger { get; } = new();
-
     /// <summary>The timeline tab's logger, so a test can check what was logged.</summary>
     protected Mock<ILogger<ReviewTimelineTab>> TabLogger { get; } = new();
 
@@ -158,7 +155,6 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddSingleton(EventsLogger.Object);
         _ = Services.AddSingleton<IDeviceHealthChangedSource>(HealthSource);
         _ = Services.AddSingleton<IReviewDetailLoader>(DetailLoader);
-        _ = Services.AddSingleton(DetailLogger.Object);
         _ = Services.AddSingleton(TabLogger.Object);
         _ = Services.AddSingleton(FeederLogger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));

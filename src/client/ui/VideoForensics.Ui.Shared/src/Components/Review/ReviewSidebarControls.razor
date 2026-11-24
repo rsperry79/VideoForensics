@@ -34,15 +34,14 @@
     [Parameter]
     public IReadOnlyList<Guid> Devices { get; set; } = [];
 
-    private static readonly ReviewTab[] TabOrder = [ReviewTab.Timeline, ReviewTab.Events, ReviewTab.Detail];
+    private static readonly ReviewTab[] TabOrder = [ReviewTab.Timeline, ReviewTab.Events];
 
     private static string TabId(ReviewTab tab) => tab.ToString().ToLowerInvariant();
 
     private LocalizedString TabLabel(ReviewTab tab) => tab switch
     {
         ReviewTab.Timeline => L["TabTimeline"],
-        ReviewTab.Events => L["TabEvents"],
-        _ => L["TabDetail"],
+        _ => L["TabEvents"],
     };
 
     protected override void OnInitialized()
