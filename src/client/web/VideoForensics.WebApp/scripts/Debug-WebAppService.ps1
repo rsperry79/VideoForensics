@@ -38,6 +38,9 @@ How long to wait for the service to apply a staged build and answer its health c
 .PARAMETER NoLogConsole
 Do not open the VideoForensics.Utils.LogViewer window that shows the WebApp logger pipe output.
 
+.PARAMETER VisualStudioProcessId
+Process ID of the Visual Studio to attach from. The script finds it before it relaunches under sudo and passes it on.
+
 .PARAMETER WhatIf
 Dry run: nothing is staged, copied, stopped, started, or attached.
 
@@ -60,7 +63,9 @@ param(
     [switch]$SkipAttach,
     # The service drains in-flight work before it applies a staged build, which can take minutes.
     [int]$ReadyTimeoutSeconds = 300,
-    [switch]$NoLogConsole
+    [switch]$NoLogConsole,
+    # Set by the script when it relaunches under sudo: the Visual Studio found before elevating. Not meant to be passed by hand.
+    [int]$VisualStudioProcessId
 )
 
 $ErrorActionPreference = 'Stop'
@@ -144,9 +149,90 @@ function Wait-ForStagedBuild {
     return $false
 }
 
+# Visual Studio instances in the running object table, whose entries are named "!VisualStudio.DTE.<version>:<pid>". A helper type does the
+# COM calls, because PowerShell's COM adapter does not expose the running object table's methods.
+function Initialize-RunningObjectTable {
+    if ('VideoForensics.Rot' -as [type]) { return }
+
+    Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text.RegularExpressions;
+
+namespace VideoForensics
+{
+    public static class Rot
+    {
+        [DllImport("ole32.dll")]
+        private static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable rot);
+
+        [DllImport("ole32.dll")]
+        private static extern int CreateBindCtx(int reserved, out IBindCtx ctx);
+
+        /// <summary>Process ID and bound DTE object of every Visual Studio in the table.</summary>
+        public static List<KeyValuePair<int, object>> Instances()
+        {
+            var found = new List<KeyValuePair<int, object>>();
+            IRunningObjectTable rot;
+            IBindCtx ctx;
+            GetRunningObjectTable(0, out rot);
+            CreateBindCtx(0, out ctx);
+            IEnumMoniker monikers;
+            rot.EnumRunning(out monikers);
+            var moniker = new IMoniker[1];
+            while (monikers.Next(1, moniker, IntPtr.Zero) == 0)
+            {
+                string name;
+                moniker[0].GetDisplayName(ctx, null, out name);
+                Match match = Regex.Match(name, @"^!VisualStudio\.DTE\.[\d.]+:(\d+)$");
+                if (match.Success)
+                {
+                    object instance;
+                    rot.GetObject(moniker[0], out instance);
+                    found.Add(new KeyValuePair<int, object>(int.Parse(match.Groups[1].Value), instance));
+                }
+            }
+
+            return found;
+        }
+    }
+}
+'@
+}
+
+# Process ID of the Visual Studio to attach from, or $null. It runs before sudo, while this shell can still see the instances. The one
+# with this checkout's solution open wins; otherwise the first.
+function Get-RunningVisualStudioProcessId {
+    Initialize-RunningObjectTable
+    $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..')).Path
+    $instances = @([VideoForensics.Rot]::Instances())
+    $match = $instances | Where-Object {
+        try { (Split-Path -Parent $_.Value.Solution.FullName) -eq $repoRoot } catch { $false }
+    } | Select-Object -First 1
+    if (-not $match) { $match = $instances | Select-Object -First 1 }
+    if ($match) { return [int]$match.Key }
+    return $null
+}
+
+# The Visual Studio with this process ID. The elevated run uses this, because the ProgID lookup in Get-RunningVisualStudio does not find
+# the instance from there.
+function Get-VisualStudioByProcessId {
+    param([Parameter(Mandatory)][int]$ProcessId)
+
+    Initialize-RunningObjectTable
+    $match = @([VideoForensics.Rot]::Instances()) | Where-Object { $_.Key -eq $ProcessId } | Select-Object -First 1
+    if ($match) { return $match.Value }
+    return $null
+}
+
 # Returns the running Visual Studio instance, or null. Marshal.GetActiveObject exists only in Windows PowerShell 5.1,
 # so PowerShell 7 calls oleaut32 directly.
 function Get-RunningVisualStudio {
+    # After the sudo relaunch the instance is chosen by process ID, since the ProgID lookup below does not find it from there.
+    if ($VisualStudioProcessId) { return (Get-VisualStudioByProcessId -ProcessId $VisualStudioProcessId) }
+
     if (-not ('VideoForensics.Ole' -as [type])) {
         Add-Type -Namespace VideoForensics -Name Ole -MemberDefinition @'
 [System.Runtime.InteropServices.DllImport("oleaut32.dll", PreserveSig = false)]
@@ -314,6 +400,9 @@ if ($useService) {
 
         # sudo takes each argument as is, so no quoting is added. Bound parameters are passed on, except -WhatIf and -Confirm.
         $relaunchArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath)
+        # Find Visual Studio now, while this shell can still see it, and hand its process ID to the elevated run.
+        $vsProcessId = Get-RunningVisualStudioProcessId
+        if ($vsProcessId) { $relaunchArguments += '-VisualStudioProcessId', "$vsProcessId" }
         foreach ($name in $PSBoundParameters.Keys) {
             if ($name -in 'WhatIf', 'Confirm') { continue }
             $value = $PSBoundParameters[$name]
