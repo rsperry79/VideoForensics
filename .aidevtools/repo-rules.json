@@ -1,0 +1,31 @@
+{
+  "defaultBranch": "main",
+  "protectedBranches": [
+    "dev",
+    "main"
+  ],
+  "requiredChecks": [
+    "Analyze",
+    "build",
+    "build-debian",
+    "build-ios",
+    "build-update-package",
+    "build-windows",
+    "check-dependencies",
+    "check-js",
+    "create-release",
+    "determine-version",
+    "generate-manifest",
+    "generate-notes",
+    "only-from-dev",
+    "pack-and-push",
+    "publish-packages",
+    "publish-releases",
+    "read",
+    "resolve-source",
+    "review",
+    "test",
+    "test-windows",
+    "validate"
+  ]
+}

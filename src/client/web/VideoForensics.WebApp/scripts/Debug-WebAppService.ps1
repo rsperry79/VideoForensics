@@ -13,7 +13,9 @@ If the service is not installed, the build is copied to -DebugDirectory (appsett
 configuration exists) and started as a plain process, and the debugger attaches to that process. A previous process
 started from -DebugDirectory is stopped first. -Publish applies only in this case.
 
-The attach needs an elevated debugger when the service runs as LocalSystem, so the script relaunches itself with sudo\n(Windows sudo must be enabled under Settings > System > For developers).
+The attach needs an elevated debugger when the service runs as LocalSystem. The script does not elevate itself and asks no
+questions: run it from the elevated Visual Studio (the F5 profile) or through the Script Helper (`elev run`, listed in
+.elevated.json). Not elevated, it stops before staging anything.
 Use -WhatIf to see what would happen without staging, copying, starting, or attaching.
 
 .PARAMETER ServiceName
@@ -39,7 +41,7 @@ How long to wait for the service to apply a staged build and answer its health c
 Do not open the VideoForensics.Utils.LogViewer window that shows the WebApp logger pipe output.
 
 .PARAMETER VisualStudioProcessId
-Process ID of the Visual Studio to attach from. The script finds it before it relaunches under sudo and passes it on.
+Process ID of the Visual Studio to attach from. When omitted, an elevated run finds it in the running object table.
 
 .PARAMETER WhatIf
 Dry run: nothing is staged, copied, stopped, started, or attached.
@@ -64,7 +66,7 @@ param(
     # The service drains in-flight work before it applies a staged build, which can take minutes.
     [int]$ReadyTimeoutSeconds = 300,
     [switch]$NoLogConsole,
-    # Set by the script when it relaunches under sudo: the Visual Studio found before elevating. Not meant to be passed by hand.
+    # The Visual Studio to attach from. The script sets it itself when omitted.
     [int]$VisualStudioProcessId
 )
 
@@ -202,7 +204,7 @@ namespace VideoForensics
 '@
 }
 
-# Process ID of the Visual Studio to attach from, or $null. It runs before sudo, while this shell can still see the instances. The one
+# Process ID of the Visual Studio to attach from, or $null. It reads the running object table, which an elevated run sees only for elevated instances. The one
 # with this checkout's solution open wins; otherwise the first.
 function Get-RunningVisualStudioProcessId {
     Initialize-RunningObjectTable
@@ -230,7 +232,7 @@ function Get-VisualStudioByProcessId {
 # Returns the running Visual Studio instance, or null. Marshal.GetActiveObject exists only in Windows PowerShell 5.1,
 # so PowerShell 7 calls oleaut32 directly.
 function Get-RunningVisualStudio {
-    # After the sudo relaunch the instance is chosen by process ID, since the ProgID lookup below does not find it from there.
+    # An elevated run chooses the instance by process ID, since the ProgID lookup below does not find it from there.
     if ($VisualStudioProcessId) { return (Get-VisualStudioByProcessId -ProcessId $VisualStudioProcessId) }
 
     if (-not ('VideoForensics.Ole' -as [type])) {
@@ -387,43 +389,19 @@ if ($useService) {
     }
 
     # Attaching to the LocalSystem service needs an elevated debugger, and DTE only lists Visual Studio at the same
-    # integrity level. Staging alone does not need elevation, so only an attach triggers the UAC prompt. It runs before
-    # anything is staged, so a declined prompt changes nothing.
+    # integrity level. The script does not elevate itself and asks nothing: it runs elevated through the Script Helper
+    # broker (.elevated.json lists it), or from the elevated Visual Studio's F5 profile. Without elevation it stops
+    # here, before anything is staged.
     $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
-    if (-not $SkipAttach -and -not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        Write-Host 'Attaching to the LocalSystem service needs elevation. Relaunching this script with sudo (UAC prompt).'
-        if (-not (Get-Command sudo -ErrorAction SilentlyContinue)) {
-            Write-Host 'sudo was not found. Enable it under Settings > System > For developers > Enable sudo, or run this script from an elevated shell.' -ForegroundColor Red
-            if ([Environment]::UserInteractive) { Read-Host 'Press Enter to close this window' | Out-Null }
-            exit 1
-        }
+    $isElevated = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $SkipAttach -and -not $isElevated) {
+        Write-Host 'Attaching to the LocalSystem service needs an elevated run. Start it from the elevated Visual Studio (F5) or through the Script Helper: elev run <repo> src/client/web/VideoForensics.WebApp/scripts/Debug-WebAppService.ps1' -ForegroundColor Red
+        exit 1
+    }
 
-        # sudo takes each argument as is, so no quoting is added. Bound parameters are passed on, except -WhatIf and -Confirm.
-        $relaunchArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath)
-        # Find Visual Studio now, while this shell can still see it, and hand its process ID to the elevated run.
-        $vsProcessId = Get-RunningVisualStudioProcessId
-        if ($vsProcessId) { $relaunchArguments += '-VisualStudioProcessId', "$vsProcessId" }
-        foreach ($name in $PSBoundParameters.Keys) {
-            if ($name -in 'WhatIf', 'Confirm') { continue }
-            $value = $PSBoundParameters[$name]
-            if ($value -is [switch]) {
-                if ($value.IsPresent) { $relaunchArguments += "-$name" }
-            }
-            else {
-                $relaunchArguments += "-$name", "$value"
-            }
-        }
-
-        $shell = (Get-Process -Id $PID).Path
-        & sudo $shell @relaunchArguments
-        # The elevated run holds its own window on an error and closes on success. A declined UAC prompt or a failed
-        # launch has nothing to show there, so this shell holds instead.
-        $sudoExit = $LASTEXITCODE
-        if ($sudoExit -ne 0 -and [Environment]::UserInteractive) {
-            Write-Host "The elevated run did not complete (exit code $sudoExit)." -ForegroundColor Red
-            Read-Host 'Press Enter to close this window' | Out-Null
-        }
-        exit $sudoExit
+    # The elevated run finds the Visual Studio to attach from in the running object table, since the ProgID lookup does not see it.
+    if (-not $SkipAttach -and -not $VisualStudioProcessId) {
+        $VisualStudioProcessId = Get-RunningVisualStudioProcessId
     }
 }
 else {
@@ -545,7 +523,6 @@ try {
 }
 catch {
     Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
-    if ([Environment]::UserInteractive) { Read-Host 'Press Enter to close this window' | Out-Null }
     exit 1
 }
 finally {
