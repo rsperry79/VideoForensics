@@ -1,0 +1,7 @@
+{
+  "scripts": [
+    { "path": "src/client/web/VideoForensics.WebApp/scripts/Debug-WebAppService.ps1" },
+    { "path": "src/client/web/VideoForensics.WebApp/scripts/Debug-WebAppService.ps1", "args": ["-NoLogConsole"] },
+    { "path": "src/client/web/VideoForensics.WebApp/scripts/Debug-WebAppService.ps1", "args": ["-NoLogConsole", "-VisualStudioProcessId", "*"] }
+  ]
+}

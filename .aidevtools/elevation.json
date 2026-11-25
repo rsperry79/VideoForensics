@@ -1,0 +1,5 @@
+{
+  "projects": [
+    { "path": "src/client/web/VideoForensics.WebApp/src/VideoForensics.Client.WebApp.csproj" }
+  ]
+}
