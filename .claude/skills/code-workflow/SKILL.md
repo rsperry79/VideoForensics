@@ -21,6 +21,9 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 - Briefs for a Ui.Shared page must name the localization rule (`rules/ui-shared.md`) and list the page's existing literals to convert.
 - Model choice: CLAUDE.md STOP block.
 
+## Debug
+- Debugging a project: set it as the startup project first (`ide_set_startup_project`), then start its default launch profile. Do not debug the solution's current startup project.
+
 ## Lite gate (after each file/service change or batch)
 - `dotnet build` on touched `.csproj` files (incremental).
 - `dotnet test --filter` on their tests, plus tests of direct callers.
