@@ -100,8 +100,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             SnapshotCycle.TickCounts counts = await sp.GetRequiredService<ISnapshotSyncService>().RunCycleAsync(ct);
             if (counts.Attempted > 0)
             {
-                _logger.LogDebug("Snapshot capture tick: {Captured} captured, {Failed} failed, {Throttled} throttled",
-                    counts.Captured, counts.Failed, counts.Throttled);
+                _logger.LogDebug("Snapshot capture tick: {Captured} captured, {Skipped} skipped, {Failed} failed, {Throttled} throttled",
+                    counts.Captured, counts.Skipped, counts.Failed, counts.Throttled);
             }
 
             bool itemFailed = counts.Failed > 0 || counts.AlertFailed || counts.AccountFailed;

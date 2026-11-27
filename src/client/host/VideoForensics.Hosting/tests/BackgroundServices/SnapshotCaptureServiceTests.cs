@@ -262,6 +262,134 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             return services.BuildServiceProvider();
         }
 
+        private static string Sha256Hex(byte[] bytes)
+        {
+            return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
+        }
+
+        /// <summary>Runs one capture pass for the account and returns its counts. Unlike RunOneTickAsync, it exposes the TickCounts.</summary>
+        private async Task<SnapshotCycle.TickCounts> CaptureOnceAsync(ILogger<SnapshotCycle>? logger = null)
+        {
+            var cycle = new SnapshotCycle(logger ?? NullLogger<SnapshotCycle>.Instance, _time, _storage.Object, new ForensicsConfiguration());
+            ServiceProvider provider = BuildProvider(cycle);
+            var counts = new SnapshotCycle.TickCounts();
+            try
+            {
+                var account = new ProviderAccount { Id = _accountId, ProviderName = "Ring", IsActive = true };
+                await cycle.CaptureAccountAsync(provider, account, counts, CancellationToken.None);
+            }
+            finally
+            {
+                await provider.DisposeAsync();
+            }
+
+            return counts;
+        }
+
+        [Fact]
+        public async Task CaptureDevice_ProviderReportsOffline_SkipsFrameAndRecordsOfflineAttempt()
+        {
+            _ = AddDevice("12345", isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, Guid.NewGuid(), false));
+            var logs = new CapturingLogger<SnapshotCycle>();
+
+            SnapshotCycle.TickCounts counts = await CaptureOnceAsync(logs);
+
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Equal(SnapshotSkipReason.Offline, row.SkipReason);
+            Assert.Null(row.MediaFilePath);
+            Assert.Equal(200, row.HttpStatus);
+            Assert.False(Directory.Exists(Path.Combine(MediaRoot, "ring")));
+            _media.Verify(m => m.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Equal(1, counts.Skipped);
+            Assert.Equal(0, counts.Captured);
+            _ = Assert.Single(logs.Messages, m => m == "Snapshot capture skipped for Front Door 12345 on Ring account: Offline");
+        }
+
+        [Fact]
+        public async Task CaptureDevice_FrameHashEqualsPreviousSnapshot_SkipsFrameAsIdenticalFrame()
+        {
+            _ = AddDevice("12345", isOnline: true);
+            _ = _media.Setup(m => m.GetLatestSnapshotHashAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Sha256Hex(Jpeg));
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, Guid.NewGuid(), true));
+            var logs = new CapturingLogger<SnapshotCycle>();
+
+            SnapshotCycle.TickCounts counts = await CaptureOnceAsync(logs);
+
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Equal(SnapshotSkipReason.IdenticalFrame, row.SkipReason);
+            Assert.Null(row.MediaFilePath);
+            Assert.False(Directory.Exists(Path.Combine(MediaRoot, "ring")));
+            _media.Verify(m => m.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Never);
+            _media.Verify(m => m.GetLatestSnapshotHashAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal(1, counts.Skipped);
+            Assert.Equal(0, counts.Captured);
+            _ = Assert.Single(logs.Messages, m => m == "Snapshot capture skipped for Front Door 12345 on Ring account: IdenticalFrame");
+        }
+
+        [Fact]
+        public async Task CaptureDevice_ConnectedAndHashDiffers_StoresFrameWithoutSkipReason()
+        {
+            _ = AddDevice("12345", isOnline: true);
+            _ = _media.Setup(m => m.GetLatestSnapshotHashAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new string('0', 64));
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, Guid.NewGuid(), true));
+
+            SnapshotCycle.TickCounts counts = await CaptureOnceAsync();
+
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Null(row.SkipReason);
+            Assert.NotNull(row.MediaFilePath);
+            Assert.True(File.Exists(row.MediaFilePath));
+            _media.Verify(m => m.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal(1, counts.Captured);
+            Assert.Equal(0, counts.Skipped);
+        }
+
+        [Fact]
+        public async Task CaptureDevice_NoPreviousSnapshot_StoresFrame()
+        {
+            _ = AddDevice("12345", isOnline: true);
+            _ = _media.Setup(m => m.GetLatestSnapshotHashAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, Guid.NewGuid(), true));
+
+            SnapshotCycle.TickCounts counts = await CaptureOnceAsync();
+
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Null(row.SkipReason);
+            Assert.NotNull(row.MediaFilePath);
+            _media.Verify(m => m.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal(1, counts.Captured);
+        }
+
+        [Fact]
+        public async Task CaptureDevice_PreviousHashReadThrows_LogsErrorAndStoresFrame()
+        {
+            _ = AddDevice("12345", isOnline: true);
+            _ = _media.Setup(m => m.GetLatestSnapshotHashAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("db down"));
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null, Guid.NewGuid(), true));
+            var logs = new CapturingLogger<SnapshotCycle>();
+
+            SnapshotCycle.TickCounts counts = await CaptureOnceAsync(logs);
+
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Null(row.SkipReason);
+            Assert.NotNull(row.MediaFilePath);
+            Assert.Equal(1, counts.Captured);
+            string error = Assert.Single(logs.Errors, m => m.Contains("previous snapshot hash"));
+            Assert.Contains("db down", error);
+            Assert.Contains("InvalidOperationException", error);
+            Assert.DoesNotContain("   at ", error);
+        }
+
         private static string ExpectedFileName(DateTimeOffset at)
         {
             return "Front_Door_12345_" + at.UtcDateTime.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + "_snapshot.jpg";
