@@ -177,6 +177,7 @@ namespace VideoForensics.Client.Core.Services
                 config.FfmpegBinDirectory = await GetStringSetting("FfmpegBinDirectory", config.FfmpegBinDirectory, cancellationToken);
                 config.EnableLiveView = await GetBoolSetting("EnableLiveView", config.EnableLiveView, cancellationToken);
                 config.LiveViewIdleTimeoutMinutes = await GetIntSetting("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes, cancellationToken);
+                config.LiveViewMaxConcurrentSessions = await GetIntSetting("LiveViewMaxConcurrentSessions", config.LiveViewMaxConcurrentSessions, cancellationToken);
                 config.LiveViewTelemetrySampleIntervalSeconds = await GetIntSetting("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds, cancellationToken);
                 config.SustainedModeMaxDurationMinutes = await GetIntSetting("SustainedModeMaxDurationMinutes", config.SustainedModeMaxDurationMinutes, cancellationToken);
                 config.LiveViewTelemetryRetentionDays = await GetIntSetting("LiveViewTelemetryRetentionDays", config.LiveViewTelemetryRetentionDays, cancellationToken);
@@ -263,6 +264,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("FfmpegBinDirectory", config.FfmpegBinDirectory ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("EnableLiveView", config.EnableLiveView.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("LiveViewMaxConcurrentSessions", config.LiveViewMaxConcurrentSessions.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("SustainedModeMaxDurationMinutes", config.SustainedModeMaxDurationMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewTelemetryRetentionDays", config.LiveViewTelemetryRetentionDays.ToString(), cancellationToken);

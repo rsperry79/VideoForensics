@@ -32,6 +32,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
                 InternetServerUrl: "https://example.test",
                 EnableLiveView: true,
                 LiveViewIdleTimeoutMinutes: 7,
+                LiveViewMaxConcurrentSessions: 3,
                 LiveViewTelemetrySampleIntervalSeconds: 3,
                 SustainedModeMaxDurationMinutes: 60,
                 LiveViewTelemetryRetentionDays: 10,
@@ -52,6 +53,7 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Equal(RedactionLevel.Heavy, config.RedactionLevel);
             Assert.Equal(60, config.SustainedModeMaxDurationMinutes);
             Assert.Equal("https://example.test", config.InternetServerUrl);
+            Assert.Equal(3, config.LiveViewMaxConcurrentSessions);
         }
 
         private sealed class StubHandler : HttpMessageHandler

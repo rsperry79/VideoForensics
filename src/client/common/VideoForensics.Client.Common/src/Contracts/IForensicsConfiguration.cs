@@ -134,6 +134,8 @@ namespace VideoForensics.Client.Common.Contracts
         bool EnableLiveView { get; set; }
         /// <summary>Idle timeout for active (non-sustained) live view sessions in minutes. Default 5.</summary>
         int LiveViewIdleTimeoutMinutes { get; set; }
+        /// <summary>Maximum number of live view streams the server runs at once. 0 or unset means 4. Default 4.</summary>
+        int LiveViewMaxConcurrentSessions { get; set; }
         /// <summary>Interval in seconds for capturing live view telemetry samples (RTCP, bitrate). Default 2.</summary>
         int LiveViewTelemetrySampleIntervalSeconds { get; set; }
         /// <summary>Maximum duration in minutes for sustained-mode live view sessions; 0 = unlimited. Default 240 (4 hours).</summary>
@@ -252,6 +254,7 @@ namespace VideoForensics.Client.Common.Contracts
         public string? FfmpegBinDirectory { get; set; }
         public bool EnableLiveView { get; set; } = true;
         public int LiveViewIdleTimeoutMinutes { get; set; } = 5;
+        public int LiveViewMaxConcurrentSessions { get; set; } = 4;
         public int LiveViewTelemetrySampleIntervalSeconds { get; set; } = 2;
         public int SustainedModeMaxDurationMinutes { get; set; } = 240;
         public int LiveViewTelemetryRetentionDays { get; set; } = 30;

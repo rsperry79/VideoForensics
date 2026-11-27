@@ -26,6 +26,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="InternetServerUrl">Internet-reachable URL (scheme + host + port) for paired clients to connect over the Internet, or null if not configured.</param>
     /// <param name="EnableLiveView">Toggles on-demand live view sessions for cameras.</param>
     /// <param name="LiveViewIdleTimeoutMinutes">Idle timeout for active (non-sustained) live view sessions in minutes.</param>
+    /// <param name="LiveViewMaxConcurrentSessions">Maximum live view streams the server runs at once; 0 means 4.</param>
     /// <param name="LiveViewTelemetrySampleIntervalSeconds">Interval in seconds for capturing live view telemetry samples (RTCP, bitrate).</param>
     /// <param name="SustainedModeMaxDurationMinutes">Maximum duration in minutes for sustained-mode live view sessions; 0 = unlimited.</param>
     /// <param name="LiveViewTelemetryRetentionDays">Retention period in days for live view telemetry samples before automated pruning.</param>
@@ -66,6 +67,7 @@ namespace VideoForensics.Core.Api.Contracts
         string? InternetServerUrl,
         bool EnableLiveView,
         int LiveViewIdleTimeoutMinutes,
+        int LiveViewMaxConcurrentSessions,
         int LiveViewTelemetrySampleIntervalSeconds,
         int SustainedModeMaxDurationMinutes,
         int LiveViewTelemetryRetentionDays,

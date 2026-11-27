@@ -80,6 +80,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.UpdateMode = loadedConfig.UpdateMode;
                 runtimeConfig.EnableLiveView = loadedConfig.EnableLiveView;
                 runtimeConfig.LiveViewIdleTimeoutMinutes = loadedConfig.LiveViewIdleTimeoutMinutes;
+                runtimeConfig.LiveViewMaxConcurrentSessions = loadedConfig.LiveViewMaxConcurrentSessions;
                 runtimeConfig.LiveViewTelemetrySampleIntervalSeconds = loadedConfig.LiveViewTelemetrySampleIntervalSeconds;
                 runtimeConfig.SustainedModeMaxDurationMinutes = loadedConfig.SustainedModeMaxDurationMinutes;
                 runtimeConfig.LiveViewTelemetryRetentionDays = loadedConfig.LiveViewTelemetryRetentionDays;

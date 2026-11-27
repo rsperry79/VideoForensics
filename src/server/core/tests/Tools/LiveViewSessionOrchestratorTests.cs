@@ -5,6 +5,7 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -41,6 +42,116 @@ namespace VideoForensics.Client.Core.Tests.Tools
             _ = _configMock.Setup(c => c.LiveViewIdleTimeoutMinutes).Returns(5);
             _ = _configMock.Setup(c => c.LiveViewTelemetrySampleIntervalSeconds).Returns(2);
             _ = _configMock.Setup(c => c.SustainedModeMaxDurationMinutes).Returns(240);
+        }
+
+        private static async Task<bool> TryStartAsync(LiveViewSessionOrchestrator orchestrator, Guid deviceId)
+        {
+            try
+            {
+                _ = await orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+                return true;
+            }
+            catch (LiveViewCapReachedException)
+            {
+                return false;
+            }
+        }
+
+        [Fact]
+        public async Task StartAsync_AtConfiguredCap_RefusesANewDevice()
+        {
+            // Arrange: cap of 2 with two devices already live
+            _ = _configMock.Setup(c => c.LiveViewMaxConcurrentSessions).Returns(2);
+            var first = Guid.NewGuid();
+            var second = Guid.NewGuid();
+            var third = Guid.NewGuid();
+            ArrangeIdleDevice(first);
+            ArrangeIdleDevice(second);
+            ArrangeIdleDevice(third);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(ProvidersFor("Ring", ProviderNamed("Ring").Object));
+            _ = await orchestrator.StartAsync(first, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+            _ = await orchestrator.StartAsync(second, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<LiveViewCapReachedException>(
+                () => orchestrator.StartAsync(third, LiveViewTriggerReason.Manual, null, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task StartAsync_DeviceAlreadyLiveAtCap_ReturnsItsSessionWithoutRefusing()
+        {
+            // Arrange: cap of 2 with both slots used; the first device's session is in the database
+            _ = _configMock.Setup(c => c.LiveViewMaxConcurrentSessions).Returns(2);
+            var first = Guid.NewGuid();
+            var second = Guid.NewGuid();
+            ArrangeIdleDevice(first);
+            ArrangeIdleDevice(second);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(ProvidersFor("Ring", ProviderNamed("Ring").Object));
+            LiveViewSession firstSession = await orchestrator.StartAsync(first, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+            _ = await orchestrator.StartAsync(second, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+            _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(first, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(firstSession);
+
+            // Act
+            LiveViewSession again = await orchestrator.StartAsync(first, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(firstSession.Id, again.Id);
+        }
+
+        [Fact]
+        public async Task StartAsync_ConfigUnset_AllowsFourStreamsAndRefusesTheFifth()
+        {
+            // Arrange: the config mock returns 0 for the unset key, which must mean the default of 4
+            var devices = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
+            foreach (Guid device in devices)
+            {
+                ArrangeIdleDevice(device);
+            }
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(ProvidersFor("Ring", ProviderNamed("Ring").Object));
+
+            // Act: the first four starts must succeed
+            for (int i = 0; i < 4; i++)
+            {
+                _ = await orchestrator.StartAsync(devices[i], LiveViewTriggerReason.Manual, null, CancellationToken.None);
+            }
+
+            // Assert: the fifth distinct device is refused
+            _ = await Assert.ThrowsAsync<LiveViewCapReachedException>(
+                () => orchestrator.StartAsync(devices[4], LiveViewTriggerReason.Manual, null, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task StartAsync_ConcurrentStartsWithOneSlotLeft_ExactlyOneSucceeds()
+        {
+            // Arrange: cap of 2 with one device live, so one slot is left
+            _ = _configMock.Setup(c => c.LiveViewMaxConcurrentSessions).Returns(2);
+            var live = Guid.NewGuid();
+            var contenderA = Guid.NewGuid();
+            var contenderB = Guid.NewGuid();
+            ArrangeIdleDevice(live);
+            ArrangeIdleDevice(contenderA);
+            ArrangeIdleDevice(contenderB);
+
+            // The provider yields, so the second start runs while the first is still connecting
+            var provider = new Mock<ILiveViewCapableProvider>();
+            _ = provider.SetupGet(p => p.ProviderName).Returns("Ring");
+            _ = provider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(async () =>
+                {
+                    await Task.Delay(50);
+                    return new Mock<ILiveViewConnection>().Object;
+                });
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(ProvidersFor("Ring", provider.Object));
+            _ = await orchestrator.StartAsync(live, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+
+            // Act
+            bool[] results = await Task.WhenAll(
+                TryStartAsync(orchestrator, contenderA),
+                TryStartAsync(orchestrator, contenderB));
+
+            // Assert
+            Assert.Equal(1, results.Count(succeeded => succeeded));
         }
 
         private LiveViewSessionOrchestrator CreateOrchestrator(Mock<IServiceProvider>? serviceProviderMock = null)

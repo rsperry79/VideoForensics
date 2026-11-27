@@ -53,6 +53,17 @@ namespace VideoForensics.Client.Core.Tools
         /// </summary>
         private static readonly TimeSpan TelemetryDrainTimeout = TimeSpan.FromSeconds(5);
 
+        /// <summary>Live-stream cap used when the configured value is 0 or unset.</summary>
+        private const int DefaultMaxConcurrentSessions = 4;
+
+        /// <summary>
+        /// Guards the cap check and the insert into <see cref="_activeSessions"/>, together with <see cref="_pendingStarts"/>.
+        /// </summary>
+        private readonly object _capLock = new();
+
+        /// <summary>Starts that hold a slot but are not yet in <see cref="_activeSessions"/>. Guarded by <see cref="_capLock"/>.</summary>
+        private int _pendingStarts;
+
         /// <summary>
         /// Internal record holding live connection state and cleanup resources for a session.
         /// <see cref="Telemetry"/> is null only when the provider returned no connection to subscribe to.
@@ -408,6 +419,9 @@ namespace VideoForensics.Client.Core.Tools
 
             string providerName = provider.ProviderName;
 
+            // Reserve before the provider call so concurrent starts cannot all pass the cap check; released on any failure
+            using StartSlot slot = ReserveStartSlot(deviceId);
+
             // Budget guard: check if provider API calls are within budget
             if (!await budgetGuard.TryConsumeAsync(providerName, ct))
             {
@@ -441,7 +455,7 @@ namespace VideoForensics.Client.Core.Tools
                 : null;
 
             // Store the connection handle in memory
-            _activeSessions[session.Id] = new ActiveLiveViewHandle(connection, telemetry);
+            slot.Commit(session.Id, new ActiveLiveViewHandle(connection, telemetry));
 
             // Subscribe to connection state changes: Starting → Active on successful connect.
             // The callback fires long after this scope is disposed, so it opens its own scope per event.
@@ -479,6 +493,74 @@ namespace VideoForensics.Client.Core.Tools
                 };
 
             return session;
+        }
+
+        /// <summary>
+        /// Takes one live-stream slot, or throws when the cap is reached. The count includes starts that are still
+        /// connecting, not only <see cref="_activeSessions"/>: the provider call runs outside the lock, so without the
+        /// reservation two starts could each see a free slot and both connect. Removals from the map do not take the
+        /// lock, so the count can briefly read high after a stop; that only refuses early, never admits too many.
+        /// </summary>
+        private StartSlot ReserveStartSlot(Guid deviceId)
+        {
+            int cap = _config.LiveViewMaxConcurrentSessions;
+            if (cap <= 0)
+            {
+                cap = DefaultMaxConcurrentSessions;
+            }
+
+            lock (_capLock)
+            {
+                if (_activeSessions.Count + _pendingStarts >= cap)
+                {
+                    _logger.LogWarning("Refused live view start for device {DeviceId}: the cap of {Cap} streams is reached", deviceId, cap);
+                    throw new LiveViewCapReachedException($"Live view is limited to {cap} streams at once. Stop a stream to start another.");
+                }
+
+                _pendingStarts++;
+            }
+
+            return new StartSlot(this);
+        }
+
+        /// <summary>
+        /// A reserved live-stream slot. <see cref="Commit"/> moves it into the map; disposing without a commit releases it,
+        /// so a start that fails at any later step cannot leave the count high.
+        /// </summary>
+        private sealed class StartSlot : IDisposable
+        {
+            private readonly LiveViewSessionOrchestrator _owner;
+            private bool _settled;
+
+            public StartSlot(LiveViewSessionOrchestrator owner)
+            {
+                _owner = owner;
+            }
+
+            /// <summary>Inserts the live handle and releases the reservation in one locked step, so the count never double-counts.</summary>
+            public void Commit(Guid sessionId, ActiveLiveViewHandle handle)
+            {
+                lock (_owner._capLock)
+                {
+                    _owner._activeSessions[sessionId] = handle;
+                    _owner._pendingStarts--;
+                    _settled = true;
+                }
+            }
+
+            public void Dispose()
+            {
+                if (_settled)
+                {
+                    return;
+                }
+
+                lock (_owner._capLock)
+                {
+                    _owner._pendingStarts--;
+                    _settled = true;
+                }
+            }
         }
 
         async Task<LiveViewSessionDto> ILiveViewSessionService.StartAsync(Guid deviceId, LiveViewTriggerReasonDto reason, Guid? operatorId, CancellationToken ct) =>
