@@ -270,7 +270,7 @@ namespace VideoForensics.Client.Core.Tests.Tools
             LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
             // Act & Assert
-            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            VideoForensics.Core.Api.Contracts.ProviderBudgetExceededException ex = await Assert.ThrowsAsync<VideoForensics.Core.Api.Contracts.ProviderBudgetExceededException>(
                 () => orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None));
             mockProvider.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         }
