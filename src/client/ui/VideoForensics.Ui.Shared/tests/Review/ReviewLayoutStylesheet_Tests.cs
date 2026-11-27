@@ -48,14 +48,15 @@ public class ReviewLayoutStylesheet_Tests
     }
 
     [Fact]
-    public void CameraGridStylesheet_Grid_IsDisplayGridAndSingleColumnOnNarrowScreens()
+    public void CameraGridStylesheet_Grid_IsDisplayGridAndStacksCamerasTopToBottom()
     {
         // Act
         string css = RepoFile.ReadUiSharedSource("Components/Viewer/CameraGrid.razor.css");
 
         // Assert
         Assert.Contains("display: grid", css);
-        Assert.Contains("repeat(auto-fit, minmax(280px, 1fr))", css);
+        Assert.Contains("grid-template-columns: 1fr", css);
+        Assert.DoesNotContain("auto-fit", css);
         Assert.DoesNotContain("!important", css);
     }
 

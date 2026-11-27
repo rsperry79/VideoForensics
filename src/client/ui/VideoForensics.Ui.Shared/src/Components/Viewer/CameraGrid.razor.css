@@ -1,7 +1,7 @@
-/* The grid fills its column with as many tiles as fit, at least 280px wide, so nine cameras never shrink to slivers. */
+/* One camera per row, stacked top to bottom in display order, so each camera keeps the full width of the column. */
 .camera-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.75rem;
     min-width: 0;
     max-width: 100%;

@@ -84,8 +84,14 @@ else
 
 @code {
     /// <summary>One lane per camera, in a stable order. A clip with no lane goes in the empty-named lane.</summary>
-    private List<string> Lanes() =>
-        Clips.Concat(UnavailableClips).Select(c => c.LaneId ?? string.Empty).Distinct(StringComparer.Ordinal).OrderBy(id => id, StringComparer.Ordinal).ToList();
+    private List<string> Lanes()
+    {
+        // Why: ids are compared as text, so an ordinal sort puts cameras in id order, not the order the operator sees them.
+        List<string> present = Clips.Concat(UnavailableClips).Select(c => c.LaneId ?? string.Empty).Distinct(StringComparer.Ordinal).ToList();
+        List<string> ordered = (LaneOrder ?? []).Where(present.Contains).Distinct(StringComparer.Ordinal).ToList();
+        ordered.AddRange(present.Where(id => !ordered.Contains(id)));
+        return ordered;
+    }
 
     /// <summary>The left edge of one lane, past the tick labels. Lanes share the width after the labels.</summary>
     private static string LaneLeft(int index, int count) =>
@@ -132,6 +138,9 @@ else
 
     /// <summary>Whether time runs left to right (horizontal, the default) or top to bottom with the newest at the top (vertical).</summary>
     [Parameter] public TimelineOrientation Orientation { get; set; } = TimelineOrientation.Horizontal;
+
+    /// <summary>Lane ids (one per camera) in the order their lanes sit left to right. Lanes not listed follow in first-seen order.</summary>
+    [Parameter] public IReadOnlyList<string>? LaneOrder { get; set; }
 
     /// <summary>Accessible name for the strip. Callers pass localized text; the strip adds none of its own.</summary>
     [Parameter] public string? Label { get; set; }

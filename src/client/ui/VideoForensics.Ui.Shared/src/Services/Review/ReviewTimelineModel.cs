@@ -22,6 +22,9 @@ public sealed class ReviewTimelineModel
     /// <summary>Events with no playable media in the window. Drawn on the timeline, never played.</summary>
     public IReadOnlyList<ClipWindow> UnavailableClips { get; private set; } = [];
 
+    /// <summary>Camera (lane) ids in display order, as last published. The timeline draws its lanes in this order.</summary>
+    public IReadOnlyList<string> Lanes { get; private set; } = [];
+
     /// <summary>Start of the range the clips were loaded for (UTC).</summary>
     public DateTime FromUtc { get; private set; }
 
@@ -33,7 +36,7 @@ public sealed class ReviewTimelineModel
     /// <see cref="OnChange"/> only when the clips or the range differ from what is already published.
     /// </summary>
     /// <exception cref="ArgumentException">The range is empty or reversed.</exception>
-    public void Publish(IReadOnlyList<ClipWindow> clips, DateTime fromUtc, DateTime toUtc, IReadOnlyList<ClipWindow>? unavailable = null)
+    public void Publish(IReadOnlyList<ClipWindow> clips, DateTime fromUtc, DateTime toUtc, IReadOnlyList<ClipWindow>? unavailable = null, IReadOnlyList<string>? lanes = null)
     {
         ArgumentNullException.ThrowIfNull(clips);
         if (toUtc <= fromUtc)
@@ -43,7 +46,8 @@ public sealed class ReviewTimelineModel
 
         var copy = clips.ToList();
         var unavailableCopy = (unavailable ?? []).ToList();
-        bool changed = fromUtc != FromUtc || toUtc != ToUtc || !Clips.SequenceEqual(copy) || !UnavailableClips.SequenceEqual(unavailableCopy);
+        var laneCopy = (lanes ?? []).ToList();
+        bool changed = fromUtc != FromUtc || toUtc != ToUtc || !Clips.SequenceEqual(copy) || !UnavailableClips.SequenceEqual(unavailableCopy) || !Lanes.SequenceEqual(laneCopy);
         if (!changed)
         {
             return;
@@ -51,6 +55,7 @@ public sealed class ReviewTimelineModel
 
         Clips = copy;
         UnavailableClips = unavailableCopy;
+        Lanes = laneCopy;
         FromUtc = fromUtc;
         ToUtc = toUtc;
         OnChange?.Invoke();
@@ -66,6 +71,7 @@ public sealed class ReviewTimelineModel
 
         Clips = [];
         UnavailableClips = [];
+        Lanes = [];
         OnChange?.Invoke();
     }
 }
