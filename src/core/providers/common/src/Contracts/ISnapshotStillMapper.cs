@@ -8,7 +8,8 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// <param name="CapturedAt">When the attempt was made.</param>
     /// <param name="HttpStatus">HTTP status of the attempt. Only 200 can yield a still; any other status is a failed attempt that ends a hold.</param>
     /// <param name="MediaFilePath">Full media path (the caller resolves the stored relative path). Null or blank yields no still.</param>
-    public sealed record SnapshotStillRecord(Guid DeviceId, DateTimeOffset CapturedAt, int HttpStatus, string? MediaFilePath);
+    /// <param name="Skipped">True when the attempt was deliberately skipped (a placeholder frame, not stored). A skipped attempt yields no still and ends the hold of the still before it, like a failed attempt: an outage is a gap, not a held frame.</param>
+    public sealed record SnapshotStillRecord(Guid DeviceId, DateTimeOffset CapturedAt, int HttpStatus, string? MediaFilePath, bool Skipped = false);
 
     /// <summary>Input to <see cref="ISnapshotStillMapper.MapCurrentStills"/>.</summary>
     /// <param name="Records">

@@ -29,8 +29,8 @@ namespace VideoForensics.Core.Providers.Core
                     continue;
                 }
 
-                // Failed attempts never become stills, but they are kept to end the hold of the still before them.
-                if (record.HttpStatus != 200)
+                // Failed and skipped attempts never become stills, but they are kept to end the hold of the still before them.
+                if (record.HttpStatus != 200 || record.Skipped)
                 {
                     failures.Add(record.CapturedAt);
                     continue;

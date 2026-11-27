@@ -279,7 +279,7 @@ namespace VideoForensics.Client.Hosting.Services
         }
 
         /// <summary>
-        /// Stills from the window's capture attempts, mapped the same way as the timeline. A failed attempt ends the hold of
+        /// Stills from the window's capture attempts, mapped the same way as the timeline. A failed or skipped attempt ends the hold of
         /// the still before it, so an outage becomes a gap that the builder fills with gray. The newest still is held to the
         /// window end unless a failure ends it first.
         /// </summary>
@@ -290,7 +290,7 @@ namespace VideoForensics.Client.Hosting.Services
             foreach (SnapshotCapture r in rows)
             {
                 string? path = string.IsNullOrWhiteSpace(r.MediaFilePath) ? null : await _mediaPaths.ToAbsoluteAsync(r.MediaFilePath, cancellationToken);
-                records.Add(new SnapshotStillRecord(r.DeviceId, r.CapturedAtUtc, r.HttpStatus, path));
+                records.Add(new SnapshotStillRecord(r.DeviceId, r.CapturedAtUtc, r.HttpStatus, path, r.SkipReason is not null));
             }
 
             // The newest 200 is the only still that can be held to the window end; the mapper cuts it short at a later failure.
