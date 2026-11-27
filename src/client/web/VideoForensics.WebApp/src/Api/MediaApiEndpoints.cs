@@ -49,6 +49,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("/media-items/latest-snapshot-hash", GetLatestSnapshotHashAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
             _ = group.MapGet("/media-items/snapshots", ListSnapshotsAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
@@ -464,6 +468,18 @@ namespace VideoForensics.Client.WebApp.Api
 
             IReadOnlyList<MediaItem> snapshots = await mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, from, to, ct);
             return Results.Ok(snapshots.Select(x => x.ToDto()));
+        }
+
+        /// <summary>
+        /// Returns the SHA-256 hash of a device's newest snapshot as a JSON string, or 204 when the device has none.
+        /// </summary>
+        public static async Task<IResult> GetLatestSnapshotHashAsync(
+            Guid deviceId,
+            IMediaItemWriteRepository mediaItems,
+            CancellationToken ct)
+        {
+            string? hash = await mediaItems.GetLatestSnapshotHashAsync(deviceId, ct);
+            return hash is null ? Results.NoContent() : Results.Ok(hash);
         }
 
         /// <summary>

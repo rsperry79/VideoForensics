@@ -320,6 +320,42 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
+        public async Task RollUp_SkippedCaptureBetweenStills_EndsTheHoldLikeAFailure()
+        {
+            // A 200 at +1 min, a skipped placeholder attempt at +3 min, then a 200 at +10 min. The skipped attempt stores no
+            // media, so the first still must end at the skip rather than run on to the next image.
+            var captures = new Mock<ISnapshotCaptureWriteRepository>();
+            _ = captures.Setup(c => c.GetAttemptsForDeviceAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(
+            [
+                SnapshotCapture.Create(_device.Id, From.AddMinutes(1), "fresh", 200, "a.jpg", null),
+                SnapshotCapture.Create(_device.Id, From.AddMinutes(3), "fresh", 200, null, null, SnapshotSkipReason.Offline),
+                SnapshotCapture.Create(_device.Id, From.AddMinutes(10), "fresh", 200, "b.jpg", null),
+            ]);
+            _ = WriteJpeg("a.jpg");
+            _ = WriteJpeg("b.jpg");
+            TimelineVideoRequest? sent = null;
+            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+                .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
+                .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 3));
+
+            SnapshotRollupService service = new(
+                _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
+                NullLogger<SnapshotRollupService>.Instance,
+                _events.Object,
+                _unitOfWork,
+                captures: captures.Object,
+                stillMapper: new SnapshotStillMapper(),
+                mediaPaths: RootedPaths());
+
+            SnapshotRollupResult result = await service.RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Equal(1, result.DevicesRolledUp);
+            Assert.NotNull(sent);
+            Assert.Equal(2, sent!.Stills.Count);
+            Assert.Equal(TimeSpan.FromMinutes(2), sent.Stills[0].Hold);
+        }
+
+        [Fact]
         public async Task RollUp_RecordsTimelapseEventForTheDevice_AlreadyDownloaded()
         {
             // The Events tab reads the Events table, so each loop also needs an event row. It is marked Downloaded so the

@@ -95,5 +95,11 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Version of the baseline snapshot this clip was judged against.</summary>
         public int? BaselineVersion { get; set; }
+
+        /// <summary>
+        /// True when an offline camera served this frame as its placeholder. The file stays on disk; only the row is flagged,
+        /// so purge and export flows are unchanged.
+        /// </summary>
+        public bool IsPlaceholder { get; set; }
     }
 }

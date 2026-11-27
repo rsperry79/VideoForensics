@@ -14,6 +14,9 @@ namespace VideoForensics.Data.Database.Tests
     {
         private static readonly DateTime Start = new(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
         private const string SnapshotMetadata = "{\"eventId\":\"snapshot-1\",\"type\":\"snapshot\"}";
+        private static readonly string OlderHash = new('1', 64);
+        private static readonly string NewerHash = new('2', 64);
+        private static readonly string OtherDeviceHash = new('3', 64);
 
         private SqliteInMemoryFixture _fixture = null!;
         private MediaItemRepository _repository = null!;
@@ -33,7 +36,7 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static MediaItem Row(Guid deviceId, string name, string format, DateTime recordedAt, string? metadata)
+        private static MediaItem Row(Guid deviceId, string name, string format, DateTime recordedAt, string? metadata, string? sha256 = null)
         {
             return new()
             {
@@ -42,7 +45,7 @@ namespace VideoForensics.Data.Database.Tests
                 FileName = name,
                 FilePath = name,
                 MediaFormat = format,
-                Sha256Hash = Guid.NewGuid().ToString("N"),
+                Sha256Hash = sha256 ?? Guid.NewGuid().ToString("N"),
                 RecordedAtUtc = recordedAt,
                 DownloadedAtUtc = recordedAt,
                 MetadataJson = metadata,
@@ -63,6 +66,53 @@ namespace VideoForensics.Data.Database.Tests
             IReadOnlyList<MediaItem> rows = await _repository.GetSnapshotsByDeviceAndDateRangeAsync(device, Start, Start.AddMinutes(15), CancellationToken.None);
 
             Assert.Equal(new[] { "early.jpg", "late.jpg" }, rows.Select(r => r.FileName).ToArray());
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_NoSnapshot_ReturnsNull()
+        {
+            var device = Guid.NewGuid();
+            await _repository.AddAsync(Row(device, "clip.mp4", "mp4", Start, null), CancellationToken.None);
+
+            string? hash = await _repository.GetLatestSnapshotHashAsync(device, CancellationToken.None);
+
+            Assert.Null(hash);
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_TwoSnapshots_ReturnsNewestHash()
+        {
+            var device = Guid.NewGuid();
+            await _repository.AddAsync(Row(device, "older.jpg", "jpg", Start.AddMinutes(1), SnapshotMetadata, OlderHash), CancellationToken.None);
+            await _repository.AddAsync(Row(device, "newer.jpg", "jpg", Start.AddMinutes(9), SnapshotMetadata, NewerHash), CancellationToken.None);
+
+            string? hash = await _repository.GetLatestSnapshotHashAsync(device, CancellationToken.None);
+
+            Assert.Equal(NewerHash, hash);
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_NewerNonSnapshotIgnored_ReturnsSnapshotHash()
+        {
+            var device = Guid.NewGuid();
+            await _repository.AddAsync(Row(device, "snap.jpg", "jpg", Start.AddMinutes(1), SnapshotMetadata, OlderHash), CancellationToken.None);
+            await _repository.AddAsync(Row(device, "clip.mp4", "mp4", Start.AddMinutes(5), null, NewerHash), CancellationToken.None);
+
+            string? hash = await _repository.GetLatestSnapshotHashAsync(device, CancellationToken.None);
+
+            Assert.Equal(OlderHash, hash);
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_OtherDeviceSnapshotIgnored_ReturnsNull()
+        {
+            var device = Guid.NewGuid();
+            var otherDevice = Guid.NewGuid();
+            await _repository.AddAsync(Row(otherDevice, "other.jpg", "jpg", Start.AddMinutes(9), SnapshotMetadata, OtherDeviceHash), CancellationToken.None);
+
+            string? hash = await _repository.GetLatestSnapshotHashAsync(device, CancellationToken.None);
+
+            Assert.Null(hash);
         }
     }
 }

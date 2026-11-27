@@ -30,6 +30,12 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Link to the DeviceHealth row captured for the same tick, when one exists.</summary>
         public Guid? DeviceHealthId { get; private set; }
 
+        /// <summary>
+        /// Why this attempt stored no media (offline camera or identical frame). Null for a normal attempt. A skipped attempt
+        /// keeps its real HTTP status but is never <see cref="IsCurrent"/> and has no <see cref="MediaFilePath"/>.
+        /// </summary>
+        public SnapshotSkipReason? SkipReason { get; private set; }
+
         private SnapshotCapture()
         {
         }
@@ -46,7 +52,8 @@ namespace VideoForensics.Data.Common.Entities
             int httpStatus,
             bool isCurrent,
             string? mediaFilePath,
-            Guid? deviceHealthId)
+            Guid? deviceHealthId,
+            SnapshotSkipReason? skipReason = null)
         {
             return new SnapshotCapture
             {
@@ -58,6 +65,7 @@ namespace VideoForensics.Data.Common.Entities
                 IsCurrent = isCurrent,
                 MediaFilePath = mediaFilePath,
                 DeviceHealthId = deviceHealthId,
+                SkipReason = skipReason,
             };
         }
 
@@ -68,7 +76,8 @@ namespace VideoForensics.Data.Common.Entities
             string trigger,
             int httpStatus,
             string? mediaFilePath,
-            Guid? deviceHealthId)
+            Guid? deviceHealthId,
+            SnapshotSkipReason? skipReason = null)
         {
             // Case-sensitive on purpose: the trigger is a wire/storage enum, not free text.
             if (trigger is not ("fresh" or "latest"))
@@ -82,7 +91,14 @@ namespace VideoForensics.Data.Common.Entities
                 throw new ArgumentOutOfRangeException(nameof(httpStatus), httpStatus, "HTTP status must be between 100 and 599.");
             }
 
-            bool isCurrent = httpStatus == 200;
+            // A skipped attempt keeps its real status (e.g. 200) but stores no media, so it is never current.
+            bool isSkipped = skipReason is not null;
+            if (isSkipped && mediaFilePath is not null)
+            {
+                throw new ArgumentException("A skipped capture cannot have a media file path.", nameof(mediaFilePath));
+            }
+
+            bool isCurrent = httpStatus == 200 && !isSkipped;
             bool hasMediaPath = !string.IsNullOrWhiteSpace(mediaFilePath);
 
             // A non-200 attempt produced no media; a 200 must have media to be "current".
@@ -100,6 +116,7 @@ namespace VideoForensics.Data.Common.Entities
                     HttpStatus = httpStatus,
                     IsCurrent = isCurrent,
                     MediaFilePath = isCurrent ? mediaFilePath : null,
+                    SkipReason = skipReason,
                     DeviceHealthId = deviceHealthId,
                 };
         }

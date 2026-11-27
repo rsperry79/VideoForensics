@@ -88,7 +88,7 @@ namespace VideoForensics.Client.Hosting.Remote
         private static SnapshotCapture ToDomain(SnapshotCaptureDto dto)
         {
             return SnapshotCapture.Rehydrate(
-                dto.Id, dto.DeviceId, dto.CapturedAtUtc, dto.Trigger, dto.HttpStatus, dto.IsCurrent, dto.MediaFilePath, dto.DeviceHealthId);
+                dto.Id, dto.DeviceId, dto.CapturedAtUtc, dto.Trigger, dto.HttpStatus, dto.IsCurrent, dto.MediaFilePath, dto.DeviceHealthId, dto.SkipReason is { } skip ? Enum.Parse<SnapshotSkipReason>(skip.ToString()) : null);
         }
     }
 }

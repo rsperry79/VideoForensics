@@ -212,6 +212,64 @@ namespace VideoForensics.Core.Providers.Core.Tests
             _ = Assert.Throws<ArgumentException>(() => _mapper.MapCurrentStills(request));
         }
 
+        [Fact]
+        public void MapCurrentStills_SkippedAttemptBetweenStills_EndsPreviousStillAtSkip()
+        {
+            WriteMedia("a.jpg");
+            WriteMedia("b.jpg");
+            SnapshotStillMapRequest request = Request(
+                new[]
+                {
+                    Record(_device, T0, 200, "a.jpg"),
+                    Record(_device, T0.AddSeconds(5), 200, null, skipped: true),
+                    Record(_device, T0.AddSeconds(10), 200, "b.jpg"),
+                },
+                TimeSpan.FromSeconds(5));
+
+            IReadOnlyList<TimelineStill> stills = _mapper.MapCurrentStills(request);
+
+            Assert.Equal(2, stills.Count);
+            Assert.Equal(TimeSpan.FromSeconds(5), stills[0].Hold);
+        }
+
+        [Fact]
+        public void MapCurrentStills_SkippedAttempt_YieldsNoStill()
+        {
+            SnapshotStillMapRequest request = Request(
+                new[] { Record(_device, T0, 200, null, skipped: true) },
+                TimeSpan.FromSeconds(3));
+
+            Assert.Empty(_mapper.MapCurrentStills(request));
+        }
+
+        [Fact]
+        public void MapCurrentStills_SkippedAttemptWithStoredFile_IsNotAStill()
+        {
+            WriteMedia("a.jpg");
+            SnapshotStillMapRequest request = Request(
+                new[] { Record(_device, T0, 200, "a.jpg", skipped: true) },
+                TimeSpan.FromSeconds(3));
+
+            Assert.Empty(_mapper.MapCurrentStills(request));
+        }
+
+        [Fact]
+        public void MapCurrentStills_Status200WithoutPathAndNotSkipped_IsIgnoredAndDoesNotEndHold()
+        {
+            WriteMedia("a.jpg");
+            SnapshotStillMapRequest request = Request(
+                new[]
+                {
+                    Record(_device, T0, 200, "a.jpg"),
+                    Record(_device, T0.AddSeconds(3), 200, null),
+                },
+                TimeSpan.FromSeconds(9));
+
+            TimelineStill still = Assert.Single(_mapper.MapCurrentStills(request));
+
+            Assert.Equal(TimeSpan.FromSeconds(9), still.Hold);
+        }
+
         private void WriteMedia(string relative)
         {
             File.WriteAllBytes(Path.Combine(_root, relative), new byte[] { 0xFF, 0xD8, 0xFF });
@@ -226,9 +284,9 @@ namespace VideoForensics.Core.Providers.Core.Tests
             return new(full, _device, lastHold);
         }
 
-        private static SnapshotStillRecord Record(Guid device, DateTimeOffset capturedAt, int status, string? media)
+        private static SnapshotStillRecord Record(Guid device, DateTimeOffset capturedAt, int status, string? media, bool skipped = false)
         {
-            return new(device, capturedAt, status, media);
+            return new(device, capturedAt, status, media, skipped);
         }
     }
 }

@@ -2920,6 +2920,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool>("IntegrityVerified")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsPlaceholder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("IsPurged")
                         .HasColumnType("INTEGER");
 
@@ -7668,6 +7673,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<string>("MediaFilePath")
                         .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SkipReason")
+                        .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Trigger")

@@ -47,7 +47,7 @@ namespace VideoForensics.Data.Core.Services
             foreach (VideoForensics.Data.Common.Entities.SnapshotCapture row in rows)
             {
                 string? path = string.IsNullOrWhiteSpace(row.MediaFilePath) ? null : await _paths.ToAbsoluteAsync(row.MediaFilePath, cancellationToken);
-                records.Add(new SnapshotStillRecord(row.DeviceId, row.CapturedAtUtc, row.HttpStatus, path));
+                records.Add(new SnapshotStillRecord(row.DeviceId, row.CapturedAtUtc, row.HttpStatus, path, row.SkipReason is not null));
             }
 
             IReadOnlyList<TimelineStill> stills = _stillMapper.MapCurrentStills(

@@ -59,6 +59,18 @@ namespace VideoForensics.Data.Common.Contracts
         /// database. Files on disk are not checked here.
         /// </summary>
         Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+        /// <summary>
+        /// The SHA-256 hash (lowercase hex) of a device's newest snapshot, by recording time, or null when it has none.
+        /// Only that column is read, in SQL.
+        /// </summary>
+        Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct);
+        /// <summary>
+        /// Marks up to <paramref name="batchSize"/> repeat snapshot placeholders in one statement and returns how many rows it
+        /// marked. A repeat is a snapshot JPEG whose hash equals the hash of the snapshot just before it on the same device.
+        /// Files are not touched and no row is deleted. Returns 0 once nothing is left, so a caller loops until 0.
+        /// </summary>
+        Task<int> MarkRepeatSnapshotPlaceholdersAsync(int batchSize, CancellationToken ct);
+
 
         /// <summary>
         /// A device's whole history of stream-reported video bitrates, oldest first. Estimated bitrates and clips with no

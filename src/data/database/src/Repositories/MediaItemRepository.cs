@@ -130,6 +130,33 @@ namespace VideoForensics.Data.Database.Repositories
                 : AllTimeBitrateBaseline.FromTotals(totals.Count, totals.Sum, totals.SumOfSquares);
         }
 
+        /// <summary>
+        /// The SHA-256 hash (lowercase hex) of a device's newest snapshot, or null when it has none. Only the hash column is read.
+        /// </summary>
+        public async Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct)
+        {
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.LatestSnapshotHashByDevice(context.Db(), deviceId)
+                .FirstOrDefaultAsync(ct), ct);
+        }
+
+        /// <summary>
+        /// Marks up to <paramref name="batchSize"/> repeat snapshot placeholders and returns how many rows it marked.
+        /// </summary>
+        /// <remarks>
+        /// Why raw SQL: the "previous snapshot" test needs the LAG window function, which LINQ cannot express on SQLite. The
+        /// statement is set-based and bound by the batch size, so an interrupted backfill resumes from the rows still unmarked.
+        /// </remarks>
+        public async Task<int> MarkRepeatSnapshotPlaceholdersAsync(int batchSize, CancellationToken ct)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
+            return await unitOfWork.ExecuteAsync(async context =>
+            {
+                VideoForensicsDbContext db = context.Db();
+                return await db.Database.ExecuteSqlRawAsync(MediaItemQueries.MarkRepeatSnapshotPlaceholdersSql,
+                    new object[] { batchSize, "jpg", MediaKinds.Snapshot }, ct);
+            }, ct);
+        }
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {

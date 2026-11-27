@@ -27,6 +27,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="ApiSourceHash">Hash of the source API response for change detection; null if not applicable.</param>
     /// <param name="DurationSeconds">Length of a video clip in seconds; null for stills or when unknown. The review timeline needs it to place the clip.</param>
     /// <param name="PreviewPath">Path of the short preview clip, null when none was generated. Clients only use it to know a preview exists.</param>
+    /// <param name="IsPlaceholder">True when an offline camera served this frame as its placeholder. The file is kept; only the row is flagged.</param>
     public record MediaItemDto(
         Guid Id,
         Guid DeviceId,
@@ -51,6 +52,7 @@ namespace VideoForensics.Core.Api.Contracts
         string? MetadataJson,
         string? ApiSourceHash,
         double? DurationSeconds = null,
-        string? PreviewPath = null
+        string? PreviewPath = null,
+        bool IsPlaceholder = false
     );
 }

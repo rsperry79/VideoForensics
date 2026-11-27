@@ -13,6 +13,7 @@ using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Services;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
 
@@ -91,6 +92,9 @@ namespace VideoForensics.Client.Hosting.Services
             /// <summary>Attempts the provider refused with a 429.</summary>
             public int Throttled { get; set; }
 
+            /// <summary>Attempts whose frame was a placeholder (offline, or identical to the previous snapshot): no image or Media row written.</summary>
+            public int Skipped { get; set; }
+
             /// <summary>True when an offline alert failed to dispatch this tick. The capture itself still counts as recorded.</summary>
             public bool AlertFailed { get; set; }
 
@@ -98,7 +102,7 @@ namespace VideoForensics.Client.Hosting.Services
             public bool AccountFailed { get; set; }
 
             /// <summary>Attempts made this tick, across all outcomes.</summary>
-            public int Attempted => Captured + Failed + Throttled;
+            public int Attempted => Captured + Skipped + Failed + Throttled;
         }
 
         /// <summary>
@@ -264,6 +268,32 @@ namespace VideoForensics.Client.Hosting.Services
             _logger.LogWarning("Ring is rate-limiting {AccountName}; snapshot capture is paused until {ResumeAt:t} local time", accountName, until.ToLocalTime());
         }
 
+        /// <summary>
+        /// Decides whether a 200 frame is a placeholder. The frame is hashed in memory before anything is written, and the device's
+        /// newest stored snapshot hash is read once per capture. A failed read is logged and treated as no previous hash, so the
+        /// frame is then stored as before.
+        /// </summary>
+        private async Task<SnapshotSkipReason?> DetectSkipReasonAsync(IServiceProvider sp, Device device, byte[] frame, bool? connected, string accountName, CancellationToken ct)
+        {
+            string frameHash = Convert.ToHexString(SHA256.HashData(frame)).ToLowerInvariant();
+            string? previousHash = null;
+            try
+            {
+                previousHash = await sp.GetRequiredService<IMediaItemWriteRepository>().GetLatestSnapshotHashAsync(device.Id, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError("Could not read the previous snapshot hash for {DeviceName} on {AccountName}: {Message} ({ErrorType})", device.Name, accountName, ex.Message, ex.GetType().Name);
+            }
+
+            return SnapshotPlaceholderDetector.Check(connected, frameHash, previousHash) switch
+            {
+                SnapshotPlaceholderReason.Offline => SnapshotSkipReason.Offline,
+                SnapshotPlaceholderReason.IdenticalFrame => SnapshotSkipReason.IdenticalFrame,
+                _ => null,
+            };
+        }
+
         private async Task<bool> EnsureSessionAsync(IServiceProvider sp, Guid accountId, string accountName, CancellationToken ct)
         {
             if (sp.GetRequiredService<ISessionProvider>().GetSession(accountId) != null)
@@ -357,7 +387,13 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             string? mediaFilePath = null;
-            if (status == 200)
+
+            // Why: a dead Ring camera serves a 200 gray JPEG that repeats byte-for-byte. The frame is judged here, before WriteImage,
+            // so a placeholder never reaches the disk or the Media table.
+            SnapshotSkipReason? skipReason = status == 200 && attempt.Image is { Length: > 0 } frame
+                ? await DetectSkipReasonAsync(sp, device, frame, attempt.Connected, accountName, ct)
+                : null;
+            if (status == 200 && skipReason is null)
             {
                 if (attempt.Image is not { Length: > 0 } image)
                 {
@@ -387,7 +423,7 @@ namespace VideoForensics.Client.Hosting.Services
                 string? storedPath = mediaFilePath is null
                     ? null
                     : await (sp.GetService<IMediaPathResolver>() ?? PassThroughMediaPathResolver.Instance).ToStoredAsync(mediaFilePath, ct);
-                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: attempt.DeviceHealthId);
+                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, storedPath, deviceHealthId: attempt.DeviceHealthId, skipReason: skipReason);
                 _ = await sp.GetRequiredService<ISnapshotCaptureWriteRepository>().AddAsync(row, ct);
                 _logger.LogDebug("Snapshot attempt recorded for {DeviceName} on {AccountName}: HTTP {HttpStatus}", device.Name, accountName, status);
             }
@@ -406,6 +442,11 @@ namespace VideoForensics.Client.Hosting.Services
 
             switch (status)
             {
+                case 200 when skipReason is { } reason:
+                    // A skipped frame counts as skipped, not captured. Its 200 stays on the attempt row; no image or Media row was written.
+                    _logger.LogInformation("Snapshot capture skipped for {DeviceName} on {AccountName}: {Reason}", device.Name, accountName, reason);
+                    counts.Skipped++;
+                    break;
                 case 200:
                     counts.Captured++;
                     break;

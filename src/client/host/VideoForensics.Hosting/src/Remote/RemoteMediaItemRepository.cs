@@ -28,6 +28,20 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct)
+        {
+            // Why: the server reads one hash column in SQL, so the client never loads a whole snapshot row. 204 means no snapshot.
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items/latest-snapshot-hash?deviceId={deviceId}", ct);
+            if (response.StatusCode == HttpStatusCode.NoContent)
+            {
+                return null;
+            }
+
+            _ = response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<string>(JsonOptions, ct);
+        }
+
+        /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItemDto>> ListAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items", ct);

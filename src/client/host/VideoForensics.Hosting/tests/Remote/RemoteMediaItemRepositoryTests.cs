@@ -92,6 +92,49 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
+        public async Task GetLatestSnapshotHashAsync_HashReturned_CallsLatestSnapshotHashEndpoint()
+        {
+            var deviceId = Guid.NewGuid();
+            string json = JsonSerializer.Serialize("abc123", JsonOptions);
+
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            string? hash = await repo.GetLatestSnapshotHashAsync(deviceId, CancellationToken.None);
+
+            Assert.NotNull(handler.CapturedRequest);
+            Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
+            Assert.Equal($"/api/v1/media-items/latest-snapshot-hash?deviceId={deviceId}", handler.CapturedRequest.RequestUri?.PathAndQuery);
+            Assert.Equal("abc123", hash);
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_NoContent_ReturnsNull()
+        {
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            string? hash = await repo.GetLatestSnapshotHashAsync(Guid.NewGuid(), CancellationToken.None);
+
+            Assert.Null(hash);
+        }
+
+        [Fact]
         public async Task ListAsync_WithCancellationToken_PassesToHttpClient()
         {
             var cts = new CancellationTokenSource();

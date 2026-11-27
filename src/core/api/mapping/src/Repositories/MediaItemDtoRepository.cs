@@ -48,6 +48,9 @@ namespace VideoForensics.Core.Api.Contracts.Repositories
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItemDto>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
             (await items.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct)).Select(i => i.ToDto()).ToList();
+        /// <inheritdoc />
+        public Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct) =>
+            items.GetLatestSnapshotHashAsync(deviceId, ct);
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<MeasuredBitrateDto>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct) =>
