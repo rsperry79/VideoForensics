@@ -21,6 +21,7 @@
                    WindowEndUtc="Window.End"
                    Cursor="State.PlaybackCursor ?? State.Cursor"
                    Label="@L["TimelineNewestAtTop"].Value"
+                   LaneOrder="TimelineModel.Lanes"
                    OnSeek="SeekTo" />
 
     @if (TimelineModel.Clips.Count == 0)

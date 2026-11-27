@@ -99,7 +99,8 @@
                 key.Cameras.SelectMany(id => ReviewClipBuilder.BuildClips(set.Items, id)).ToList(),
                 key.FromUtc,
                 key.ToUtc,
-                key.Cameras.SelectMany(id => ReviewClipBuilder.BuildUnavailableClips(set.UnavailableEvents ?? [], id)).ToList());
+                key.Cameras.SelectMany(id => ReviewClipBuilder.BuildUnavailableClips(set.UnavailableEvents ?? [], id)).ToList(),
+                key.Cameras.Select(id => id.ToString("D")).ToList());
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

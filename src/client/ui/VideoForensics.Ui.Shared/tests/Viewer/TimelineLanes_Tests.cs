@@ -54,4 +54,26 @@ public class TimelineLanes_Tests : BunitContext
 
         Assert.True(cut.Find("[data-testid='timeline-segment']").ClassList.Contains("review-timeline-kind-timelapse"));
     }
+
+    [Fact]
+    public void TimelineStrip_LaneOrder_PlacesLanesInTheGivenCameraOrderNotByIdText()
+    {
+        // The Front Door id sorts after the Garden id as text, so an ordinal sort puts the Garden lane first.
+        var clips = new List<ClipWindow>
+        {
+            new("a1", WindowStart.AddHours(1), 600, LaneId: "camZ"),
+            new("b1", WindowStart.AddHours(2), 600, LaneId: "camA"),
+        };
+
+        IRenderedComponent<TimelineStrip> cut = Render<TimelineStrip>(p => p
+            .Add(s => s.Orientation, TimelineOrientation.Vertical)
+            .Add(s => s.Clips, clips)
+            .Add(s => s.LaneOrder, new List<string> { "camZ", "camA" })
+            .Add(s => s.WindowStartUtc, WindowStart)
+            .Add(s => s.WindowEndUtc, WindowEnd));
+
+        var segments = cut.FindAll("[data-testid='timeline-segment']");
+        Assert.Contains("(100% - 3.5rem) * 0)", segments[0].GetAttribute("style"));
+        Assert.Contains("(100% - 3.5rem) * 0.5)", segments[1].GetAttribute("style"));
+    }
 }
