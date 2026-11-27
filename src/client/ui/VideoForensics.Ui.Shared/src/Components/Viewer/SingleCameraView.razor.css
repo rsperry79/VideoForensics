@@ -5,7 +5,7 @@
 /* The stage is a 16:9 box no wider than the column and no taller than the space left under the header, the controls and
    the strip. The video fills the box, so the buttons below always sit under it and nothing spills over them. */
 .single-camera-stage {
-    height: min(calc(100vw * 9 / 16), calc(100vh - 16rem));
+    height: min(calc(100vw * 9 / 16), calc(var(--vf-vh, 100vh) - 16rem));
     max-height: none;
     display: flex;
     align-items: center;
