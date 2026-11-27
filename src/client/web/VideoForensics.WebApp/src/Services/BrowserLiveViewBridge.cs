@@ -89,7 +89,9 @@ namespace VideoForensics.Client.WebApp.Services
             };
             var audioFormats = new List<AudioFormat>
             {
-                new(AudioCodecsEnum.OPUS, 111, 48000, 2, string.Empty)
+                // No fmtp parameters. An empty string makes SIPSorcery write a bare "a=fmtp:111 ", which the browser rejects
+                // ("Expects at least 2 fields") so the live view never starts. The Ring leg passes null for the same reason.
+                new(AudioCodecsEnum.OPUS, 111, 48000, 2, null)
             };
 
             pc.addTrack(new MediaStreamTrack(videoFormats, MediaStreamStatusEnum.SendRecv));

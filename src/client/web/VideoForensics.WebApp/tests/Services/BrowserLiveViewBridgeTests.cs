@@ -59,6 +59,32 @@ namespace VideoForensics.Client.WebApp.Tests.Services
         }
 
         [Fact]
+        public async Task CreateBrowserLegAsync_Offer_HasNoBareFmtpLines()
+        {
+            // The browser rejects "a=fmtp:111" (also "a=fmtp:111 ") with "Expects at least 2 fields", so the live view never starts.
+            // SIPSorcery writes that line when the Opus format carries an empty fmtp string instead of null.
+            BrowserLiveViewBridge bridge = BuildBridge();
+            var ringConnection = new FakeLiveViewConnection();
+
+            RTCPeerConnection pc = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+
+            try
+            {
+                string sdp = pc.createOffer(null).sdp;
+
+                string[] bare = sdp.Split('\n')
+                    .Select(line => line.TrimEnd('\r'))
+                    .Where(line => System.Text.RegularExpressions.Regex.IsMatch(line, @"^a=fmtp:\d+\s*$"))
+                    .ToArray();
+                Assert.Empty(bare);
+            }
+            finally
+            {
+                await bridge.DisposeAllForConnectionAsync(ConnectionId);
+            }
+        }
+
+        [Fact]
         public async Task CreateBrowserLegAsync_NewKey_SubscribesOneRtpHandlerToProviderConnection()
         {
             BrowserLiveViewBridge bridge = BuildBridge();
