@@ -35,6 +35,7 @@ namespace VideoForensics.Client.Hosting.Remote
             // operatorId is intentionally not sent: the server derives the operator from the auth context.
             var request = new StartLiveViewRequestDto(deviceId, reason.ToString());
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/live-view/start", request, JsonOptions, ct);
+            await ThrowIfTypedStartFailureAsync(response, ct);
             _ = response.EnsureSuccessStatusCode();
             LiveViewSessionDto? dto = await response.Content.ReadFromJsonAsync<LiveViewSessionDto>(JsonOptions, ct);
             return (dto ?? throw new InvalidOperationException("Response was null"));
@@ -111,6 +112,46 @@ namespace VideoForensics.Client.Hosting.Remote
         public Task<ILiveViewConnection?> GetConnectionForSessionAsync(Guid sessionId, CancellationToken ct)
         {
             throw new NotSupportedException("Live provider connections cannot cross the wire; use the server-side signaling hub.");
+        }
+
+        /// <summary>
+        /// Throws the typed exception when a 409 body carries a known <c>code</c>, so the page can show a localized
+        /// message without matching text. Any other response is left to the caller's EnsureSuccessStatusCode, as before.
+        /// </summary>
+        private static async Task ThrowIfTypedStartFailureAsync(HttpResponseMessage response, CancellationToken ct)
+        {
+            if (response.StatusCode != HttpStatusCode.Conflict || response.Content is null)
+            {
+                return;
+            }
+
+            string? code = null;
+            string? detail = null;
+            try
+            {
+                using JsonDocument body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                if (body.RootElement.TryGetProperty("code", out JsonElement codeElement) && codeElement.ValueKind == JsonValueKind.String)
+                {
+                    code = codeElement.GetString();
+                }
+
+                if (body.RootElement.TryGetProperty("detail", out JsonElement detailElement) && detailElement.ValueKind == JsonValueKind.String)
+                {
+                    detail = detailElement.GetString();
+                }
+            }
+            catch (JsonException)
+            {
+                // Not a JSON problem body, so there is no code: the caller reports the generic failure.
+            }
+
+            switch (code)
+            {
+                case LiveViewCapReachedException.Code:
+                    throw new LiveViewCapReachedException(detail ?? "Live view is at its stream limit.");
+                case ProviderBudgetExceededException.Code:
+                    throw new ProviderBudgetExceededException(detail ?? "Provider API budget exceeded.");
+            }
         }
 
         private static void ThrowIfUnknownSession(HttpResponseMessage response, Guid sessionId)

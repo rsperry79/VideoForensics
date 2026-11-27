@@ -234,6 +234,42 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
             Assert.Equal("?backgroundMinutes=5", capturedQuery);
         }
 
+        [Fact]
+        public async Task StartAsync_Conflict_WithCapCode_ThrowsTypedCapException()
+        {
+            var handler = new CaptureHttpMessageHandler((request, _) => Task.FromResult(JsonConflict("LiveViewCapReached")));
+            var service = new RemoteLiveViewSessionService(new HttpClient(handler) { BaseAddress = BaseUri });
+
+            _ = await Assert.ThrowsAsync<LiveViewCapReachedException>(async () =>
+                await service.StartAsync(Guid.NewGuid(), LiveViewTriggerReasonDto.Manual, null, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task StartAsync_Conflict_WithBudgetCode_ThrowsTypedBudgetException()
+        {
+            var handler = new CaptureHttpMessageHandler((request, _) => Task.FromResult(JsonConflict("ProviderBudgetExceeded")));
+            var service = new RemoteLiveViewSessionService(new HttpClient(handler) { BaseAddress = BaseUri });
+
+            _ = await Assert.ThrowsAsync<ProviderBudgetExceededException>(async () =>
+                await service.StartAsync(Guid.NewGuid(), LiveViewTriggerReasonDto.Manual, null, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task StartAsync_Conflict_WithoutCode_KeepsHttpRequestException()
+        {
+            var handler = new CaptureHttpMessageHandler((request, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Conflict)));
+            var service = new RemoteLiveViewSessionService(new HttpClient(handler) { BaseAddress = BaseUri });
+
+            _ = await Assert.ThrowsAsync<HttpRequestException>(async () =>
+                await service.StartAsync(Guid.NewGuid(), LiveViewTriggerReasonDto.Manual, null, CancellationToken.None));
+        }
+
+        private static HttpResponseMessage JsonConflict(string code) =>
+            new(HttpStatusCode.Conflict)
+            {
+                Content = new StringContent("{\"code\":\"" + code + "\",\"status\":409}", System.Text.Encoding.UTF8, "application/problem+json"),
+            };
+
         private class CaptureHttpMessageHandler : HttpMessageHandler
         {
             private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler;

@@ -251,6 +251,34 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
+        public async Task Start_ServiceCapReached_Returns409WithTypedCode()
+        {
+            await using LiveViewHost host = await StartAsync();
+            _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new LiveViewCapReachedException("Four streams are live."));
+
+            HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody()));
+
+            Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
+            using var body = System.Text.Json.JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+            Assert.Equal(LiveViewCapReachedException.Code, body.RootElement.GetProperty("code").GetString());
+        }
+
+        [Fact]
+        public async Task Start_ServiceBudgetExceeded_Returns409WithTypedCode()
+        {
+            await using LiveViewHost host = await StartAsync();
+            _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ProviderBudgetExceededException("Provider API budget exceeded for Ring."));
+
+            HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody()));
+
+            Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
+            using var body = System.Text.Json.JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+            Assert.Equal(ProviderBudgetExceededException.Code, body.RootElement.GetProperty("code").GetString());
+        }
+
+        [Fact]
         public async Task Start_ServiceNotSupported_Returns501()
         {
             await using LiveViewHost host = await StartAsync();

@@ -232,6 +232,9 @@ namespace VideoForensics.Client.WebApp.Api
             return ex switch
             {
                 KeyNotFoundException => Results.Problem(statusCode: StatusCodes.Status404NotFound),
+                // The typed errors come first: both derive from InvalidOperationException. Their 409 carries a code the client maps to a message.
+                LiveViewCapReachedException e => Results.Problem(detail: e.Message, statusCode: StatusCodes.Status409Conflict, extensions: new Dictionary<string, object?> { ["code"] = LiveViewCapReachedException.Code }),
+                ProviderBudgetExceededException e => Results.Problem(detail: e.Message, statusCode: StatusCodes.Status409Conflict, extensions: new Dictionary<string, object?> { ["code"] = ProviderBudgetExceededException.Code }),
                 InvalidOperationException => Results.Problem(statusCode: StatusCodes.Status409Conflict),
                 NotSupportedException => Results.Problem(statusCode: StatusCodes.Status501NotImplemented),
                 _ => null

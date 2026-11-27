@@ -62,6 +62,12 @@
   <data name="InvalidDevice" xml:space="preserve">
     <value>Select a valid device.</value>
   </data>
+  <data name="LiveViewCapReached" xml:space="preserve">
+    <value>Up to {0} cameras can be live at once. Stop one to start another.</value>
+  </data>
+  <data name="LiveViewBudgetExceeded" xml:space="preserve">
+    <value>Live view is unavailable: the provider API budget is used up for now. Try again later.</value>
+  </data>
   <data name="SessionFailedToConnect" xml:space="preserve">
     <value>The live view session did not become active. Try again.</value>
   </data>

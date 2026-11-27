@@ -411,7 +411,7 @@ namespace VideoForensics.Client.Core.Tools
             // Budget guard: check if provider API calls are within budget
             if (!await budgetGuard.TryConsumeAsync(providerName, ct))
             {
-                throw new InvalidOperationException($"Provider API budget exceeded for {providerName}.");
+                throw new ProviderBudgetExceededException($"Provider API budget exceeded for {providerName}.");
             }
 
             // Start the provider connection

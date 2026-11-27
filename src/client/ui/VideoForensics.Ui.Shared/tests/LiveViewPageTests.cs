@@ -368,6 +368,85 @@ public class LiveViewPageTests : BunitContext
         Assert.Contains(_liveViewCalls, c => c.Name == "stopLiveView" && c.SessionId == garageSession);
     }
 
+    private static readonly Guid Yard = Guid.Parse("55555555-5555-5555-5555-555555555555");
+    private static readonly Guid Shed = Guid.Parse("66666666-6666-6666-6666-666666666666");
+
+    // The page's error alert lives in the right panel, so its markup is read from the panel slot the page pushed.
+    private string ShownError()
+    {
+        VideoForensics.Client.Ui.Shared.Services.RightPanelContentService slot = Services.GetRequiredService<VideoForensics.Client.Ui.Shared.Services.RightPanelContentService>();
+        return slot.Content is null ? string.Empty : Render(slot.Content).Markup;
+    }
+
+    // The page's localized text for a resource key, formatted with the given arguments.
+    private string Localized(string key, params object[] args) =>
+        Services.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<LiveView>>()[key, args].Value;
+
+    [Fact]
+    public void LiveView_FourLive_FifthStartIsDisabledWithTheCapReason()
+    {
+        // Arrange: five cameras, and the first four are live
+        AddCameras(Camera, Garage, Flood, Yard, Shed);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(5, cut.FindAll("[data-testid='live-view-tile']").Count));
+        foreach (Guid id in new[] { Camera, Garage, Flood, Yard })
+        {
+            ClickTile(cut, id);
+            WaitForLive(cut, id);
+        }
+
+        // Act: nothing more; the fifth camera's tile renders at the cap
+
+        // Assert: its Start is disabled, and its tile says why
+        var fifth = cut.Find($"[data-testid='live-view-tile'][data-device-id='{Shed:D}']");
+        Assert.True(fifth.QuerySelector("button")!.HasAttribute("disabled"));
+        Assert.Equal(Localized("LiveViewCapReached", 4), fifth.QuerySelector("[data-testid='live-view-cap']")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void LiveView_StartRefusedAtCap_ShowsTheCapMessageAndKeepsTheOthersLive()
+    {
+        // Arrange: two cameras are live, and the third is refused because the cap is reached
+        AddCameras(Camera, Garage, Flood);
+        SetupFakeLiveViewModule();
+        _ = _sessionService
+            .Setup(s => s.StartAsync(Flood, It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ThrowsAsync(new LiveViewCapReachedException("Four streams are live."));
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("[data-testid='live-view-tile']").Count));
+        StartBoth(cut, Camera, Garage);
+
+        // Act: the third camera's Start is refused
+        ClickTile(cut, Flood);
+
+        // Assert: the localized cap message is shown, and the first two are still live with their players
+        cut.WaitForAssertion(() => Assert.Contains(Localized("LiveViewCapReached", 4), ShownError()));
+        Assert.Single(cut.FindAll($"#{PlayerIdFor(Camera)}"));
+        Assert.Single(cut.FindAll($"#{PlayerIdFor(Garage)}"));
+        Assert.DoesNotContain(_liveViewCalls, c => c.Name == "stopLiveView");
+    }
+
+    [Fact]
+    public void LiveView_StartRefusedByBudget_ShowsTheBudgetMessage()
+    {
+        // Arrange: one camera whose start is refused because the provider's API budget is used up
+        AddCamera();
+        SetupFakeLiveViewModule();
+        _ = _sessionService
+            .Setup(s => s.StartAsync(Camera, It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ThrowsAsync(new ProviderBudgetExceededException("Provider API budget exceeded for Ring."));
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+
+        // Act
+        ClickTile(cut, Camera);
+
+        // Assert: the localized budget message is shown, and no stream started
+        cut.WaitForAssertion(() => Assert.Contains(Localized("LiveViewBudgetExceeded"), ShownError()));
+        Assert.DoesNotContain(_liveViewCalls, c => c.Name == "startLiveView");
+    }
+
     public LiveViewPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -381,6 +460,9 @@ public class LiveViewPageTests : BunitContext
         _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.RightPanelContentService>();
         _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.LeftPanelContentService>();
         _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
+        // The camera selector in the right panel needs the popup state when the panel fragment is rendered in a test.
+        _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPopupState>();
+        _ = Services.AddScoped(_ => new VideoForensics.Client.Ui.Shared.Services.Scope.ScopeState(TimeProvider.System));
 
         _deviceRepository = new Mock<IDeviceRepository>();
         _ = _deviceRepository
