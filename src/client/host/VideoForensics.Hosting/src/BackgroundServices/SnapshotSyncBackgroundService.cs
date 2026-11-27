@@ -93,7 +93,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             if (lease is null)
             {
                 // Another sync or maintenance holds the lease, so this tick captures nothing. Logged so a silent gap is visible.
-                _logger.LogInformation("Snapshot capture tick skipped: another operation holds the lease");
+                _logger.LogWarning("Snapshot capture tick skipped: another operation holds the lease");
                 return;
             }
 
