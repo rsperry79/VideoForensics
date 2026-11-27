@@ -60,17 +60,17 @@ public class MainLayoutAutoCollapseTests : SimpleModeLayoutTestBase
     }
 
     [Fact]
-    public void MainLayout_LiveViewPage_KeepsLeftNavOpenWhenPrefIsCollapsed()
+    public void MainLayout_LiveViewPage_CollapsesLeftNavWhenPrefIsOpen()
     {
-        // Arrange - Live view still hosts its own menu in the left pane
-        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
+        // Arrange - Live has no left-pane menu any more, so the page takes the width like /media
+        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("false");
         NavigateTo("http://localhost/live-view");
 
         // Act
         _ = Render<MainLayout>();
 
         // Assert
-        Assert.Equal(0, CountHidden(true));
+        Assert.Equal(1, CountHidden(true));
     }
 
     [Fact]

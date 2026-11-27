@@ -4,6 +4,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @inject ReviewPopupState Popups
 @inject IStringLocalizer<ReviewPage> L
+@inject NavigationManager Navigation
 
 @* The review controls at the top of the right sidebar. The sidebar's ReviewPopupHost wraps them, so the popups these open
    share the one backdrop and Escape handler. *@
@@ -15,6 +16,8 @@
                     aria-selected="@(State.ActiveTab == tab ? "true" : "false")" data-testid="review-tab-button-@TabId(tab)"
                     @onclick="() => State.SetTab(tab)">@TabLabel(tab)</button>
         }
+        <button type="button" class="btn btn-outline-secondary" data-testid="review-tab-button-live"
+                @onclick="OpenLive">@L["TabLive"]</button>
     </div>
 
     <ReviewTimeRange State="State" />
@@ -43,6 +46,12 @@
         ReviewTab.Timeline => L["TabTimeline"],
         _ => L["TabEvents"],
     };
+
+    /// <summary>Live is a page of its own, so the button navigates instead of switching the review tab.</summary>
+    private void OpenLive()
+    {
+        Navigation.NavigateTo("/live-view");
+    }
 
     protected override void OnInitialized()
     {

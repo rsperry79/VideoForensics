@@ -38,14 +38,12 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Media_TabListsTheReviewViewsInTheLeftMenu()
+    public void Media_TabHasNoLeftMenuItems()
     {
-        // The review views are ordinary menu items, shown in the same place and style as the other groups' items.
+        // Timeline, Events and Live are tabs in the review page header, so the Media tab has no menu items.
         NavGroup media = NavGroups.All.First(g => g.Key == "media");
         Assert.Equal("/media", media.Path);
-        Assert.Equal(
-            new[] { ("Live", "/live-view") },
-            media.Items.Select(i => (i.Text, i.Path)).ToArray());
+        Assert.Empty(media.Items);
     }
 
     [Fact]
