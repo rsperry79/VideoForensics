@@ -98,8 +98,13 @@ else
                     <SfButton Content="@(live ? L["Stop"] : L["Start"])"
                         OnClick="@(async () => await ToggleLiveAsync(id))"
                         CssClass="@(live ? "e-danger" : "e-primary")"
-                        Disabled="@(_isToggling || (_liveDeviceId.HasValue && !live))" />
+                        Disabled="@(_isToggling || (_liveDeviceId.HasValue && !live) || (!live && _offlineIds.Contains(id)))" />
                 </div>
+
+                @if (!live && _offlineIds.Contains(id))
+                {
+                    <div class="text-warning small mb-1" role="status" data-testid="live-view-offline">@L["DeviceOffline"]</div>
+                }
 
                 @if (live)
                 {
@@ -132,6 +137,10 @@ else
 
     private IReadOnlyList<Guid> _cameraIds = [];
     private Dictionary<Guid, string> _deviceNames = new();
+
+    // Cameras the provider reports offline (a dead battery, no power or no network). A stream cannot connect to one, so
+    // Start is blocked and the tile says why, instead of waiting for the session to time out. A camera with no reported state is not blocked.
+    private HashSet<Guid> _offlineIds = [];
 
     // The media page's camera filter. An empty selection means the first cameras, as the media page shows them.
 
@@ -171,6 +180,7 @@ else
             var cameras = devices.Where(device => DeviceKinds.IsCamera(device.Type)).ToList();
             _cameraIds = cameras.Select(device => device.Id).ToList();
             _deviceNames = cameras.ToDictionary(device => device.Id, device => device.Name ?? $"Device {device.ProviderDeviceId}");
+            _offlineIds = cameras.Where(device => device.IsOnline == false).Select(device => device.Id).ToHashSet();
 
             if (Device is Guid requested && _cameraIds.Contains(requested))
             {

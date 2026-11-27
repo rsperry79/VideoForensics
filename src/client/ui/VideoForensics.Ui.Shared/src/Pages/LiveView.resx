@@ -50,6 +50,9 @@
   <data name="Stop" xml:space="preserve">
     <value>Stop</value>
   </data>
+  <data name="DeviceOffline" xml:space="preserve">
+    <value>Camera offline. Check its battery, power and network.</value>
+  </data>
   <data name="NoStill" xml:space="preserve">
     <value>No still yet</value>
   </data>

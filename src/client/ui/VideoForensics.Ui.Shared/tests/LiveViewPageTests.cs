@@ -61,6 +61,40 @@ public class LiveViewPageTests : BunitContext
     }
 
     [Fact]
+    public void LiveView_CameraOffline_BlocksStartAndShowsWhy()
+    {
+        // Arrange: the camera reports it is offline (a dead battery looks like this), so a stream cannot connect
+        var device = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera", IsOnline = false }.ToDto();
+        _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync([device]);
+
+        // Act
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+
+        // Assert: Start is disabled and the tile says why, before any session is started
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        Assert.True(cut.Find("[data-testid='live-view-tile'] button").HasAttribute("disabled"));
+        Assert.False(string.IsNullOrWhiteSpace(cut.Find("[data-testid='live-view-offline']").TextContent));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(null)]
+    public void LiveView_CameraOnlineOrUnknown_StartStaysEnabledWithNoReason(bool? isOnline)
+    {
+        // Arrange: online, or no state from the provider, is not a reason to block
+        var device = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera", IsOnline = isOnline }.ToDto();
+        _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync([device]);
+
+        // Act
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        Assert.False(cut.Find("[data-testid='live-view-tile'] button").HasAttribute("disabled"));
+        Assert.Empty(cut.FindAll("[data-testid='live-view-offline']"));
+    }
+
+    [Fact]
     public void LiveView_NotLive_ShowsTheLatestStillForTheSelectedCamera()
     {
         // Arrange
