@@ -100,7 +100,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // SplitterPane.Size is an initial-only value (per Syncfusion docs); once the
                 // splitter's JS widget has initialized, collapse state must be driven imperatively
                 // via CollapseAsync/ExpandAsync rather than by re-binding Size or a CssClass.
-                _leftNavRestorePending = LayoutPrefs.LeftNavCollapsed && !IsExpandedLeftNavPath(_currentPath);
+                _leftNavRestorePending = LayoutPrefs.LeftNavCollapsed;
             }
 
             if (_leftNavRestorePending && _outerSplitter is not null)
@@ -135,19 +135,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         }
 
         /// <summary>
-        /// Pages in <see cref="ExpandedLeftNavPaths"/> always show the left nav pane, whatever the saved preference, because it
-        /// hosts the Live view menu. Pages in <see cref="ForcedCollapsedLeftNavPaths"/> always collapse it: the review tabs
-        /// moved to the page header, so /media needs the width. Every other page shows the saved preference.
-        /// Both overrides are transient: they change the pane, never <see cref="LayoutPreferencesState"/>.
+        /// Pages in <see cref="ForcedCollapsedLeftNavPaths"/> always collapse the left nav pane, whatever the saved preference.
+        /// The review tabs, Live included, live in the page header, so these pages have no menu to show and need the width.
+        /// Every other page shows the saved preference. The override is transient: it changes the pane, never
+        /// <see cref="LayoutPreferencesState"/>.
         /// </summary>
-        private static readonly string[] ExpandedLeftNavPaths = ["/live-view"];
-
-        private static readonly string[] ForcedCollapsedLeftNavPaths = ["/media", "/media/review"];
-
-        private static bool IsExpandedLeftNavPath(string path)
-        {
-            return ExpandedLeftNavPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
-        }
+        private static readonly string[] ForcedCollapsedLeftNavPaths = ["/media", "/media/review", "/live-view"];
 
         private static bool IsForcedCollapsedLeftNavPath(string path)
         {
@@ -161,8 +154,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// </summary>
         private async Task SyncLeftNavForPathAsync(SfSplitter splitter)
         {
-            bool wantCollapsed = IsForcedCollapsedLeftNavPath(_currentPath)
-                || (!IsExpandedLeftNavPath(_currentPath) && LayoutPrefs.LeftNavCollapsed);
+            bool wantCollapsed = IsForcedCollapsedLeftNavPath(_currentPath) || LayoutPrefs.LeftNavCollapsed;
             try
             {
                 if (wantCollapsed != _leftNavPaneCollapsed)
@@ -268,7 +260,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
             // On an auto-collapse page the toggle only flips the pane for this visit. The saved preference
             // stays put, and leaving the page brings the pane back in line with it.
-            if (IsExpandedLeftNavPath(_currentPath) || IsForcedCollapsedLeftNavPath(_currentPath))
+            if (IsForcedCollapsedLeftNavPath(_currentPath))
             {
                 if (_outerSplitter is not null)
                 {

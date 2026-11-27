@@ -125,6 +125,9 @@
   <data name="TabEvents" xml:space="preserve">
     <value>Events</value>
   </data>
+  <data name="TabLive" xml:space="preserve">
+    <value>Live</value>
+  </data>
   <data name="TabPlaceholder" xml:space="preserve">
     <value>The {0} view is built in a later step.</value>
   </data>

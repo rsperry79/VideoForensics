@@ -1,5 +1,6 @@
 using Bunit;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
@@ -50,6 +51,21 @@ public class ReviewSidebarControls_Tests : ReviewTestContext
 
         // Assert
         Assert.Equal(ReviewTab.Events, ReviewState.ActiveTab);
+    }
+
+    [Fact]
+    public void ReviewSidebarControls_LiveClick_NavigatesToTheLiveViewPage()
+    {
+        // Arrange
+        IRenderedComponent<ReviewSidebarControls> cut = RenderControls();
+        var navigation = Services.GetRequiredService<NavigationManager>();
+
+        // Act
+        cut.Find("[data-testid='review-tab-button-live']").Click();
+
+        // Assert: Live is a page, so the review tab stays where it was
+        Assert.EndsWith("/live-view", navigation.Uri);
+        Assert.Equal(ReviewTab.Timeline, ReviewState.ActiveTab);
     }
 
     [Fact]
