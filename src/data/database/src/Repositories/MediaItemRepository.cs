@@ -130,6 +130,15 @@ namespace VideoForensics.Data.Database.Repositories
                 : AllTimeBitrateBaseline.FromTotals(totals.Count, totals.Sum, totals.SumOfSquares);
         }
 
+        /// <summary>
+        /// The SHA-256 hash (lowercase hex) of a device's newest snapshot, or null when it has none. Only the hash column is read.
+        /// </summary>
+        public async Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct)
+        {
+            return await unitOfWork.ReadAsync(context => MediaItemQueries.LatestSnapshotHashByDevice(context.Db(), deviceId)
+                .FirstOrDefaultAsync(ct), ct);
+        }
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {

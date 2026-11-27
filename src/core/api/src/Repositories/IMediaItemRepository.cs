@@ -30,6 +30,8 @@ namespace VideoForensics.Core.Api.Contracts.Repositories
 
         /// <summary>Snapshot JPEGs of a device in [fromUtc, toUtc], oldest first.</summary>
         Task<IReadOnlyList<MediaItemDto>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+        /// <summary>The SHA-256 hash (lowercase hex) of a device's newest snapshot, or null when it has none.</summary>
+        Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct);
 
         /// <summary>A device's whole history of stream-reported video bitrates, oldest first.</summary>
         Task<IReadOnlyList<MeasuredBitrateDto>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct);

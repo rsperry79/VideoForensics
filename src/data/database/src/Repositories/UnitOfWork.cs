@@ -614,6 +614,11 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.SnapshotsByDeviceAndDateRange(_db, deviceId, fromUtc, toUtc).ToList());
         }
 
+        public Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult(MediaItemQueries.LatestSnapshotHashByDevice(_db, deviceId).FirstOrDefault());
+        }
+
         public Task<IReadOnlyList<MeasuredBitrate>> GetMeasuredBitrateByDeviceAsync(Guid deviceId, CancellationToken ct)
         {
             // Why: the shared query also drops time-lapse roll-ups, as the all-time baseline already does.

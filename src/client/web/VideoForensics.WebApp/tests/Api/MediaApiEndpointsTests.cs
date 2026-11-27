@@ -922,6 +922,40 @@ namespace VideoForensics.Client.WebApp.Tests.Api
 
         #endregion
 
+        #region GetLatestSnapshotHashAsync Tests
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_HasSnapshot_ReturnsHashAsOk()
+        {
+            var deviceId = Guid.NewGuid();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
+            _ = mediaItemsRepo
+                .Setup(m => m.GetLatestSnapshotHashAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("abc123");
+
+            IResult result = await MediaApiEndpoints.GetLatestSnapshotHashAsync(deviceId, mediaItemsRepo.Object, CancellationToken.None);
+
+            Ok<string> okResult = Assert.IsType<Ok<string>>(result);
+            Assert.Equal("abc123", okResult.Value);
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_NoSnapshot_Returns204()
+        {
+            var deviceId = Guid.NewGuid();
+            var mediaItemsRepo = new Mock<IMediaItemWriteRepository>();
+            _ = mediaItemsRepo
+                .Setup(m => m.GetLatestSnapshotHashAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            IResult result = await MediaApiEndpoints.GetLatestSnapshotHashAsync(deviceId, mediaItemsRepo.Object, CancellationToken.None);
+
+            _ = Assert.IsType<NoContent>(result);
+
+        }
+
+        #endregion
+
         #region ListMediaItemsAsync Tests
 
         [Fact]

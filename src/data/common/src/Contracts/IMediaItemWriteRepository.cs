@@ -59,6 +59,11 @@ namespace VideoForensics.Data.Common.Contracts
         /// database. Files on disk are not checked here.
         /// </summary>
         Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+        /// <summary>
+        /// The SHA-256 hash (lowercase hex) of a device's newest snapshot, by recording time, or null when it has none.
+        /// Only that column is read, in SQL.
+        /// </summary>
+        Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct);
 
         /// <summary>
         /// A device's whole history of stream-reported video bitrates, oldest first. Estimated bitrates and clips with no

@@ -43,6 +43,20 @@ namespace VideoForensics.Data.Database.Repositories
                 .OrderBy(m => m.RecordedAtUtc);
         }
 
+        /// <summary>
+        /// The Sha256Hash of a device's newest snapshot JPEG, by recording time with Id as the tiebreak. Only that column is
+        /// projected, and Take(1) keeps it to one row. Why: the caller needs the hash alone, so the full row is never loaded.
+        /// </summary>
+        internal static IQueryable<string> LatestSnapshotHashByDevice(VideoForensicsDbContext db, Guid deviceId)
+        {
+            return db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "jpg" && m.MediaKind == MediaKinds.Snapshot)
+                .OrderByDescending(m => m.RecordedAtUtc)
+                .ThenByDescending(m => m.Id)
+                .Select(m => m.Sha256Hash)
+                .Take(1);
+        }
+
         /// <summary>A device's media rows recorded in a UTC window, untracked, unordered.</summary>
         internal static IQueryable<MediaItem> ByDeviceAndDateRange(VideoForensicsDbContext db, Guid deviceId, DateTime fromUtc, DateTime toUtc)
         {
