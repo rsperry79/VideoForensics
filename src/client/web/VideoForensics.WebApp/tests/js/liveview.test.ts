@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addIceCandidate, initializeHubConnection, startLiveView, stopHubConnection, stopLiveView } from "../../../../../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/liveview.js";
+import { initializeHubConnection, startLiveView, stopHubConnection, stopLiveView } from "../../../../../../src/client/ui/VideoForensics.Ui.Shared/src/wwwroot/scripts/liveview.js";
 
 // WebRTC negotiation for the live view. jsdom has no RTCPeerConnection, so a fake records calls.
 
@@ -60,9 +60,9 @@ describe("liveview", () => {
     });
 
     afterEach(() => {
+        for (const id of ["session-1", "session-2", "session-missing"]) stopLiveView(id);
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
-        Reflect.deleteProperty(window, "_liveViewPeerConnection");
     });
 
     it("requests the offer, applies it, and sends the answer back to the server", async () => {
@@ -76,23 +76,25 @@ describe("liveview", () => {
         expect(hub.invoke).toHaveBeenCalledWith("SubmitAnswer", "session-1", "answer-sdp");
     });
 
-    it("feeds server ICE candidates into the peer connection", async () => {
-        const { hub, handlers } = fakeHub();
+    it("records no window global and registers no ReceiveIceCandidate handler", async () => {
+        const { hub } = fakeHub();
+
         await startLiveView(hub as never, "session-1", "cam");
 
-        handlers["ReceiveIceCandidate"]("candidate:1", 0);
-
-        await vi.waitFor(() => expect(lastPc.addIceCandidate).toHaveBeenCalledOnce());
-        const added = lastPc.addIceCandidate.mock.calls[0][0] as { init: { candidate: string; sdpMLineIndex: number } };
-        expect(added.init).toEqual({ candidate: "candidate:1", sdpMLineIndex: 0 });
+        expect((window as { _liveViewPeerConnection?: unknown })._liveViewPeerConnection).toBeUndefined();
+        expect(hub.on).not.toHaveBeenCalled();
     });
 
-    it("rejects when the video element is missing, without creating a connection", async () => {
+    it("closes the connection and records nothing when the video element is missing", async () => {
         const { hub } = fakeHub();
         document.body.innerHTML = "";
 
-        await expect(startLiveView(hub as never, "session-1", "cam")).rejects.toThrow("Video element with ID 'cam' not found");
+        await expect(startLiveView(hub as never, "session-missing", "cam")).rejects.toThrow("Video element with ID 'cam' not found");
         expect(hub.invoke).not.toHaveBeenCalled();
+        expect(lastPc.close).toHaveBeenCalledOnce();
+
+        stopLiveView("session-missing");
+        expect(lastPc.close).toHaveBeenCalledOnce();
     });
 
     it("closes the peer connection and rethrows when negotiation fails", async () => {
@@ -103,27 +105,32 @@ describe("liveview", () => {
         expect(lastPc.close).toHaveBeenCalledOnce();
     });
 
-    it("addIceCandidate forwards to the connection created by startLiveView", async () => {
+    it("keeps one connection per session: stopping A closes only A's connection", async () => {
+        const { hub } = fakeHub();
+        await startLiveView(hub as never, "session-1", "cam");
+        const fakeA = lastPc;
+        await startLiveView(hub as never, "session-2", "cam");
+        const fakeB = lastPc;
+
+        stopLiveView("session-1");
+
+        expect(fakeA.close).toHaveBeenCalledOnce();
+        expect(fakeB.close).not.toHaveBeenCalled();
+        expect(fakeB.signalingState).toBe("stable");
+    });
+
+    it("stopLiveView with an unknown session id does nothing and does not throw", () => {
+        expect(() => stopLiveView("no-such-session")).not.toThrow();
+    });
+
+    it("stopLiveView closes a session's connection once and ignores repeat calls", async () => {
         const { hub } = fakeHub();
         await startLiveView(hub as never, "session-1", "cam");
 
-        await addIceCandidate("candidate:2", 1);
-
-        expect(lastPc.addIceCandidate).toHaveBeenCalledOnce();
-    });
-
-    it("addIceCandidate is a no-op before any connection exists", async () => {
-        await expect(addIceCandidate("candidate:3", 0)).resolves.toBeUndefined();
-    });
-
-    it("stopLiveView closes an open connection and leaves a closed one alone", async () => {
-        const { hub } = fakeHub();
-        const pc = await startLiveView(hub as never, "session-1", "cam");
-
-        stopLiveView(pc);
+        stopLiveView("session-1");
         expect(lastPc.close).toHaveBeenCalledOnce();
 
-        stopLiveView(pc);
+        stopLiveView("session-1");
         expect(lastPc.close).toHaveBeenCalledOnce();
     });
 

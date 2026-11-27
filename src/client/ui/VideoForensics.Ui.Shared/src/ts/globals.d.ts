@@ -30,8 +30,6 @@ interface Window {
         getSize(): { width: number; height: number };
         watchViewport(dotNetRef: DotNetObjectReference): void;
     };
-    // Set by startLiveView so that addIceCandidate can reach the connection it created.
-    _liveViewPeerConnection?: RTCPeerConnection;
     // Set by the vendored SignalR browser client (lib/signalr/signalr.min.js) once it loads.
     signalR?: SignalRLibrary;
 }

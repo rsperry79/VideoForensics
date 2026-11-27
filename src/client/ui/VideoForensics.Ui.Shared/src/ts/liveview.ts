@@ -1,5 +1,8 @@
 const SIGNALR_SCRIPT = "_content/VideoForensics.Client.Ui.Shared/lib/signalr/signalr.min.js";
 
+// One peer connection per live view session, keyed by session id. Recorded once negotiation succeeds.
+const peerConnections = new Map<string, RTCPeerConnection>();
+
 /**
  * Loads the vendored SignalR browser client on first use. The Blazor script bundles its own private
  * copy that it does not expose, so the live view page brings the standard client.
@@ -33,7 +36,7 @@ export async function initializeHubConnection(hubUrl: string, accessToken: strin
         .withAutomaticReconnect()
         .build();
     await connection.start();
-    // Return the connection itself: startLiveView calls .on and .invoke on it. A DotNet reference is a wrapper without them.
+    // Return the connection itself: startLiveView calls .invoke on it. A DotNet reference is a wrapper without them.
     return connection;
 }
 
@@ -71,6 +74,7 @@ export async function startLiveView(
 
     const videoElement = document.getElementById(videoElementId) as HTMLVideoElement | null;
     if (!videoElement) {
+        pc.close();
         throw new Error(`Video element with ID '${videoElementId}' not found`);
     }
 
@@ -91,19 +95,7 @@ export async function startLiveView(
         }
     };
 
-    // Register handler for ICE candidates from server
-    hubConnection.on("ReceiveIceCandidate", (candidate: string, sdpMLineIndex: number | null) => {
-        console.log(`[LiveView] Received ICE candidate from server`);
-        pc.addIceCandidate(new RTCIceCandidate({
-            candidate: candidate,
-            sdpMLineIndex: sdpMLineIndex
-        })).catch((err: unknown) => console.error("[LiveView] Error adding ICE candidate:", err));
-    });
-
     try {
-        // Store peer connection globally for addIceCandidate callback
-        window._liveViewPeerConnection = pc;
-
         // Request offer from server
         console.log(`[LiveView] Requesting offer from server for session ${sessionId}`);
         const offerSdp = await hubConnection.invoke<string>("RequestOffer", sessionId);
@@ -119,6 +111,7 @@ export async function startLiveView(
         await hubConnection.invoke("SubmitAnswer", sessionId, answer.sdp);
 
         console.log(`[LiveView] WebRTC negotiation complete, waiting for media`);
+        peerConnections.set(sessionId, pc);
         return pc;
     } catch (error) {
         console.error(`[LiveView] Error negotiating WebRTC:`, error);
@@ -128,34 +121,14 @@ export async function startLiveView(
 }
 
 /**
- * Adds an ICE candidate received from the server to the peer connection.
- * Called by the Blazor page when the hub sends ReceiveIceCandidate.
- *
- * @param candidate - The ICE candidate string.
- * @param sdpMLineIndex - The SDP media line index.
- */
-export async function addIceCandidate(candidate: string, sdpMLineIndex: number | null): Promise<void> {
-    if (window._liveViewPeerConnection) {
-        try {
-            await window._liveViewPeerConnection.addIceCandidate(
-                new RTCIceCandidate({
-                    candidate: candidate,
-                    sdpMLineIndex: sdpMLineIndex
-                }));
-            console.log(`[LiveView] Added ICE candidate from server`);
-        } catch (err) {
-            console.error(`[LiveView] Error adding ICE candidate:`, err);
-        }
-    }
-}
-
-/**
  * Stops an active live view connection.
  *
- * @param pc - The peer connection to close.
+ * @param sessionId - The live view session whose peer connection to close. An unknown id does nothing.
  */
-export function stopLiveView(pc: RTCPeerConnection | null | undefined): void {
-    if (pc && pc.signalingState !== "closed") {
+export function stopLiveView(sessionId: string): void {
+    const pc = peerConnections.get(sessionId);
+    if (pc) {
+        peerConnections.delete(sessionId);
         console.log(`[LiveView] Closing peer connection`);
         pc.close();
     }
@@ -165,7 +138,6 @@ export function stopLiveView(pc: RTCPeerConnection | null | undefined): void {
 // does not depend on the SignalR package's type declarations, which the browser build never loads.
 interface SignalRHubConnection {
     invoke<T = void>(methodName: string, ...args: unknown[]): Promise<T>;
-    on(methodName: string, handler: (...args: never[]) => void): void;
     start(): Promise<void>;
     stop(): Promise<void>;
 }

@@ -1,4 +1,6 @@
 const SIGNALR_SCRIPT = "_content/VideoForensics.Client.Ui.Shared/lib/signalr/signalr.min.js";
+// One peer connection per live view session, keyed by session id. Recorded once negotiation succeeds.
+const peerConnections = new Map();
 /**
  * Loads the vendored SignalR browser client on first use. The Blazor script bundles its own private
  * copy that it does not expose, so the live view page brings the standard client.
@@ -30,7 +32,7 @@ export async function initializeHubConnection(hubUrl, accessToken) {
         .withAutomaticReconnect()
         .build();
     await connection.start();
-    // Return the connection itself: startLiveView calls .on and .invoke on it. A DotNet reference is a wrapper without them.
+    // Return the connection itself: startLiveView calls .invoke on it. A DotNet reference is a wrapper without them.
     return connection;
 }
 /**
@@ -60,6 +62,7 @@ export async function startLiveView(hubConnection, sessionId, videoElementId) {
     });
     const videoElement = document.getElementById(videoElementId);
     if (!videoElement) {
+        pc.close();
         throw new Error(`Video element with ID '${videoElementId}' not found`);
     }
     // Handle incoming media tracks from server
@@ -77,17 +80,7 @@ export async function startLiveView(hubConnection, sessionId, videoElementId) {
                 .catch((err) => console.error("[LiveView] Error submitting ICE candidate:", err));
         }
     };
-    // Register handler for ICE candidates from server
-    hubConnection.on("ReceiveIceCandidate", (candidate, sdpMLineIndex) => {
-        console.log(`[LiveView] Received ICE candidate from server`);
-        pc.addIceCandidate(new RTCIceCandidate({
-            candidate: candidate,
-            sdpMLineIndex: sdpMLineIndex
-        })).catch((err) => console.error("[LiveView] Error adding ICE candidate:", err));
-    });
     try {
-        // Store peer connection globally for addIceCandidate callback
-        window._liveViewPeerConnection = pc;
         // Request offer from server
         console.log(`[LiveView] Requesting offer from server for session ${sessionId}`);
         const offerSdp = await hubConnection.invoke("RequestOffer", sessionId);
@@ -100,6 +93,7 @@ export async function startLiveView(hubConnection, sessionId, videoElementId) {
         console.log(`[LiveView] Sending answer to server`);
         await hubConnection.invoke("SubmitAnswer", sessionId, answer.sdp);
         console.log(`[LiveView] WebRTC negotiation complete, waiting for media`);
+        peerConnections.set(sessionId, pc);
         return pc;
     }
     catch (error) {
@@ -109,33 +103,14 @@ export async function startLiveView(hubConnection, sessionId, videoElementId) {
     }
 }
 /**
- * Adds an ICE candidate received from the server to the peer connection.
- * Called by the Blazor page when the hub sends ReceiveIceCandidate.
- *
- * @param candidate - The ICE candidate string.
- * @param sdpMLineIndex - The SDP media line index.
- */
-export async function addIceCandidate(candidate, sdpMLineIndex) {
-    if (window._liveViewPeerConnection) {
-        try {
-            await window._liveViewPeerConnection.addIceCandidate(new RTCIceCandidate({
-                candidate: candidate,
-                sdpMLineIndex: sdpMLineIndex
-            }));
-            console.log(`[LiveView] Added ICE candidate from server`);
-        }
-        catch (err) {
-            console.error(`[LiveView] Error adding ICE candidate:`, err);
-        }
-    }
-}
-/**
  * Stops an active live view connection.
  *
- * @param pc - The peer connection to close.
+ * @param sessionId - The live view session whose peer connection to close. An unknown id does nothing.
  */
-export function stopLiveView(pc) {
-    if (pc && pc.signalingState !== "closed") {
+export function stopLiveView(sessionId) {
+    const pc = peerConnections.get(sessionId);
+    if (pc) {
+        peerConnections.delete(sessionId);
         console.log(`[LiveView] Closing peer connection`);
         pc.close();
     }
