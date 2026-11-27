@@ -90,5 +90,62 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.Equal(200, row.HttpStatus);
             Assert.Null(row.MediaFilePath);
         }
+
+        /// <summary>Adds a snapshot JPEG row for a device, flagged as a placeholder or not.</summary>
+        private async Task AddSnapshotAsync(Guid deviceId, string fileName, DateTime recordedAtUtc, string sha256, bool isPlaceholder)
+        {
+            var item = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FileName = fileName,
+                FilePath = $"Devices/x/{fileName}",
+                MediaFormat = "jpg",
+                MediaKind = MediaKinds.Snapshot,
+                RecordedAtUtc = recordedAtUtc,
+                DownloadedAtUtc = recordedAtUtc,
+                MetadataJson = "{\"type\":\"snapshot\"}",
+                Sha256Hash = sha256,
+                IsPlaceholder = isPlaceholder,
+            };
+            await _media.AddAsync(item, CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task GetSnapshotsByDeviceAndDateRangeAsync_PlaceholderSnapshot_IsExcluded()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+            await AddSnapshotAsync(deviceId, "normal.jpg", T0.UtcDateTime.AddMinutes(1), new string('a', 64), isPlaceholder: false);
+            await AddSnapshotAsync(deviceId, "placeholder.jpg", T0.UtcDateTime.AddMinutes(2), new string('b', 64), isPlaceholder: true);
+
+            IReadOnlyList<MediaItem> rows = await _media.GetSnapshotsByDeviceAndDateRangeAsync(
+                deviceId, T0.UtcDateTime.AddMinutes(-5), T0.UtcDateTime.AddMinutes(5), CancellationToken.None);
+
+            Assert.Equal(new[] { "normal.jpg" }, rows.Select(r => r.FileName).ToArray());
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_NewerPlaceholder_ReturnsNewerNonPlaceholderHash()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+            string normalHash = new('a', 64);
+            await AddSnapshotAsync(deviceId, "normal.jpg", T0.UtcDateTime.AddMinutes(1), normalHash, isPlaceholder: false);
+            await AddSnapshotAsync(deviceId, "placeholder.jpg", T0.UtcDateTime.AddMinutes(9), new string('b', 64), isPlaceholder: true);
+
+            string? hash = await _media.GetLatestSnapshotHashAsync(deviceId, CancellationToken.None);
+
+            Assert.Equal(normalHash, hash);
+        }
+
+        [Fact]
+        public async Task GetLatestSnapshotHashAsync_PlaceholderOnlyDevice_ReturnsNull()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+            await AddSnapshotAsync(deviceId, "placeholder.jpg", T0.UtcDateTime.AddMinutes(1), new string('b', 64), isPlaceholder: true);
+
+            string? hash = await _media.GetLatestSnapshotHashAsync(deviceId, CancellationToken.None);
+
+            Assert.Null(hash);
+        }
     }
 }

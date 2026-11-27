@@ -31,7 +31,8 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>A device's newest media rows, at most <paramref name="limit"/>.</summary>
         internal static IQueryable<MediaItem> RecentByDevice(VideoForensicsDbContext db, Guid deviceId, int limit)
         {
-            return ByDevice(db, deviceId).OrderByDescending(m => m.RecordedAtUtc).Take(limit);
+            // Why: a placeholder snapshot (offline camera) is not shown on the Devices tab, so the recent window holds real media only.
+            return ByDevice(db, deviceId).Where(m => !m.IsPlaceholder).OrderByDescending(m => m.RecordedAtUtc).Take(limit);
         }
 
         /// <summary>Snapshot JPEGs of a device in a UTC window, oldest first.</summary>
@@ -39,7 +40,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             return db.MediaItems.AsNoTracking()
                 .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
-                    && m.MediaFormat == "jpg" && m.MediaKind == MediaKinds.Snapshot)
+                    && m.MediaFormat == "jpg" && m.MediaKind == MediaKinds.Snapshot && !m.IsPlaceholder)
                 .OrderBy(m => m.RecordedAtUtc);
         }
 
@@ -50,7 +51,7 @@ namespace VideoForensics.Data.Database.Repositories
         internal static IQueryable<string> LatestSnapshotHashByDevice(VideoForensicsDbContext db, Guid deviceId)
         {
             return db.MediaItems.AsNoTracking()
-                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "jpg" && m.MediaKind == MediaKinds.Snapshot)
+                .Where(m => m.DeviceId == deviceId && m.MediaFormat == "jpg" && m.MediaKind == MediaKinds.Snapshot && !m.IsPlaceholder)
                 .OrderByDescending(m => m.RecordedAtUtc)
                 .ThenByDescending(m => m.Id)
                 .Select(m => m.Sha256Hash)
