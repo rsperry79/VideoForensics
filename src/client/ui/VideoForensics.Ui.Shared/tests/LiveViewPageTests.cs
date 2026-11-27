@@ -33,6 +33,7 @@ public class LiveViewPageTests : BunitContext
     // Live view session mock state: one session per device, the same one for Start and for GetActiveSessionAsync.
     private readonly Mock<ILiveViewSessionService> _sessionService = new();
     private readonly Subject<LiveViewSessionDto> _sessionChanged = new();
+    private readonly Subject<LiveViewTelemetrySampleDto> _telemetry = new();
     private readonly Dictionary<Guid, LiveViewSessionDto> _sessionsByDevice = new();
 
     // Calls the fake liveview.js module received, in order: the function name and the session it was given.
@@ -447,6 +448,131 @@ public class LiveViewPageTests : BunitContext
         Assert.DoesNotContain(_liveViewCalls, c => c.Name == "startLiveView");
     }
 
+    private static LiveViewTelemetrySampleDto TelemetrySample(Guid sessionId, double score) =>
+        new(Guid.NewGuid(), sessionId, DateTime.UtcNow, null, null, null, null, score);
+
+    private static void FocusTile(IRenderedComponent<LiveView> cut, Guid deviceId) =>
+        cut.Find($"[data-testid='live-view-tile'][data-device-id='{deviceId:D}']").Click();
+
+    // The telemetry panel is the right-panel slot the page pushed; its markup shows which sample the panel displays.
+    private string TelemetryPanelMarkup()
+    {
+        VideoForensics.Client.Ui.Shared.Services.RightPanelContentService slot = Services.GetRequiredService<VideoForensics.Client.Ui.Shared.Services.RightPanelContentService>();
+        return slot.Content is null ? string.Empty : Render(slot.Content).Markup;
+    }
+
+    [Fact]
+    public void LiveView_FocusChange_ShowsTheFocusedStreamsOwnSample()
+    {
+        // Arrange: two cameras; Porch starts and its sample is shown while it is focused
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        Guid cameraSession = _sessionsByDevice[Camera].Id;
+        Guid garageSession;
+        _telemetry.OnNext(TelemetrySample(cameraSession, 1.25));
+        cut.WaitForAssertion(() => Assert.Contains(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup()));
+
+        // Act: Garage starts and takes the focus; it has no sample yet
+        ClickTile(cut, Garage);
+        WaitForLive(cut, Garage);
+        garageSession = _sessionsByDevice[Garage].Id;
+
+        // Assert: Porch's sample is not shown for Garage
+        cut.WaitForAssertion(() => Assert.Contains(Localized("NoDataYet"), TelemetryPanelMarkup()));
+        Assert.DoesNotContain(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup());
+
+        // Garage's sample arrives while it is focused, then focus moves back to Porch by clicking its tile
+        _telemetry.OnNext(TelemetrySample(garageSession, 7.5));
+        cut.WaitForAssertion(() => Assert.Contains("7.50", TelemetryPanelMarkup()));
+        FocusTile(cut, Camera);
+
+        // Assert: Porch's cached sample shows at once, not Garage's
+        cut.WaitForAssertion(() => Assert.Contains(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup()));
+        Assert.DoesNotContain("7.50", TelemetryPanelMarkup());
+    }
+
+    [Fact]
+    public void LiveView_SampleForUnfocusedStream_DoesNotReplaceThePanel()
+    {
+        // Arrange: two cameras are live, and Porch is focused
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+        StartBoth(cut, Camera, Garage);
+        FocusTile(cut, Camera);
+        Guid cameraSession = _sessionsByDevice[Camera].Id;
+        Guid garageSession = _sessionsByDevice[Garage].Id;
+        _telemetry.OnNext(TelemetrySample(cameraSession, 1.25));
+        cut.WaitForAssertion(() => Assert.Contains(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup()));
+
+        // Act: Garage, which is not focused, reports a sample; then Porch reports one more, so the earlier one is processed
+        _telemetry.OnNext(TelemetrySample(garageSession, 7.5));
+        _telemetry.OnNext(TelemetrySample(cameraSession, 2.5));
+
+        // Assert: the panel still shows Porch, and Garage's sample is not displayed
+        cut.WaitForAssertion(() => Assert.Contains("2.50", TelemetryPanelMarkup()));
+        Assert.DoesNotContain("7.50", TelemetryPanelMarkup());
+    }
+
+    [Fact]
+    public void LiveView_FocusedStreamStops_FocusMovesToTheOtherLiveStreamsSample()
+    {
+        // Arrange: two cameras are live, Garage is focused, and Porch's sample is cached while it is not
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+        StartBoth(cut, Camera, Garage);
+        Guid cameraSession = _sessionsByDevice[Camera].Id;
+        Guid garageSession = _sessionsByDevice[Garage].Id;
+        _telemetry.OnNext(TelemetrySample(cameraSession, 1.25));
+        _telemetry.OnNext(TelemetrySample(garageSession, 7.5));
+        cut.WaitForAssertion(() => Assert.Contains("7.50", TelemetryPanelMarkup()));
+
+        // Act: the focused Garage stops from its own tile
+        ClickTile(cut, Garage);
+
+        // Assert: focus moves to Porch, and the panel shows Porch's cached sample
+        cut.WaitForAssertion(() => Assert.Contains(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup()));
+        Assert.DoesNotContain("7.50", TelemetryPanelMarkup());
+    }
+
+    [Fact]
+    public void LiveView_FocusOnStreamWithNoSample_ShowsNoDataYet()
+    {
+        // Arrange: Porch is live and has a sample shown
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        _telemetry.OnNext(TelemetrySample(_sessionsByDevice[Camera].Id, 1.25));
+        cut.WaitForAssertion(() => Assert.Contains(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup()));
+
+        // Act: Garage starts, so focus moves to it; Garage has no sample yet
+        ClickTile(cut, Garage);
+        WaitForLive(cut, Garage);
+
+        // Assert: the panel says no data yet, not Porch's sample
+        cut.WaitForAssertion(() => Assert.Contains(Localized("NoDataYet"), TelemetryPanelMarkup()));
+        Assert.DoesNotContain(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup());
+
+        // Act: focus moves back to Porch by its tile, then to Garage by its tile
+        FocusTile(cut, Camera);
+        cut.WaitForAssertion(() => Assert.Contains(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup()));
+        FocusTile(cut, Garage);
+
+        // Assert: Garage has no sample, so the panel says no data yet again
+        cut.WaitForAssertion(() => Assert.Contains(Localized("NoDataYet"), TelemetryPanelMarkup()));
+        Assert.DoesNotContain(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup());
+    }
+
     public LiveViewPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -483,7 +609,7 @@ public class LiveViewPageTests : BunitContext
 
         var sessionSource = new Mock<ILiveViewSessionSource>();
         _ = sessionSource.SetupGet(s => s.SessionChanged).Returns(_sessionChanged);
-        _ = sessionSource.SetupGet(s => s.Telemetry).Returns(new Subject<LiveViewTelemetrySampleDto>());
+        _ = sessionSource.SetupGet(s => s.Telemetry).Returns(_telemetry);
         _ = sessionSource.SetupGet(s => s.IsConnected).Returns(false);
 
         _ = Services.AddSingleton(deviceRepository.Object);

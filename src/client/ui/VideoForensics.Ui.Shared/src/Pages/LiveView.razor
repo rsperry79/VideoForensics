@@ -92,7 +92,7 @@ else
         @foreach (Guid id in ShownCameras)
         {
             bool live = _liveSessions.ContainsKey(id) && !_startingDevices.Contains(id);
-            <div class="live-view-tile" data-testid="live-view-tile" data-device-id="@id.ToString("D")">
+            <div class="live-view-tile" data-testid="live-view-tile" data-device-id="@id.ToString("D")" @onclick="@(() => FocusStream(id))">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="small">@NameOf(id)</span>
                     <SfButton Content="@(live ? L["Stop"] : L["Start"])"
@@ -170,7 +170,14 @@ else
     private IDisposable? _telemetrySubscription;
     private IDisposable? _evidenceSubscription;
     private volatile bool _disposed;
-    private LiveViewTelemetrySampleDto? _latestTelemetry;
+    // The last telemetry sample per live session. A sample for an unfocused stream is kept here and not shown.
+    private readonly Dictionary<Guid, LiveViewTelemetrySampleDto> _telemetryBySession = new();
+
+    // The sample the telemetry panel shows: the focused camera's current session. Null when nothing is focused or that session has no sample yet.
+    private LiveViewTelemetrySampleDto? _latestTelemetry =>
+        _focusDeviceId is Guid focus && _liveSessions.TryGetValue(focus, out Guid sessionId) && _telemetryBySession.TryGetValue(sessionId, out LiveViewTelemetrySampleDto? sample)
+            ? sample
+            : null;
 
     private IReadOnlyList<Guid> ShownCameras =>
         CameraState.CameraIds.Count > 0
@@ -218,6 +225,8 @@ else
 
             CameraState.OnChange += OnCameraSelectionChanged;
             _evidenceSubscription = EvidenceChangedSource.EvidenceChanged.Subscribe(OnEvidenceChanged);
+            // One telemetry subscription for the page: every live session's samples are cached, and the panel shows the focused one.
+            _telemetrySubscription = LiveViewSessionSource.Telemetry.Subscribe(sample => OnTelemetry(sample));
             await LoadMissingStillsAsync();
 
             _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>(
@@ -357,7 +366,6 @@ else
             // The camera started last takes the telemetry panel.
             _liveSessions[deviceId] = session.Id;
             _focusDeviceId = deviceId;
-            SubscribeToTelemetry(session.Id);
 
             // Always wait, even when the start response is already Active. The waiter joins the session's push
             // group before its race-guard read, so telemetry arrives for a session that was Active at start.
@@ -377,6 +385,10 @@ else
 
             // The player starts once its tile has rendered (OnAfterRenderAsync).
             _liveSessions[deviceId] = active.Id;
+            if (active.Id != session.Id)
+            {
+                _telemetryBySession.Remove(session.Id);
+            }
             _pendingStreams.Enqueue((active.Id, PlayerIdFor(deviceId)));
         }
         catch (Exception ex)
@@ -411,6 +423,7 @@ else
                 Logger.LogError("Could not stop a live-view session: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
             }
 
+            _telemetryBySession.Remove(sessionId);
             await StopBrowserStreamAsync(sessionId);
             await UnsubscribeFromSessionAsync(sessionId);
         }
@@ -418,12 +431,7 @@ else
         if (_focusDeviceId == deviceId)
         {
             // The focused camera stopped, so the telemetry panel moves to a camera still live, if there is one.
-            DisposeTelemetrySubscription();
             _focusDeviceId = _liveSessions.Count > 0 ? _liveSessions.Keys.Last() : (Guid?)null;
-            if (_focusDeviceId is Guid focus)
-            {
-                SubscribeToTelemetry(_liveSessions[focus]);
-            }
         }
 
         await LoadStillAsync(deviceId, System.Threading.CancellationToken.None);
@@ -523,36 +531,37 @@ else
         }
     }
 
-    // Telemetry arrives on a hub thread, so the update is marshalled onto the component's dispatcher. Samples for
-    // any other session are ignored, so a stale push cannot overwrite the session on screen.
-    private void SubscribeToTelemetry(Guid sessionId)
+    // Telemetry arrives on a hub thread, so the update is marshalled onto the component's dispatcher. A sample is kept
+    // for each live session; the panel shows only the focused camera's, so the others are cached without a redraw of the panel.
+    private void OnTelemetry(LiveViewTelemetrySampleDto sample)
     {
-        DisposeTelemetrySubscription();
-        _telemetrySubscription = LiveViewSessionSource.Telemetry.Subscribe(sample =>
+        _ = InvokeAsync(() =>
         {
-            if (_disposed || sample.SessionId != sessionId)
+            // A sample for a session that is not live (stopped, or unknown) is dropped, so the cache holds only live sessions.
+            if (_disposed || !_liveSessions.ContainsValue(sample.SessionId))
             {
                 return;
             }
 
-            _ = InvokeAsync(() =>
-            {
-                if (_disposed)
-                {
-                    return;
-                }
-
-                _latestTelemetry = sample;
-                StateHasChanged();
-            });
+            _telemetryBySession[sample.SessionId] = sample;
+            StateHasChanged();
         });
+    }
+
+    // Focus moves on a Start, or on a click on a live tile. A Stop click has already removed the camera from the live set, so it does not refocus.
+    private void FocusStream(Guid deviceId)
+    {
+        if (_liveSessions.ContainsKey(deviceId))
+        {
+            _focusDeviceId = deviceId;
+        }
     }
 
     private void DisposeTelemetrySubscription()
     {
         _telemetrySubscription?.Dispose();
         _telemetrySubscription = null;
-        _latestTelemetry = null;
+        _telemetryBySession.Clear();
     }
 
     // A value the formatter could not produce is a resource key; everything else is already invariant-formatted text.
