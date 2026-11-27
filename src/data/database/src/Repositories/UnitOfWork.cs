@@ -614,6 +614,14 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<MediaItem>)MediaItemQueries.SnapshotsByDeviceAndDateRange(_db, deviceId, fromUtc, toUtc).ToList());
         }
 
+        /// <summary>Marks one batch of repeat placeholder snapshots on this unit of work's open context.</summary>
+        public Task<int> MarkRepeatSnapshotPlaceholdersAsync(int batchSize, CancellationToken ct)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
+            return _db.Database.ExecuteSqlRawAsync(MediaItemQueries.MarkRepeatSnapshotPlaceholdersSql,
+                new object[] { batchSize, "jpg", MediaKinds.Snapshot }, ct);
+        }
+
         public Task<string?> GetLatestSnapshotHashAsync(Guid deviceId, CancellationToken ct)
         {
             return Task.FromResult(MediaItemQueries.LatestSnapshotHashByDevice(_db, deviceId).FirstOrDefault());

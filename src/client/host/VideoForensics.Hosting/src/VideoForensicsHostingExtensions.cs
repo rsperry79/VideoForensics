@@ -566,6 +566,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHostedService<JammingAnalysisBackfillService>();
             _ = services.AddHostedService<MediaCodecBackfillService>();
             _ = services.AddHostedService<MediaFlagBackfillService>();
+            _ = services.AddHostedService<PlaceholderSnapshotBackfillService>();
             _ = services.AddScoped<MediaFlagDeviationBackfill>();
             _ = services.AddHostedService<MediaFlagDeviationBackfillService>();
 

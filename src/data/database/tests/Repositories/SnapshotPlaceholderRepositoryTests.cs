@@ -147,5 +147,109 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             Assert.Null(hash);
         }
+
+        /// <summary>Adds a snapshot-kind (or other-kind) row and returns its Id, so a test can read the flag back.</summary>
+        private async Task<Guid> AddRowAsync(Guid deviceId, string fileName, DateTime recordedAtUtc, string sha256, string mediaFormat, string mediaKind)
+        {
+            var item = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FileName = fileName,
+                FilePath = $"Devices/x/{fileName}",
+                MediaFormat = mediaFormat,
+                MediaKind = mediaKind,
+                RecordedAtUtc = recordedAtUtc,
+                DownloadedAtUtc = recordedAtUtc,
+                MetadataJson = "{\"type\":\"snapshot\"}",
+                Sha256Hash = sha256,
+            };
+            await _media.AddAsync(item, CancellationToken.None);
+            return item.Id;
+        }
+
+        private async Task<bool> IsPlaceholderAsync(Guid id)
+        {
+            MediaItem? row = await _media.GetAsync(id, CancellationToken.None);
+            return row!.IsPlaceholder;
+        }
+
+        [Fact]
+        public async Task MarkRepeatSnapshotPlaceholdersAsync_MarksOnlyRepeatOfImmediatePredecessor()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+            string a = new('a', 64);
+            string b = new('b', 64);
+            Guid s1 = await AddRowAsync(deviceId, "s1.jpg", T0.UtcDateTime.AddMinutes(1), a, "jpg", MediaKinds.Snapshot);
+            Guid s2 = await AddRowAsync(deviceId, "s2.jpg", T0.UtcDateTime.AddMinutes(2), a, "jpg", MediaKinds.Snapshot);
+            Guid s3 = await AddRowAsync(deviceId, "s3.jpg", T0.UtcDateTime.AddMinutes(3), b, "jpg", MediaKinds.Snapshot);
+            Guid s4 = await AddRowAsync(deviceId, "s4.jpg", T0.UtcDateTime.AddMinutes(4), a, "jpg", MediaKinds.Snapshot);
+            // A clip with hash B sits between s2 and s3. It is not a snapshot, so it must not become s3's predecessor.
+            _ = await AddRowAsync(deviceId, "clip.mp4", T0.UtcDateTime.AddMinutes(2).AddSeconds(30), b, "mp4", MediaKinds.Clip);
+
+            int marked = await _media.MarkRepeatSnapshotPlaceholdersAsync(500, CancellationToken.None);
+
+            Assert.Equal(1, marked);
+            Assert.False(await IsPlaceholderAsync(s1));
+            Assert.True(await IsPlaceholderAsync(s2));
+            Assert.False(await IsPlaceholderAsync(s3));
+            Assert.False(await IsPlaceholderAsync(s4));
+        }
+
+        [Fact]
+        public async Task MarkRepeatSnapshotPlaceholdersAsync_SecondCall_MarksNothing()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+            string a = new('a', 64);
+            _ = await AddRowAsync(deviceId, "s1.jpg", T0.UtcDateTime.AddMinutes(1), a, "jpg", MediaKinds.Snapshot);
+            _ = await AddRowAsync(deviceId, "s2.jpg", T0.UtcDateTime.AddMinutes(2), a, "jpg", MediaKinds.Snapshot);
+
+            int first = await _media.MarkRepeatSnapshotPlaceholdersAsync(500, CancellationToken.None);
+            int second = await _media.MarkRepeatSnapshotPlaceholdersAsync(500, CancellationToken.None);
+
+            Assert.Equal(1, first);
+            Assert.Equal(0, second);
+        }
+
+        [Fact]
+        public async Task MarkRepeatSnapshotPlaceholdersAsync_SameHashOnAnotherDevice_DoesNotMarkThisDevice()
+        {
+            Guid deviceOne = await SeedDeviceAsync();
+            Location location = TestDataBuilder.BuildLocation(name: "Second Site");
+            await _locations.AddAsync(location, CancellationToken.None);
+            Device other = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Second Camera");
+            await _devices.AddAsync(other, CancellationToken.None);
+
+            string a = new('a', 64);
+            Guid oneFirst = await AddRowAsync(deviceOne, "one.jpg", T0.UtcDateTime.AddMinutes(1), a, "jpg", MediaKinds.Snapshot);
+            Guid twoFirst = await AddRowAsync(other.Id, "two-a.jpg", T0.UtcDateTime.AddMinutes(2), a, "jpg", MediaKinds.Snapshot);
+            Guid twoRepeat = await AddRowAsync(other.Id, "two-b.jpg", T0.UtcDateTime.AddMinutes(3), a, "jpg", MediaKinds.Snapshot);
+
+            int marked = await _media.MarkRepeatSnapshotPlaceholdersAsync(500, CancellationToken.None);
+
+            Assert.Equal(1, marked);
+            Assert.False(await IsPlaceholderAsync(oneFirst));
+            Assert.False(await IsPlaceholderAsync(twoFirst));
+            Assert.True(await IsPlaceholderAsync(twoRepeat));
+        }
+
+        [Fact]
+        public async Task MarkRepeatSnapshotPlaceholdersAsync_BatchSize_LimitsRowsPerCall()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+            string a = new('a', 64);
+            _ = await AddRowAsync(deviceId, "s1.jpg", T0.UtcDateTime.AddMinutes(1), a, "jpg", MediaKinds.Snapshot);
+            _ = await AddRowAsync(deviceId, "s2.jpg", T0.UtcDateTime.AddMinutes(2), a, "jpg", MediaKinds.Snapshot);
+            _ = await AddRowAsync(deviceId, "s3.jpg", T0.UtcDateTime.AddMinutes(3), a, "jpg", MediaKinds.Snapshot);
+            _ = await AddRowAsync(deviceId, "s4.jpg", T0.UtcDateTime.AddMinutes(4), a, "jpg", MediaKinds.Snapshot);
+
+            int first = await _media.MarkRepeatSnapshotPlaceholdersAsync(2, CancellationToken.None);
+            int second = await _media.MarkRepeatSnapshotPlaceholdersAsync(2, CancellationToken.None);
+            int third = await _media.MarkRepeatSnapshotPlaceholdersAsync(2, CancellationToken.None);
+
+            Assert.Equal(2, first);
+            Assert.Equal(1, second);
+            Assert.Equal(0, third);
+        }
     }
 }

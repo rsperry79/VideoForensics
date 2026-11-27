@@ -58,6 +58,28 @@ namespace VideoForensics.Data.Database.Repositories
                 .Take(1);
         }
 
+        /// <summary>
+        /// One batch of the placeholder backfill. {0} is the batch size, {1} the media format and {2} the snapshot kind; the caller
+        /// binds all three as parameters. The LAG window runs over snapshot JPEGs only, so a clip never counts as a predecessor,
+        /// and it reads the stored hashes, not the placeholder flag, so a run of repeats is marked together.
+        /// Why raw SQL: LAG is a window function, which LINQ cannot translate on SQLite.
+        /// </summary>
+        internal const string MarkRepeatSnapshotPlaceholdersSql = """
+            UPDATE MediaItems
+            SET IsPlaceholder = 1
+            WHERE Id IN (
+                SELECT Id FROM (
+                    SELECT Id, DeviceId, RecordedAtUtc, IsPlaceholder, Sha256Hash,
+                           LAG(Sha256Hash) OVER (PARTITION BY DeviceId ORDER BY RecordedAtUtc, Id) AS PreviousHash
+                    FROM MediaItems
+                    WHERE MediaFormat = {1} AND MediaKind = {2} AND Sha256Hash IS NOT NULL
+                ) AS Snapshots
+                WHERE IsPlaceholder = 0 AND PreviousHash = Sha256Hash
+                ORDER BY RecordedAtUtc, Id
+                LIMIT {0}
+            )
+            """;
+
         /// <summary>A device's media rows recorded in a UTC window, untracked, unordered.</summary>
         internal static IQueryable<MediaItem> ByDeviceAndDateRange(VideoForensicsDbContext db, Guid deviceId, DateTime fromUtc, DateTime toUtc)
         {

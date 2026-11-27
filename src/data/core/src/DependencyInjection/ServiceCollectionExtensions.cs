@@ -55,6 +55,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IJammingAnalysisBackfill, VideoForensics.Data.Core.Services.JammingAnalysisBackfill>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaFlagBackfill, VideoForensics.Data.Core.Services.MediaFlagBackfill>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IPlaceholderSnapshotBackfill, VideoForensics.Data.Core.Services.PlaceholderSnapshotBackfill>();
             services.TryAddTransient<VideoForensics.Data.Core.Contracts.IMediaPacketReader, VideoForensics.Data.Core.Services.FfprobeMediaPacketReader>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaBitrateSeriesService, VideoForensics.Data.Core.Services.MediaBitrateSeriesService>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaCodecBackfill, VideoForensics.Data.Core.Services.MediaCodecBackfill>();
