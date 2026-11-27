@@ -25,6 +25,7 @@ interface Window {
         watchPrefersDark(dotNetRef: DotNetObjectReference): void;
         setStylesheet(isDark: boolean): void;
     };
+    vfFit: { start(): void };
     vfViewport: {
         getIsMobile(): boolean;
         getSize(): { width: number; height: number };

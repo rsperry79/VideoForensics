@@ -78,6 +78,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 await LayoutPrefs.EnsureLoadedAsync();
                 await ThemeService.InitializeAsync();
 
+                // Publish the window size as --vf-vw/--vf-vh so the layout fits the window (viewport-fit.ts).
+                await JS.InvokeVoidAsync("vfFit.start");
+
                 // Load saved panel sizes
                 if (LayoutPrefs.LeftNavWidth > 0)
                 {
