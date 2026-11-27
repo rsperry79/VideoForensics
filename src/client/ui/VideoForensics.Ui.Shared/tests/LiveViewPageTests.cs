@@ -36,11 +36,11 @@ public class LiveViewPageTests : BunitContext
     private readonly Dictionary<Guid, LiveViewSessionDto> _sessionsByDevice = new();
 
     // Calls the fake liveview.js module received, in order: the function name and the session it was given.
-    private readonly List<(string Name, Guid SessionId)> _liveViewCalls = new();
+    private readonly List<(string Name, Guid SessionId, string? ElementId)> _liveViewCalls = new();
 
     private static readonly Guid Camera = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid Snapshot = Guid.Parse("22222222-2222-2222-2222-222222222222");
-    private static readonly Guid Garage = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid Garage = Guid.Parse("33333333-3333-3333-3333-333333333333");    private static readonly Guid Flood = Guid.Parse("44444444-4444-4444-4444-444444444444");
 
     // Permissive session service: Start and GetActiveSessionAsync return the device's Active session, created on first use.
     private LiveViewSessionDto SessionFor(Guid deviceId)
@@ -82,16 +82,18 @@ public class LiveViewPageTests : BunitContext
         BunitJSModuleInterop module = JSInterop.SetupModule(ExpectedModulePath);
         module.Mode = JSRuntimeMode.Loose;
         _ = module.SetupModule("initializeHubConnection", _ => true);
-        _ = module.SetupVoid("startLiveView", inv => RecordLiveViewCall(inv));
-        _ = module.SetupVoid("stopLiveView", inv => RecordLiveViewCall(inv));
+        module.SetupVoid("startLiveView", inv => RecordLiveViewCall(inv)).SetVoidResult();
+        module.SetupVoid("stopLiveView", inv => RecordLiveViewCall(inv)).SetVoidResult();
     }
 
     private bool RecordLiveViewCall(JSRuntimeInvocation invocation)
     {
-        // The session id is the second argument of both functions. Its type is a Guid, or its string form.
-        object? raw = invocation.Arguments.Count > 1 ? invocation.Arguments[1] : null;
+        // startLiveView(hub, sessionId, elementId) takes the session second; stopLiveView(sessionId) takes it first.
+        int sessionIndex = invocation.Identifier == "stopLiveView" ? 0 : 1;
+        object? raw = invocation.Arguments.Count > sessionIndex ? invocation.Arguments[sessionIndex] : null;
         Guid sessionId = raw is Guid id ? id : Guid.Parse(raw?.ToString() ?? Guid.Empty.ToString());
-        _liveViewCalls.Add((invocation.Identifier, sessionId));
+        string? elementId = invocation.Identifier == "startLiveView" && invocation.Arguments.Count > 2 ? invocation.Arguments[2] as string : null;
+        _liveViewCalls.Add((invocation.Identifier, sessionId, elementId));
         return true;
     }
 
@@ -99,6 +101,32 @@ public class LiveViewPageTests : BunitContext
     {
         var device = new Device { Id = Camera, LocationId = Guid.NewGuid(), ProviderDeviceId = "porch", Name = "Porch", Type = "camera" }.ToDto();
         _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync([device]);
+    }
+
+    // Several cameras in the device list, named Cam 0, Cam 1, and so on.
+    private void AddCameras(params Guid[] ids)
+    {
+        List<DeviceDto> devices = ids
+            .Select((id, i) => new Device { Id = id, LocationId = Guid.NewGuid(), ProviderDeviceId = $"cam-{i}", Name = $"Cam {i}", Type = "camera" }.ToDto())
+            .ToList();
+        _ = _deviceRepository.Setup(r => r.ListAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(devices);
+    }
+
+    // Each live tile renders its player under its own element id, so a stream's element is found by device.
+    private static string PlayerIdFor(Guid deviceId) => "liveViewPlayer-" + deviceId.ToString("D");
+
+    private static void ClickTile(IRenderedComponent<LiveView> cut, Guid deviceId) =>
+        cut.Find($"[data-testid='live-view-tile'][data-device-id='{deviceId:D}'] button").Click();
+
+    private static void WaitForLive(IRenderedComponent<LiveView> cut, Guid deviceId) =>
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll($"#{PlayerIdFor(deviceId)}")));
+
+    private void StartBoth(IRenderedComponent<LiveView> cut, Guid first, Guid second)
+    {
+        ClickTile(cut, first);
+        WaitForLive(cut, first);
+        ClickTile(cut, second);
+        WaitForLive(cut, second);
     }
 
     private void ServeStill(string url)
@@ -248,6 +276,96 @@ public class LiveViewPageTests : BunitContext
         // Assert: the stream is started exactly once, for the session the service returned
         cut.WaitForAssertion(() => Assert.Single(_liveViewCalls, c => c.Name == "startLiveView"));
         Assert.Equal(_sessionsByDevice[Camera].Id, Assert.Single(_liveViewCalls, c => c.Name == "startLiveView").SessionId);
+    }
+
+    [Fact]
+    public void LiveView_TwoCameras_BothAreLiveAtOnce()
+    {
+        // Arrange
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+
+        // Act: start the first camera, then the second while the first stays live
+        StartBoth(cut, Camera, Garage);
+
+        // Assert: both streams started, each in its own player element
+        cut.WaitForAssertion(() =>
+        {
+            List<(string Name, Guid SessionId, string? ElementId)> starts = _liveViewCalls.Where(c => c.Name == "startLiveView").ToList();
+            Assert.Equal(2, starts.Count);
+            Assert.Contains(starts, c => c.ElementId == PlayerIdFor(Camera) && c.SessionId == _sessionsByDevice[Camera].Id);
+            Assert.Contains(starts, c => c.ElementId == PlayerIdFor(Garage) && c.SessionId == _sessionsByDevice[Garage].Id);
+        });
+    }
+
+    [Fact]
+    public void LiveView_ThirdStartFails_TheTwoLiveStreamsStay()
+    {
+        // Arrange: two cameras are live, and the third refuses to start
+        AddCameras(Camera, Garage, Flood);
+        SetupFakeLiveViewModule();
+        _ = _sessionService
+            .Setup(s => s.StartAsync(Flood, It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Start refused"));
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("[data-testid='live-view-tile']").Count));
+        StartBoth(cut, Camera, Garage);
+
+        // Act: the third camera's Start fails
+        ClickTile(cut, Flood);
+
+        // Assert: the failure is shown, and the first two are still live with their players
+        cut.WaitForAssertion(() => _sessionService.Verify(s => s.StartAsync(Flood, It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<System.Threading.CancellationToken>()), Times.Once));
+        Assert.Single(cut.FindAll($"#{PlayerIdFor(Camera)}"));
+        Assert.Single(cut.FindAll($"#{PlayerIdFor(Garage)}"));
+        Assert.DoesNotContain(_liveViewCalls, c => c.Name == "stopLiveView");
+    }
+
+    [Fact]
+    public void LiveView_StopOneCamera_KeepsTheOtherLive()
+    {
+        // Arrange: two cameras are live
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+        StartBoth(cut, Camera, Garage);
+        Guid cameraSession = _sessionsByDevice[Camera].Id;
+        Guid garageSession = _sessionsByDevice[Garage].Id;
+
+        // Act: stop the first camera from its own tile
+        ClickTile(cut, Camera);
+
+        // Assert: only that camera's session is stopped and unsubscribed, and the other keeps its player
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll($"#{PlayerIdFor(Camera)}")));
+        Assert.Equal(cameraSession, Assert.Single(_liveViewCalls, c => c.Name == "stopLiveView").SessionId);
+        Assert.Single(cut.FindAll($"#{PlayerIdFor(Garage)}"));
+        _sessionService.Verify(s => s.StopAsync(cameraSession, "ManualStop", It.IsAny<System.Threading.CancellationToken>()), Times.Once);
+        _sessionService.Verify(s => s.StopAsync(garageSession, It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LiveView_DisposeWithTwoLive_StopsBothSessions()
+    {
+        // Arrange: two cameras are live
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+        StartBoth(cut, Camera, Garage);
+        Guid cameraSession = _sessionsByDevice[Camera].Id;
+        Guid garageSession = _sessionsByDevice[Garage].Id;
+
+        // Act: the page is torn down while both streams run
+        await cut.Instance.DisposeAsync();
+
+        // Assert: every live session is stopped with the page-disposed reason and its player is closed in JavaScript
+        _sessionService.Verify(s => s.StopAsync(cameraSession, "PageDisposed", It.IsAny<System.Threading.CancellationToken>()), Times.Once);
+        _sessionService.Verify(s => s.StopAsync(garageSession, "PageDisposed", It.IsAny<System.Threading.CancellationToken>()), Times.Once);
+        Assert.Contains(_liveViewCalls, c => c.Name == "stopLiveView" && c.SessionId == cameraSession);
+        Assert.Contains(_liveViewCalls, c => c.Name == "stopLiveView" && c.SessionId == garageSession);
     }
 
     public LiveViewPageTests()

@@ -57,7 +57,7 @@ else
             </div>
         </div>
 
-        @if (_liveDeviceId.HasValue)
+        @if (_focusDeviceId.HasValue)
         {
             <div class="right-panel-section">
                 <small>@L["TelemetryHeading"]</small>
@@ -91,14 +91,14 @@ else
     <div class="live-view-grid">
         @foreach (Guid id in ShownCameras)
         {
-            bool live = _liveDeviceId == id;
+            bool live = _liveSessions.ContainsKey(id) && !_startingDevices.Contains(id);
             <div class="live-view-tile" data-testid="live-view-tile" data-device-id="@id.ToString("D")">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="small">@NameOf(id)</span>
                     <SfButton Content="@(live ? L["Stop"] : L["Start"])"
                         OnClick="@(async () => await ToggleLiveAsync(id))"
                         CssClass="@(live ? "e-danger" : "e-primary")"
-                        Disabled="@(_isToggling || (_liveDeviceId.HasValue && !live) || (!live && _offlineIds.Contains(id)))" />
+                        Disabled="@(_startingDevices.Contains(id) || (!live && _offlineIds.Contains(id)))" />
                 </div>
 
                 @if (!live && _offlineIds.Contains(id))
@@ -109,7 +109,7 @@ else
                 @if (live)
                 {
                     <div class="live-view-container">
-                        <MediaPlayer Live="true" ElementId="liveViewPlayer" Class="live-view-video" Autoplay="true" Muted="true" Controls="MediaPlayerControls.None" Fit="MediaFitMode.Cover" />
+                        <MediaPlayer Live="true" ElementId="@PlayerIdFor(id)" Class="live-view-video" Autoplay="true" Muted="true" Controls="MediaPlayerControls.None" Fit="MediaFitMode.Cover" />
                     </div>
                 }
                 else if (_stills.TryGetValue(id, out string? url) && !string.IsNullOrEmpty(url))
@@ -128,7 +128,8 @@ else
 @code {
     private bool _isLoading = true;
     private bool _isAuthenticated = false;
-    private bool _isToggling = false;
+    // Cameras whose start is in progress. Only that camera's Start is disabled; the other tiles stay usable.
+    private readonly HashSet<Guid> _startingDevices = new();
     private string? _error;
 
     /// <summary>The camera to show first, passed by the review page's Live link.</summary>
@@ -150,10 +151,12 @@ else
     // The latest still per camera, as a browser-loadable URL. A null value means the camera has no still in the last hour.
     private readonly Dictionary<Guid, string?> _stills = new();
 
-    // One live stream at a time. _pendingStreamSessionId starts the stream once its tile has rendered.
-    private Guid? _liveDeviceId;
-    private Guid? _selectedSessionId;
-    private Guid? _pendingStreamSessionId;
+    // The live streams on screen: each camera's session. Each stream has its own player element.
+    private readonly Dictionary<Guid, Guid> _liveSessions = new();
+    // The camera whose telemetry is shown: the last one started, or another live one once it stops.
+    private Guid? _focusDeviceId;
+    // Streams waiting for their tile to render, so the player element exists when the JS looks for it.
+    private readonly Queue<(Guid SessionId, string ElementId)> _pendingStreams = new();
     private IJSObjectReference? _hubConnection;
     private IJSObjectReference? _jsModule;
     private readonly LiveViewActivationWaiter _activationWaiter = new();
@@ -168,6 +171,7 @@ else
             : _cameraIds.Take(CameraSync.MaxTiles).ToList();
 
     private string NameOf(Guid id) => _deviceNames.TryGetValue(id, out string? name) ? name : id.ToString("D");
+    private static string PlayerIdFor(Guid deviceId) => "liveViewPlayer-" + deviceId.ToString("D");
 
     protected override async Task OnInitializedAsync()
     {
@@ -225,18 +229,24 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // The stream starts only after its tile has rendered, so the player element exists when the JS looks for it.
-        if (_pendingStreamSessionId is Guid sessionId && _jsModule is not null && _hubConnection is not null)
+        // Each stream starts only after its tile has rendered, so its player element exists when the JS looks for it.
+        while (_pendingStreams.Count > 0 && _jsModule is not null && _hubConnection is not null)
         {
-            _pendingStreamSessionId = null;
+            (Guid sessionId, string elementId) = _pendingStreams.Dequeue();
             try
             {
-                await _jsModule.InvokeVoidAsync("startLiveView", _hubConnection, sessionId, "liveViewPlayer");
+                await _jsModule.InvokeVoidAsync("startLiveView", _hubConnection, sessionId, elementId);
             }
             catch (JSException ex)
             {
+                // Only the stream that failed to start is stopped; the other streams keep running.
                 _error = ex.Message;
-                await StopLiveAsync();
+                Guid failedDevice = _liveSessions.FirstOrDefault(entry => entry.Value == sessionId).Key;
+                if (failedDevice != Guid.Empty)
+                {
+                    await StopStreamAsync(failedDevice, "StartFailed");
+                }
+
                 StateHasChanged();
             }
         }
@@ -260,7 +270,7 @@ else
     // The evidence feed says which camera gained a snapshot. Only a camera on screen reloads its still.
     private void OnEvidenceChanged(EvidenceChangedDto change)
     {
-        if (_disposed || !ShownCameras.Contains(change.DeviceId) || _liveDeviceId == change.DeviceId)
+        if (_disposed || !ShownCameras.Contains(change.DeviceId) || _liveSessions.ContainsKey(change.DeviceId))
         {
             return;
         }
@@ -318,30 +328,25 @@ else
 
     private async Task ToggleLiveAsync(Guid deviceId)
     {
+        if (_liveSessions.ContainsKey(deviceId))
+        {
+            await StopStreamAsync(deviceId, "ManualStop");
+            return;
+        }
+
+        _error = null;
+        _startingDevices.Add(deviceId);
         try
         {
-            _isToggling = true;
-            _error = null;
-
-            if (_liveDeviceId == deviceId)
-            {
-                await StopLiveAsync();
-                return;
-            }
-
-            if (_liveDeviceId.HasValue)
-            {
-                await StopLiveAsync();
-            }
-
             var session = await LiveViewSessionService.StartAsync(
                 deviceId,
                 LiveViewTriggerReasonDto.Manual,
                 null,
                 System.Threading.CancellationToken.None);
 
-            _selectedSessionId = session.Id;
-            _liveDeviceId = deviceId;
+            // The camera started last takes the telemetry panel.
+            _liveSessions[deviceId] = session.Id;
+            _focusDeviceId = deviceId;
             SubscribeToTelemetry(session.Id);
 
             // Always wait, even when the start response is already Active. The waiter joins the session's push
@@ -356,51 +361,77 @@ else
             if (active is null)
             {
                 _error = L["SessionFailedToConnect"];
-                await UnsubscribeFromSessionAsync(session.Id);
-                _selectedSessionId = null;
-                _liveDeviceId = null;
+                await StopStreamAsync(deviceId, "StartFailed");
                 return;
             }
 
-            _pendingStreamSessionId = active.Id;
+            // The player starts once its tile has rendered (OnAfterRenderAsync).
+            _liveSessions[deviceId] = active.Id;
+            _pendingStreams.Enqueue((active.Id, PlayerIdFor(deviceId)));
         }
         catch (Exception ex)
         {
+            // Only this camera is stopped. The other live streams keep running.
             _error = ex.Message;
-            await StopLiveAsync();
+            await StopStreamAsync(deviceId, "StartFailed");
         }
         finally
         {
-            _isToggling = false;
+            _startingDevices.Remove(deviceId);
         }
     }
 
-    /// <summary>Stops the live stream on screen and puts that camera's still back.</summary>
-    private async Task StopLiveAsync()
+    /// <summary>Stops one camera's stream: its server session, push group and browser player. That camera's still comes back.</summary>
+    private async Task StopStreamAsync(Guid deviceId, string reason)
     {
-        Guid? stopped = _liveDeviceId;
-
-        if (_selectedSessionId is Guid sessionId)
+        if (_liveSessions.Remove(deviceId, out Guid sessionId))
         {
             try
             {
-                await LiveViewSessionService.StopAsync(sessionId, "ManualStop", System.Threading.CancellationToken.None);
+                await LiveViewSessionService.StopAsync(sessionId, reason, System.Threading.CancellationToken.None);
             }
             catch (Exception ex)
             {
                 Logger.LogError("Could not stop a live-view session: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
             }
 
+            await StopBrowserStreamAsync(sessionId);
             await UnsubscribeFromSessionAsync(sessionId);
         }
 
-        _selectedSessionId = null;
-        _liveDeviceId = null;
-        _pendingStreamSessionId = null;
-
-        if (stopped is Guid id)
+        if (_focusDeviceId == deviceId)
         {
-            await LoadStillAsync(id, System.Threading.CancellationToken.None);
+            // The focused camera stopped, so the telemetry panel moves to a camera still live, if there is one.
+            DisposeTelemetrySubscription();
+            _focusDeviceId = _liveSessions.Count > 0 ? _liveSessions.Keys.Last() : (Guid?)null;
+            if (_focusDeviceId is Guid focus)
+            {
+                SubscribeToTelemetry(_liveSessions[focus]);
+            }
+        }
+
+        await LoadStillAsync(deviceId, System.Threading.CancellationToken.None);
+    }
+
+    // Closes one stream's player in the browser. During disposal the circuit may already be gone, so there is nothing left to close.
+    private async Task StopBrowserStreamAsync(Guid sessionId)
+    {
+        if (_jsModule is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _jsModule.InvokeVoidAsync("stopLiveView", sessionId);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogError("Could not close a live-view player: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Disposal runs after the circuit has closed, so JavaScript can no longer be called.
         }
     }
 
@@ -411,21 +442,25 @@ else
         _evidenceSubscription?.Dispose();
         _evidenceSubscription = null;
 
-        if (_liveDeviceId.HasValue && _selectedSessionId.HasValue)
+        // Each live stream is stopped on its own, so one that fails does not leave the others running.
+        foreach (KeyValuePair<Guid, Guid> live in _liveSessions.ToList())
         {
             try
             {
-                await LiveViewSessionService.StopAsync(_selectedSessionId.Value, "PageDisposed", System.Threading.CancellationToken.None);
+                await LiveViewSessionService.StopAsync(live.Value, "PageDisposed", System.Threading.CancellationToken.None);
             }
             catch (Exception ex)
             {
                 Logger.LogError("Could not stop a live-view session on leaving the page: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
             }
+
+            await StopBrowserStreamAsync(live.Value);
+            await UnsubscribeFromSessionAsync(live.Value);
         }
 
-        if (_selectedSessionId.HasValue)
-            await UnsubscribeFromSessionAsync(_selectedSessionId.Value);
-
+        _liveSessions.Clear();
+        _pendingStreams.Clear();
+        _focusDeviceId = null;
         DisposeTelemetrySubscription();
 
         if (_jsModule is not null && _hubConnection is not null)
@@ -462,8 +497,6 @@ else
     // block the stop or dispose, since the hub drops group membership on disconnect anyway.
     private async Task UnsubscribeFromSessionAsync(Guid sessionId)
     {
-        DisposeTelemetrySubscription();
-
         try
         {
             await LiveViewSessionSource.UnsubscribeAsync(sessionId, System.Threading.CancellationToken.None);
