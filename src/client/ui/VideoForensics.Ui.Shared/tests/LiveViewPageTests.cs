@@ -30,9 +30,70 @@ public class LiveViewPageTests : BunitContext
     private readonly Mock<IMediaContentUrlProvider> _contentUrls;
     private readonly Subject<EvidenceChangedDto> _evidence;
 
+    // Live view session mock state: one session per device, the same one for Start and for GetActiveSessionAsync.
+    private readonly Mock<ILiveViewSessionService> _sessionService = new();
+    private readonly Subject<LiveViewSessionDto> _sessionChanged = new();
+    private readonly Dictionary<Guid, LiveViewSessionDto> _sessionsByDevice = new();
+
+    // Calls the fake liveview.js module received, in order: the function name and the session it was given.
+    private readonly List<(string Name, Guid SessionId)> _liveViewCalls = new();
+
     private static readonly Guid Camera = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid Snapshot = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly Guid Garage = Guid.Parse("33333333-3333-3333-3333-333333333333");
+
+    // Permissive session service: Start and GetActiveSessionAsync return the device's Active session, created on first use.
+    private LiveViewSessionDto SessionFor(Guid deviceId)
+    {
+        if (!_sessionsByDevice.TryGetValue(deviceId, out LiveViewSessionDto? session))
+        {
+            session = new LiveViewSessionDto(
+                Id: Guid.NewGuid(),
+                DeviceId: deviceId,
+                TriggerReason: "Manual",
+                State: "Active",
+                StartedAtUtc: DateTime.UtcNow,
+                LastExtendedAtUtc: DateTime.UtcNow);
+            _sessionsByDevice[deviceId] = session;
+        }
+
+        return session;
+    }
+
+    private void SetupSessionService()
+    {
+        _ = _sessionService
+            .Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReasonDto>(), It.IsAny<Guid?>(), It.IsAny<System.Threading.CancellationToken>()))
+            .Returns((Guid deviceId, LiveViewTriggerReasonDto reason, Guid? operatorId, System.Threading.CancellationToken ct) => Task.FromResult(SessionFor(deviceId)));
+        _ = _sessionService
+            .Setup(s => s.GetActiveSessionAsync(It.IsAny<Guid>(), It.IsAny<System.Threading.CancellationToken>()))
+            .Returns((Guid deviceId, System.Threading.CancellationToken ct) => Task.FromResult<LiveViewSessionDto?>(SessionFor(deviceId)));
+        _ = _sessionService
+            .Setup(s => s.StopAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _ = _sessionService
+            .Setup(s => s.ExtendAsync(It.IsAny<Guid>(), It.IsAny<System.Threading.CancellationToken>()))
+            .Returns(Task.CompletedTask);
+    }
+
+    // Fake liveview.js: initializeHubConnection returns a reference, and startLiveView and stopLiveView are recorded.
+    private void SetupFakeLiveViewModule()
+    {
+        BunitJSModuleInterop module = JSInterop.SetupModule(ExpectedModulePath);
+        module.Mode = JSRuntimeMode.Loose;
+        _ = module.SetupModule("initializeHubConnection", _ => true);
+        _ = module.SetupVoid("startLiveView", inv => RecordLiveViewCall(inv));
+        _ = module.SetupVoid("stopLiveView", inv => RecordLiveViewCall(inv));
+    }
+
+    private bool RecordLiveViewCall(JSRuntimeInvocation invocation)
+    {
+        // The session id is the second argument of both functions. Its type is a Guid, or its string form.
+        object? raw = invocation.Arguments.Count > 1 ? invocation.Arguments[1] : null;
+        Guid sessionId = raw is Guid id ? id : Guid.Parse(raw?.ToString() ?? Guid.Empty.ToString());
+        _liveViewCalls.Add((invocation.Identifier, sessionId));
+        return true;
+    }
 
     private void AddCamera()
     {
@@ -172,6 +233,23 @@ public class LiveViewPageTests : BunitContext
         cut.WaitForAssertion(() => Assert.Equal(Garage.ToString("D"), cut.Find("[data-testid='live-view-tile']").GetAttribute("data-device-id")));
     }
 
+    [Fact]
+    public void LiveView_StartOneStream_CallsStartLiveViewOnce()
+    {
+        // Arrange: one camera, and the fake module that records the stream calls
+        AddCamera();
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+
+        // Act: the camera's own Start button
+        cut.Find("[data-testid='live-view-tile'] button").Click();
+
+        // Assert: the stream is started exactly once, for the session the service returned
+        cut.WaitForAssertion(() => Assert.Single(_liveViewCalls, c => c.Name == "startLiveView"));
+        Assert.Equal(_sessionsByDevice[Camera].Id, Assert.Single(_liveViewCalls, c => c.Name == "startLiveView").SessionId);
+    }
+
     public LiveViewPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -201,15 +279,15 @@ public class LiveViewPageTests : BunitContext
         _ = Services.AddSingleton(_contentUrls.Object);
         _ = Services.AddSingleton(evidenceSource.Object);
 
-        var sessionService = new Mock<ILiveViewSessionService>();
+        SetupSessionService();
 
         var sessionSource = new Mock<ILiveViewSessionSource>();
-        _ = sessionSource.SetupGet(s => s.SessionChanged).Returns(new Subject<LiveViewSessionDto>());
+        _ = sessionSource.SetupGet(s => s.SessionChanged).Returns(_sessionChanged);
         _ = sessionSource.SetupGet(s => s.Telemetry).Returns(new Subject<LiveViewTelemetrySampleDto>());
         _ = sessionSource.SetupGet(s => s.IsConnected).Returns(false);
 
         _ = Services.AddSingleton(deviceRepository.Object);
-        _ = Services.AddSingleton(sessionService.Object);
+        _ = Services.AddSingleton(_sessionService.Object);
         _ = Services.AddSingleton(sessionSource.Object);
 
         // The hub authenticates the browser connection with the paired session token, passed to the module.
