@@ -35,6 +35,6 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 - Plan units: when a unit's checks pass, commit and push its work branch to `origin` (see the `implement-plan` global skill). Other work branches are not pushed unless asked.
 5. Start the next batch in a new worktree from updated `wip`.
 - Stop and report instead when: a gate fails, merges conflict, the main checkout has unrelated changes, or a product decision is needed.
-- "wip" from the user (e.g. "wip it", "to wip") means steps 2–4 with no question.
-- End of each unit: after the merge into `wip`, `git pull` `wip` from origin, then push `wip` (steps 2–4 with no question). Pull first; a pull that conflicts stops the push. Any other push needs one "push?" question, named after the commit: a yes means steps 2–4, a no means no push. Never push `dev` or `main`. Before either, mention unpushed commits on `wip` that the push would also send.
+- "wip" from the user (e.g. "wip it", "to wip") means steps 2–4 with no question. Any other push needs one "push?" question, named after the commit: a yes means steps 2–4, a no means no push. Never push `dev` or `main`. Before either, mention unpushed commits on `wip` that the push would also send.
+- End of each unit: after the merge into `wip`, `git pull` `wip` from origin, then push `wip` (steps 2–4 with no question). Pull first; a pull that conflicts stops the push.
 
