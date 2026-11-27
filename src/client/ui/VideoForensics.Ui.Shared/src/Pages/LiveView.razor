@@ -50,6 +50,11 @@ else
             <div class="d-flex flex-column gap-2">
                 <ReviewCameraSelector State="CameraState" Devices="_cameraIds" DeviceNames="_deviceNames" Mode="DevicePickerMode.Cameras" />
 
+                @if (!string.IsNullOrEmpty(_connectionStatus))
+                {
+                    <div class="alert alert-info" role="status" data-testid="live-view-connection">@_connectionStatus</div>
+                }
+
                 @if (!string.IsNullOrEmpty(_error))
                 {
                     <div class="alert alert-danger">@_error</div>
@@ -133,6 +138,8 @@ else
 @code {
     // The most streams that can be live at once. The server enforces the same cap; the page disables Start first.
     private const int MaxLiveStreams = 4;
+    // How often each live session is extended, well inside the server's 5 minute idle timeout. Tests set a short interval.
+    [Parameter] public TimeSpan ExtendInterval { get; set; } = TimeSpan.FromSeconds(60);
     private bool _isLoading = true;
     private bool _isAuthenticated = false;
     // Cameras whose start is in progress. Only that camera's Start is disabled; the other tiles stay usable.
@@ -168,6 +175,13 @@ else
     private IJSObjectReference? _jsModule;
     private readonly LiveViewActivationWaiter _activationWaiter = new();
     private IDisposable? _telemetrySubscription;
+    private IDisposable? _sessionSubscription;
+    // Extends each live session on a fixed interval. Runs only while at least one stream is live.
+    private System.Threading.Timer? _extendTimer;
+    // Lets the JS hub connection report its state changes back to this page.
+    private DotNetObjectReference<LiveView>? _connectionCallbacks;
+    // The status line for the hub connection: reconnecting, or restored without a restart.
+    private string? _connectionStatus;
     private IDisposable? _evidenceSubscription;
     private volatile bool _disposed;
     // The last telemetry sample per live session. A sample for an unfocused stream is kept here and not shown.
@@ -227,6 +241,8 @@ else
             _evidenceSubscription = EvidenceChangedSource.EvidenceChanged.Subscribe(OnEvidenceChanged);
             // One telemetry subscription for the page: every live session's samples are cached, and the panel shows the focused one.
             _telemetrySubscription = LiveViewSessionSource.Telemetry.Subscribe(sample => OnTelemetry(sample));
+            // A session the server ends or fails takes its camera off the live set, so the tile shows its still again.
+            _sessionSubscription = LiveViewSessionSource.SessionChanged.Subscribe(OnSessionChanged);
             await LoadMissingStillsAsync();
 
             _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>(
@@ -234,7 +250,8 @@ else
 
             // Open the SignalR connection in JS and keep a reference to it. The server sends its ICE candidates
             // inside the offer, and startLiveView registers the handler for any it pushes later.
-            _hubConnection = await _jsModule.InvokeAsync<IJSObjectReference>("initializeHubConnection", NavigationManager.ToAbsoluteUri("/hubs/liveview-signaling").ToString(), SessionState.SessionToken);
+            _connectionCallbacks = DotNetObjectReference.Create(this);
+            _hubConnection = await _jsModule.InvokeAsync<IJSObjectReference>("initializeHubConnection", NavigationManager.ToAbsoluteUri("/hubs/liveview-signaling").ToString(), SessionState.SessionToken, _connectionCallbacks);
         }
         catch (Exception ex)
         {
@@ -390,6 +407,7 @@ else
                 _telemetryBySession.Remove(session.Id);
             }
             _pendingStreams.Enqueue((active.Id, PlayerIdFor(deviceId)));
+            SyncExtendTimer();
         }
         catch (Exception ex)
         {
@@ -434,7 +452,144 @@ else
             _focusDeviceId = _liveSessions.Count > 0 ? _liveSessions.Keys.Last() : (Guid?)null;
         }
 
+        SyncExtendTimer();
         await LoadStillAsync(deviceId, System.Threading.CancellationToken.None);
+    }
+
+    // The server ended or failed the session: the camera leaves the live set as Stop does, but the server is not stopped again.
+    private async Task RemoveEndedStreamAsync(Guid deviceId)
+    {
+        if (_liveSessions.Remove(deviceId, out Guid sessionId))
+        {
+            _telemetryBySession.Remove(sessionId);
+            await StopBrowserStreamAsync(sessionId);
+            await UnsubscribeFromSessionAsync(sessionId);
+        }
+
+        if (_focusDeviceId == deviceId)
+        {
+            _focusDeviceId = _liveSessions.Count > 0 ? _liveSessions.Keys.Last() : (Guid?)null;
+        }
+
+        SyncExtendTimer();
+        await LoadStillAsync(deviceId, System.Threading.CancellationToken.None);
+    }
+
+    // A session the server ended or failed. Only the server states that end a stream count (LiveViewSessionState.Stopped and Failed).
+    private static bool EndsStream(string state) => state is "Stopped" or "Failed";
+
+    private void OnSessionChanged(LiveViewSessionDto session)
+    {
+        if (_disposed || !EndsStream(session.State))
+        {
+            return;
+        }
+
+        // The session changes arrive on a hub thread, so the update is marshalled onto the component's dispatcher.
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            Guid deviceId = _liveSessions.FirstOrDefault(entry => entry.Value == session.Id).Key;
+            if (deviceId == Guid.Empty)
+            {
+                return;
+            }
+
+            await RemoveEndedStreamAsync(deviceId);
+            StateHasChanged();
+        });
+    }
+
+    // Starts or stops the extend timer to match the live set: on while a stream is live, off when none is.
+    private void SyncExtendTimer()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (_liveSessions.Count > 0)
+        {
+            _extendTimer ??= new System.Threading.Timer(_ => OnExtendTick(), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+            _ = _extendTimer.Change(ExtendInterval, ExtendInterval);
+        }
+        else
+        {
+            _ = _extendTimer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+        }
+    }
+
+    // The timer fires on a thread-pool thread, so the extend runs on the component's dispatcher.
+    private void OnExtendTick() => _ = InvokeAsync(async () => await ExtendLiveSessionsAsync());
+
+    private async Task ExtendLiveSessionsAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        foreach (Guid sessionId in _liveSessions.Values.ToList())
+        {
+            try
+            {
+                await LiveViewSessionService.ExtendAsync(sessionId, System.Threading.CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // A failed extend is logged and does not stop the stream. The next tick tries again.
+                Logger.LogWarning("Could not extend a live-view session: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            }
+        }
+    }
+
+    // The hub connection is gone for good: every live stream is stopped on the server and in the browser, and the page says so.
+    [JSInvokable]
+    public async Task OnHubConnectionClosed()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _connectionStatus = null;
+        _error = L["ConnectionLost"];
+        foreach (Guid deviceId in _liveSessions.Keys.ToList())
+        {
+            await StopStreamAsync(deviceId, "ConnectionLost");
+        }
+
+        StateHasChanged();
+    }
+
+    // The hub is retrying. The status line says so; the streams are left as they are.
+    [JSInvokable]
+    public void OnHubReconnecting()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _connectionStatus = L["ConnectionReconnecting"];
+        StateHasChanged();
+    }
+
+    // The hub is back. Streams are not renegotiated, so none restart; the status line says so.
+    [JSInvokable]
+    public void OnHubReconnected()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _connectionStatus = L["ConnectionRestored"];
+        StateHasChanged();
     }
 
     // Closes one stream's player in the browser. During disposal the circuit may already be gone, so there is nothing left to close.
@@ -464,6 +619,10 @@ else
         _disposed = true;
         CameraState.OnChange -= OnCameraSelectionChanged;
         _evidenceSubscription?.Dispose();
+        _sessionSubscription?.Dispose();
+        _sessionSubscription = null;
+        _extendTimer?.Dispose();
+        _extendTimer = null;
         _evidenceSubscription = null;
 
         // Each live stream is stopped on its own, so one that fails does not leave the others running.
@@ -503,6 +662,9 @@ else
                 // Disposal runs after the circuit has closed, so JavaScript can no longer be called. Nothing is left to stop.
             }
         }
+
+        _connectionCallbacks?.Dispose();
+        _connectionCallbacks = null;
 
         if (_jsModule is not null)
         {
@@ -567,6 +729,7 @@ else
     // A value the formatter could not produce is a resource key; everything else is already invariant-formatted text.
     private string TelemetryText(string text) =>
         text == LiveViewTelemetryFormatter.NotAvailableKey ? L[text].Value : text;
+
 
     public async ValueTask DisposeAsync()
     {

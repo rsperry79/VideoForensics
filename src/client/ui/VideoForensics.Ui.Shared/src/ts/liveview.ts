@@ -29,12 +29,22 @@ function loadSignalR(): Promise<SignalRLibrary> {
  * @param hubUrl - Absolute URL of the live view signaling hub.
  * @param accessToken - The signed-in operator's session token.
  */
-export async function initializeHubConnection(hubUrl: string, accessToken: string | null): Promise<unknown> {
+export async function initializeHubConnection(
+    hubUrl: string,
+    accessToken: string | null,
+    callbacks?: LiveViewConnectionCallbacks,
+): Promise<unknown> {
     const signalR = await loadSignalR();
     const connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, { accessTokenFactory: () => accessToken ?? "" })
         .withAutomaticReconnect()
         .build();
+    if (callbacks) {
+        // Each state change calls the matching [JSInvokable] method on the page. A failed call is logged, not thrown.
+        connection.onreconnecting(() => notifyConnectionState(callbacks, "OnHubReconnecting"));
+        connection.onreconnected(() => notifyConnectionState(callbacks, "OnHubReconnected"));
+        connection.onclose(() => notifyConnectionState(callbacks, "OnHubConnectionClosed"));
+    }
     await connection.start();
     // Return the connection itself: startLiveView calls .invoke on it. A DotNet reference is a wrapper without them.
     return connection;
@@ -134,12 +144,24 @@ export function stopLiveView(sessionId: string): void {
     }
 }
 
+/** The page's [JSInvokable] methods that hear the hub connection's state changes. */
+export interface LiveViewConnectionCallbacks {
+    invokeMethodAsync(methodName: string): Promise<unknown>;
+}
+
+function notifyConnectionState(callbacks: LiveViewConnectionCallbacks, methodName: string): void {
+    callbacks.invokeMethodAsync(methodName).catch((err: unknown) => console.error(`[LiveView] Could not notify the page (${methodName}):`, err));
+}
+
 // The subset of the SignalR HubConnection surface this module uses. Typed here so the module
 // does not depend on the SignalR package's type declarations, which the browser build never loads.
 interface SignalRHubConnection {
     invoke<T = void>(methodName: string, ...args: unknown[]): Promise<T>;
     start(): Promise<void>;
     stop(): Promise<void>;
+    onreconnecting(callback: () => void): void;
+    onreconnected(callback: () => void): void;
+    onclose(callback: () => void): void;
 }
 
 interface SignalRHubConnectionBuilder {

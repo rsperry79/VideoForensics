@@ -1,4 +1,7 @@
 const SIGNALR_SCRIPT = "_content/VideoForensics.Client.Ui.Shared/lib/signalr/signalr.min.js";
+function notifyConnectionState(callbacks, methodName) {
+    callbacks.invokeMethodAsync(methodName).catch((err) => console.error(`[LiveView] Could not notify the page (${methodName}):`, err));
+}
 // One peer connection per live view session, keyed by session id. Recorded once negotiation succeeds.
 const peerConnections = new Map();
 /**
@@ -25,12 +28,18 @@ function loadSignalR() {
  * @param hubUrl - Absolute URL of the live view signaling hub.
  * @param accessToken - The signed-in operator's session token.
  */
-export async function initializeHubConnection(hubUrl, accessToken) {
+export async function initializeHubConnection(hubUrl, accessToken, callbacks) {
     const signalR = await loadSignalR();
     const connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, { accessTokenFactory: () => accessToken ?? "" })
         .withAutomaticReconnect()
         .build();
+    if (callbacks) {
+        // Each state change calls the matching [JSInvokable] method on the page. A failed call is logged, not thrown.
+        connection.onreconnecting(() => notifyConnectionState(callbacks, "OnHubReconnecting"));
+        connection.onreconnected(() => notifyConnectionState(callbacks, "OnHubReconnected"));
+        connection.onclose(() => notifyConnectionState(callbacks, "OnHubConnectionClosed"));
+    }
     await connection.start();
     // Return the connection itself: startLiveView calls .invoke on it. A DotNet reference is a wrapper without them.
     return connection;

@@ -35,6 +35,8 @@ public class LiveViewPageTests : BunitContext
     private readonly Subject<LiveViewSessionDto> _sessionChanged = new();
     private readonly Subject<LiveViewTelemetrySampleDto> _telemetry = new();
     private readonly Dictionary<Guid, LiveViewSessionDto> _sessionsByDevice = new();
+    // How many times the page tried to extend a session in the extend-failure test.
+    private int _extendAttempts;
 
     // Calls the fake liveview.js module received, in order: the function name and the session it was given.
     private readonly List<(string Name, Guid SessionId, string? ElementId)> _liveViewCalls = new();
@@ -571,6 +573,109 @@ public class LiveViewPageTests : BunitContext
         // Assert: Garage has no sample, so the panel says no data yet again
         cut.WaitForAssertion(() => Assert.Contains(Localized("NoDataYet"), TelemetryPanelMarkup()));
         Assert.DoesNotContain(LiveViewTelemetryFormatter.FormatScore(1.25), TelemetryPanelMarkup());
+    }
+
+    [Theory]
+    [InlineData("Stopped")]
+    [InlineData("Failed")]
+    public void LiveView_SessionEndedPush_ShowsTheStillAgain(string endState)
+    {
+        // Arrange: one camera is live, and it has a still on file
+        AddCamera();
+        ServeStill("https://example.test/still-1.jpg");
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        Guid sessionId = _sessionsByDevice[Camera].Id;
+
+        // Act: the server reports the session as ended
+        _sessionChanged.OnNext(new LiveViewSessionDto(Id: sessionId, DeviceId: Camera, TriggerReason: "Manual", State: endState, StartedAtUtc: DateTime.UtcNow, LastExtendedAtUtc: DateTime.UtcNow));
+
+        // Assert: the tile shows the still again, its player is closed once, and the server is not stopped a second time
+        cut.WaitForAssertion(() => Assert.Equal("https://example.test/still-1.jpg", cut.Find("[data-testid='live-view-still']").GetAttribute("src")));
+        Assert.Empty(cut.FindAll($"#{PlayerIdFor(Camera)}"));
+        Assert.Equal(sessionId, Assert.Single(_liveViewCalls, c => c.Name == "stopLiveView").SessionId);
+        _sessionService.Verify(s => s.StopAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public void LiveView_LiveStreams_AreExtendedOnTheTimer()
+    {
+        // Arrange: two cameras, with a short extend interval so the timer fires within the test
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>(p => p.Add(c => c.ExtendInterval, TimeSpan.FromMilliseconds(20)));
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+
+        // Act: both cameras go live
+        StartBoth(cut, Camera, Garage);
+
+        // Assert: each live session is extended by the timer
+        cut.WaitForAssertion(() =>
+        {
+            _sessionService.Verify(s => s.ExtendAsync(_sessionsByDevice[Camera].Id, It.IsAny<System.Threading.CancellationToken>()), Times.AtLeastOnce);
+            _sessionService.Verify(s => s.ExtendAsync(_sessionsByDevice[Garage].Id, It.IsAny<System.Threading.CancellationToken>()), Times.AtLeastOnce);
+        });
+    }
+
+    [Fact]
+    public async Task LiveView_ExtendThrows_TheStreamKeepsRunning()
+    {
+        // Arrange: one camera, and every extend fails
+        AddCamera();
+        SetupFakeLiveViewModule();
+        _extendAttempts = 0;
+        _ = _sessionService
+            .Setup(s => s.ExtendAsync(It.IsAny<Guid>(), It.IsAny<System.Threading.CancellationToken>()))
+            // Each call is counted by the callback; the fixed faulted task is the same for every call.
+            .Callback(() => System.Threading.Interlocked.Increment(ref _extendAttempts))
+            .Returns(Task.FromException(new InvalidOperationException("Extend failed")));
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>(p => p.Add(c => c.ExtendInterval, TimeSpan.FromMilliseconds(20)));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        Guid sessionId = _sessionsByDevice[Camera].Id;
+
+        // Act: the timer keeps trying after the first failure
+        // Assert: the extend keeps being attempted, and the stream stays up with no stop
+        // Polled, not WaitForAssertion: bUnit re-checks that only on a render, and a failed extend does not render.
+        for (int i = 0; i < 200 && System.Threading.Volatile.Read(ref _extendAttempts) < 2; i++)
+        {
+            await Task.Delay(25);
+        }
+
+        Assert.True(System.Threading.Volatile.Read(ref _extendAttempts) >= 2);
+        _sessionService.Verify(s => s.ExtendAsync(sessionId, It.IsAny<System.Threading.CancellationToken>()), Times.AtLeastOnce);
+        Assert.Single(cut.FindAll($"#{PlayerIdFor(Camera)}"));
+        Assert.DoesNotContain(_liveViewCalls, c => c.Name == "stopLiveView");
+        _sessionService.Verify(s => s.StopAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LiveView_ConnectionLost_StopsEveryLiveStreamAndShowsTheError()
+    {
+        // Arrange: two cameras are live
+        AddCameras(Camera, Garage);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+        StartBoth(cut, Camera, Garage);
+        Guid cameraSession = _sessionsByDevice[Camera].Id;
+        Guid garageSession = _sessionsByDevice[Garage].Id;
+
+        // Act: the hub connection closes for good
+        await cut.InvokeAsync(() => cut.Instance.OnHubConnectionClosed());
+
+        // Assert: both streams are stopped in the browser and on the server, and the error is shown
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll($"#{PlayerIdFor(Camera)}")));
+        Assert.Empty(cut.FindAll($"#{PlayerIdFor(Garage)}"));
+        Assert.Contains(_liveViewCalls, c => c.Name == "stopLiveView" && c.SessionId == cameraSession);
+        Assert.Contains(_liveViewCalls, c => c.Name == "stopLiveView" && c.SessionId == garageSession);
+        _sessionService.Verify(s => s.StopAsync(cameraSession, "ConnectionLost", It.IsAny<System.Threading.CancellationToken>()), Times.Once);
+        _sessionService.Verify(s => s.StopAsync(garageSession, "ConnectionLost", It.IsAny<System.Threading.CancellationToken>()), Times.Once);
+        Assert.Contains(Localized("ConnectionLost"), ShownError());
     }
 
     public LiveViewPageTests()

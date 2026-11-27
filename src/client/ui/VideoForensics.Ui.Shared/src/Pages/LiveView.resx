@@ -98,4 +98,13 @@
   <data name="NotAvailable" xml:space="preserve">
     <value>Not available</value>
   </data>
+  <data name="ConnectionLost" xml:space="preserve">
+    <value>The live view connection was lost, so every live stream was stopped. Start a camera again to view it.</value>
+  </data>
+  <data name="ConnectionReconnecting" xml:space="preserve">
+    <value>Live view connection lost. Reconnecting...</value>
+  </data>
+  <data name="ConnectionRestored" xml:space="preserve">
+    <value>Live view connection restored. Live streams were not restarted; press Start on a camera to view it again.</value>
+  </data>
 </root>
