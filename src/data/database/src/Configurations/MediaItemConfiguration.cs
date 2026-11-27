@@ -45,6 +45,10 @@ namespace VideoForensics.Data.Database.Configurations
 
             _ = builder.HasIndex(m => m.Sha256Hash);
 
+            _ = builder.Property(m => m.IsPlaceholder)
+                .IsRequired()
+                .HasDefaultValue(false);
+
             _ = builder.HasIndex(m => m.DeviceId);
             _ = builder.HasIndex(m => m.DownloadEventId);
 

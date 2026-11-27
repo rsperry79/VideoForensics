@@ -28,6 +28,11 @@ namespace VideoForensics.Data.Database.Configurations
 
             _ = builder.HasIndex(c => new { c.DeviceId, c.CapturedAtUtc });
 
+            // Stored as text like Trigger (a wire/storage enum); null on a normal attempt.
+            _ = builder.Property(c => c.SkipReason)
+                .HasConversion<string>()
+                .HasMaxLength(16);
+
             // Forensic history must not vanish with a device delete; retention will be an explicit policy later.
             _ = builder.HasOne<Device>()
                 .WithMany()

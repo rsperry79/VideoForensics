@@ -12,5 +12,6 @@ namespace VideoForensics.Core.Api.Contracts
         int HttpStatus,
         bool IsCurrent,
         string? MediaFilePath,
-        Guid? DeviceHealthId);
+        Guid? DeviceHealthId,
+        SnapshotSkipReasonDto? SkipReason = null);
 }

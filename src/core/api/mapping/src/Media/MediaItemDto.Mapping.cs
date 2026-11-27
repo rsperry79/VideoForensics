@@ -34,7 +34,8 @@ namespace VideoForensics.Core.Api.Contracts
                 MetadataJson: entity.MetadataJson,
                 ApiSourceHash: entity.ApiSourceHash,
                 DurationSeconds: entity.DurationSeconds,
-                PreviewPath: entity.PreviewPath
+                PreviewPath: entity.PreviewPath,
+                IsPlaceholder: entity.IsPlaceholder
             );
         }
 
@@ -68,7 +69,8 @@ namespace VideoForensics.Core.Api.Contracts
                 MetadataJson = dto.MetadataJson,
                 ApiSourceHash = dto.ApiSourceHash,
                 DurationSeconds = dto.DurationSeconds,
-                PreviewPath = dto.PreviewPath
+                PreviewPath = dto.PreviewPath,
+                IsPlaceholder = dto.IsPlaceholder
             };
         }
     }
