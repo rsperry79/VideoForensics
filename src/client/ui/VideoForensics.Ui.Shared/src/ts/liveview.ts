@@ -144,6 +144,51 @@ export function stopLiveView(sessionId: string): void {
     }
 }
 
+/**
+ * Pauses one live player and saves its current frame as a PNG download. Does nothing when the player has no frame yet.
+ * @param videoElementId - The live player's video element id.
+ * @param fileName - The file name for the download.
+ */
+export function grabLiveFrame(videoElementId: string, fileName: string): void {
+    const video = document.getElementById(videoElementId) as HTMLVideoElement | null;
+    if (!video || video.videoWidth === 0) {
+        return;
+    }
+
+    // Pause first, so the frame on screen is the frame saved.
+    video.pause();
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+        return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = fileName;
+    link.click();
+}
+
+/**
+ * Expands one live player to full screen, or leaves full screen when it is already showing one.
+ * @param videoElementId - The live player's video element id.
+ */
+export function toggleFullscreen(videoElementId: string): void {
+    const video = document.getElementById(videoElementId);
+    if (!video) {
+        return;
+    }
+
+    if (document.fullscreenElement) {
+        void document.exitFullscreen();
+    } else {
+        void video.requestFullscreen();
+    }
+}
+
 /** The page's [JSInvokable] methods that hear the hub connection's state changes. */
 export interface LiveViewConnectionCallbacks {
     invokeMethodAsync(methodName: string): Promise<unknown>;
