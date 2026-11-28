@@ -619,6 +619,15 @@ namespace VideoForensics.Client.Hosting
                     serviceProvider.GetRequiredService<ICaseWriteRepository>(),
                     serviceProvider.GetRequiredService<IMediaPathResolver>()));
 
+            // Live-view "grab still": stores a frame grabbed from a live camera as a Still media item.
+            _ = services.AddScoped<VideoForensics.Client.Core.Services.ILiveStillStore>(serviceProvider =>
+                new VideoForensics.Client.Core.Services.LiveStillStore(
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Client.Core.Services.LiveStillStore>>(),
+                    serviceProvider.GetRequiredService<IMediaItemWriteRepository>(),
+                    serviceProvider.GetRequiredService<IMediaStorageProvider>(),
+                    serviceProvider.GetRequiredService<IMediaPathResolver>(),
+                    serviceProvider.GetRequiredService<IActionLogRepository>()));
+
             // IMemoryCache backs the short-lived auth caches registered below (WebAuthn ceremonies, 2FA pending
             // logins, login attempts). Registered here so every server-tier host gets it, not only WebApp.
             _ = services.AddMemoryCache();

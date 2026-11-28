@@ -112,6 +112,15 @@ namespace VideoForensics.Client.WebApp.Api
                 .AllowAnonymous()
                 .RequireRateLimiting("media");
 
+            _ = group.MapPost("/media/live-stills/{deviceId:guid}", LiveStillEndpoints.UploadAsync)
+                .AddEndpointFilter<MaintenanceEndpointFilter>()
+                .RequireAuthorization(VideoForensicsPolicies.Review)
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/media/{id:guid}/still", LiveStillEndpoints.GetStillAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Review)
+                .RequireRateLimiting("media");
+
             _ = group.MapPost("/media/{id:guid}/stills", CreateMediaStillAsync)
                 .AddEndpointFilter<MaintenanceEndpointFilter>()
                 .RequireAuthorization(VideoForensicsPolicies.Review)
