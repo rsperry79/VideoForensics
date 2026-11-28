@@ -30,6 +30,7 @@ public class LiveViewPageTests : BunitContext
     private readonly Mock<IDeviceRepository> _deviceRepository;
     private readonly Mock<IMediaItemRepository> _mediaItems;
     private readonly Mock<IMediaContentUrlProvider> _contentUrls;
+    private readonly Mock<VideoForensics.Client.Common.Contracts.ILiveStillCaptureService> _liveStillCapture = new();
     private readonly Subject<EvidenceChangedDto> _evidence;
 
     // Live view session mock state: one session per device, the same one for Start and for GetActiveSessionAsync.
@@ -82,13 +83,15 @@ public class LiveViewPageTests : BunitContext
     }
 
     // Fake liveview.js: initializeHubConnection returns a reference, and startLiveView and stopLiveView are recorded.
-    private void SetupFakeLiveViewModule()
+    private void SetupFakeLiveViewModule(string? grabbedFrameBase64 = null)
     {
         BunitJSModuleInterop module = JSInterop.SetupModule(ExpectedModulePath);
         module.Mode = JSRuntimeMode.Loose;
         _ = module.SetupModule("initializeHubConnection", _ => true);
         module.SetupVoid("startLiveView", inv => RecordLiveViewCall(inv)).SetVoidResult();
         module.SetupVoid("stopLiveView", inv => RecordLiveViewCall(inv)).SetVoidResult();
+        _ = module.Setup<string?>("grabLiveFrame", _ => true).SetResult(grabbedFrameBase64);
+
     }
 
     private bool RecordLiveViewCall(JSRuntimeInvocation invocation)
@@ -717,6 +720,7 @@ public class LiveViewPageTests : BunitContext
         _ = evidenceSource.SetupGet(s => s.EvidenceChanged).Returns(_evidence);
         _ = Services.AddSingleton(_mediaItems.Object);
         _ = Services.AddSingleton(_contentUrls.Object);
+        _ = Services.AddSingleton(_liveStillCapture.Object);
         _ = Services.AddSingleton(evidenceSource.Object);
 
         SetupSessionService();
@@ -731,7 +735,8 @@ public class LiveViewPageTests : BunitContext
         _ = Services.AddSingleton(sessionSource.Object);
 
         // The hub authenticates the browser connection with the paired session token, passed to the module.
-        var session = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
+        var session = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());        _ = session.Setup(s => s.OperatorId).Returns(Guid.NewGuid());
+
         _ = session.SetupGet(s => s.SessionToken).Returns(SessionToken);
         _ = Services.AddScoped(_ => session.Object);
     }
@@ -859,6 +864,81 @@ public class LiveViewPageTests : BunitContext
             i => i.Identifier == "grabLiveFrame" && (string?)i.Arguments[0] == PlayerIdFor(Camera)));
     }
 
+    [Fact]
+    public async Task LiveView_GrabStill_StoresTheFrame_AndEnablesCopyLink()
+    {
+        // Arrange: one camera live; the browser returns the frame as base64 JPEG; the server stores it
+        AddCameras(Camera);
+        SetupFakeLiveViewModule(Convert.ToBase64String(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }));
+        var stillId = Guid.NewGuid();
+        _ = _liveStillCapture
+            .Setup(c => c.CaptureAsync(Camera, It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(LiveStillResult.Ok(stillId));
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        await RightClickTileAsync(cut, Camera);
+
+        // Act
+        cut.Find("[data-testid='live-view-menu-grab-still']").Click();
+
+        // Assert: the frame reached the server, and the link is now available
+        cut.WaitForAssertion(() => Assert.Single(_liveStillCapture.Invocations));
+        await RightClickTileAsync(cut, Camera);
+        Assert.False(cut.Find("[data-testid='live-view-menu-copy-link']").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task LiveView_GrabStill_StoreFails_LeavesCopyLinkDisabled()
+    {
+        // Arrange
+        AddCameras(Camera);
+        SetupFakeLiveViewModule(Convert.ToBase64String(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }));
+        _ = _liveStillCapture
+            .Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(LiveStillResult.Fail(LiveStillError.StorageFailed, "disk full"));
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        await RightClickTileAsync(cut, Camera);
+
+        // Act
+        cut.Find("[data-testid='live-view-menu-grab-still']").Click();
+
+        // Assert: the upload failed, so no link is offered
+        cut.WaitForAssertion(() => Assert.Single(_liveStillCapture.Invocations));
+        await RightClickTileAsync(cut, Camera);
+        Assert.True(cut.Find("[data-testid='live-view-menu-copy-link']").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task LiveView_CopyStillLink_CopiesTheViewerPageLink()
+    {
+        // Arrange: a still is stored for the camera
+        AddCameras(Camera);
+        SetupFakeLiveViewModule(Convert.ToBase64String(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }));
+        var stillId = Guid.NewGuid();
+        _ = _liveStillCapture
+            .Setup(c => c.CaptureAsync(Camera, It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(LiveStillResult.Ok(stillId));
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        await RightClickTileAsync(cut, Camera);
+        cut.Find("[data-testid='live-view-menu-grab-still']").Click();
+        cut.WaitForAssertion(() => Assert.Single(_liveStillCapture.Invocations));
+        await RightClickTileAsync(cut, Camera);
+
+        // Act
+        cut.Find("[data-testid='live-view-menu-copy-link']").Click();
+
+        // Assert: the viewer page's link for that still is copied
+        cut.WaitForAssertion(() => Assert.Contains(JSInterop.Invocations,
+            i => i.Identifier == "copyStillLink" && ((string?)i.Arguments[0])!.EndsWith($"/live-still/{stillId:D}", StringComparison.Ordinal)));
+    }
     [Fact]
     public async Task LiveView_MenuFullScreen_ExpandsTheLivePlayer()
     {

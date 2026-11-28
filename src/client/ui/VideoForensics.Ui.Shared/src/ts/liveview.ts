@@ -149,10 +149,10 @@ export function stopLiveView(sessionId: string): void {
  * @param videoElementId - The live player's video element id.
  * @param fileName - The file name for the download.
  */
-export function grabLiveFrame(videoElementId: string, fileName: string): void {
+export function grabLiveFrame(videoElementId: string, fileName: string): string | null {
     const video = document.getElementById(videoElementId) as HTMLVideoElement | null;
     if (!video || video.videoWidth === 0) {
-        return;
+        return null;
     }
 
     // Pause first, so the frame on screen is the frame saved.
@@ -162,7 +162,7 @@ export function grabLiveFrame(videoElementId: string, fileName: string): void {
     canvas.height = video.videoHeight;
     const context = canvas.getContext("2d");
     if (!context) {
-        return;
+        return null;
     }
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -170,6 +170,18 @@ export function grabLiveFrame(videoElementId: string, fileName: string): void {
     link.href = canvas.toDataURL("image/png");
     link.download = fileName;
     link.click();
+
+    // The same frame as a JPEG (base64, no data-URL prefix) for the evidence store.
+    const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.95);
+    return jpegDataUrl.substring(jpegDataUrl.indexOf(",") + 1);
+}
+
+/**
+ * Copies a still's link to the clipboard. Used by the live-view video menu's Copy still link.
+ * @param text - The text to copy.
+ */
+export function copyStillLink(text: string): void {
+    void navigator.clipboard.writeText(text);
 }
 
 /**

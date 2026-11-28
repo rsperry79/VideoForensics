@@ -11,6 +11,8 @@
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Evidence
+
 @using VideoForensics.Client.Common.Viewer
 @implements IAsyncDisposable
 
@@ -27,6 +29,8 @@
 @inject ReviewPageState CameraState
 @inject IJSRuntime JsRuntime
 @inject PairedSessionState SessionState
+@inject ILiveStillCaptureService StillCapture
+
 @inject IStringLocalizer<LiveView> L
 @inject ILogger<LiveView> Logger
 @inject RightPanelFilterStore FilterStore
@@ -125,8 +129,8 @@ else
         <button type="button" class="live-view-menu-item" data-testid="live-view-menu-grab-still" disabled="@(!IsLive(menuId))" @onclick="@(() => GrabStillAsync(menuId))">@L["MenuGrabStill"]</button>
         <button type="button" class="live-view-menu-item" data-testid="live-view-menu-open-single" @onclick="@(() => OpenSingleView(menuId))">@L["MenuOpenSingleView"]</button>
         <button type="button" class="live-view-menu-item" data-testid="live-view-menu-fullscreen" disabled="@(!IsLive(menuId))" @onclick="@(() => FullScreenAsync(menuId))">@L["MenuFullScreen"]</button>
-        @* A still link needs a stored still; grabbing a live frame keeps it only in the browser, so the link stays unavailable. *@
-        <button type="button" class="live-view-menu-item" data-testid="live-view-menu-copy-link" disabled>@L["MenuCopyStillLink"]</button>
+
+        <button type="button" class="live-view-menu-item" data-testid="live-view-menu-copy-link" disabled="@(!_storedStills.ContainsKey(menuId))" @onclick="@(() => CopyStillLinkAsync(menuId))">@L["MenuCopyStillLink"]</button>
     </div>
 }
 
@@ -173,6 +177,9 @@ else
     private readonly Queue<(Guid SessionId, string ElementId)> _pendingStreams = new();
     private IJSObjectReference? _hubConnection;
     private IJSObjectReference? _jsModule;
+    // The still stored for each camera by its latest grab. Copy still link is enabled only while a camera has one.
+    private readonly Dictionary<Guid, Guid> _storedStills = new();
+
     private readonly LiveViewActivationWaiter _activationWaiter = new();
     private IDisposable? _telemetrySubscription;
     private IDisposable? _sessionSubscription;
@@ -226,7 +233,7 @@ else
         FocusStream(id);
     }
 
-    // Pauses the live player and saves its current frame as a PNG download. The browser does the capture; nothing is stored on the server.
+    // Pauses the live player, saves its frame as a PNG download, and stores the same frame on the server as a still.
     private async Task GrabStillAsync(Guid id)
     {
         CloseMenu();
@@ -238,7 +245,24 @@ else
         string fileName = $"{string.Concat(NameOf(id).Where(c => !System.IO.Path.GetInvalidFileNameChars().Contains(c)))}-{DateTime.Now:yyyyMMdd-HHmmss}.png";
         try
         {
-            await _jsModule.InvokeVoidAsync("grabLiveFrame", PlayerIdFor(id), fileName);
+            string? jpegBase64 = await _jsModule.InvokeAsync<string?>("grabLiveFrame", PlayerIdFor(id), fileName);
+            string? actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+            if (string.IsNullOrEmpty(jpegBase64) || string.IsNullOrEmpty(actor))
+            {
+                _error = L["GrabStillFailed"];
+                return;
+            }
+
+            LiveStillResult stored = await StillCapture.CaptureAsync(id, Convert.FromBase64String(jpegBase64), actor, CancellationToken.None);
+            if (stored.Success && stored.MediaItemId is Guid stillId)
+            {
+                _storedStills[id] = stillId;
+            }
+            else
+            {
+                Logger.LogError("Could not store a live-view still: {Message}", stored.Message ?? stored.Error.ToString());
+                _error = L["GrabStillFailed"];
+            }
         }
         catch (JSException ex)
         {
@@ -247,6 +271,26 @@ else
         }
     }
 
+    // Copies the link to the still stored by the last grab of this camera. The link opens the still viewer page.
+    private async Task CopyStillLinkAsync(Guid id)
+    {
+        CloseMenu();
+        if (!_storedStills.TryGetValue(id, out Guid stillId) || _jsModule is null)
+        {
+            return;
+        }
+
+        string url = NavigationManager.ToAbsoluteUri($"/live-still/{stillId:D}").ToString();
+        try
+        {
+            await _jsModule.InvokeVoidAsync("copyStillLink", url);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogError("Could not copy a still link: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _error = L["CopyStillLinkFailed"];
+        }
+    }
     private async Task FullScreenAsync(Guid id)
     {
         CloseMenu();
