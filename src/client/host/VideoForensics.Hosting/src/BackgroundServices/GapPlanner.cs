@@ -8,8 +8,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
     /// <summary>
     /// Plans one device's time-lapse segments. A closed gap runs from the cursor to the next event, split into segments of
-    /// at most <c>maxSegment</c> with the remainder last. An open gap (no closing event yet) emits full segments only, so the
-    /// remainder waits until the gap closes. A segment with fewer than two snapshots writes nothing, but the cursor still moves
+    /// at most <c>maxSegment</c> with the remainder last. An open gap (no closing event yet) is split the same way, up to the
+    /// horizon, so the stretch after the last event is covered now. A later event closes the gap from the horizon on, and that span is planned as a closed gap. A segment with fewer than two snapshots writes nothing, but the cursor still moves
     /// past it, so a quiet or failed stretch does not block later gaps.
     /// </summary>
     public static class GapPlanner
@@ -60,15 +60,16 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 cursor = closing;
             }
 
-            // Open gap: only full segments until the horizon. The remainder stays for a later check.
-            while (horizonUtc - cursor >= maxSegment)
+            // Open gap: split into segments of at most maxSegment up to the horizon, the last one ending there. The
+            // horizon is the planned end, so the cursor moves to it; a later event starts a new closed gap from there.
+            for (DateTime start = cursor; start < horizonUtc;)
             {
-                DateTime end = cursor + maxSegment;
-                AddIfEnoughSnapshots(segments, snapshotsUtc, cursor, end);
-                cursor = end;
+                DateTime end = Min(start + maxSegment, horizonUtc);
+                AddIfEnoughSnapshots(segments, snapshotsUtc, start, end);
+                start = end;
             }
 
-            return new GapPlanResult(segments, cursor);
+            return new GapPlanResult(segments, horizonUtc);
         }
 
         private static void AddIfEnoughSnapshots(List<GapSegment> segments, IReadOnlyList<DateTime> snapshotsUtc, DateTime start, DateTime end)

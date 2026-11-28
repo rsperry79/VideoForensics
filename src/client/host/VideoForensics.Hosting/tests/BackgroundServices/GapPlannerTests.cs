@@ -33,7 +33,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             GapSegment segment = Assert.Single(result.Segments);
             Assert.Equal(At(10), segment.StartUtc);
             Assert.Equal(At(10, 43), segment.EndUtc);
-            Assert.Equal(At(10, 43), result.NextCursorUtc);
+            Assert.Equal(At(11), result.NextCursorUtc);
         }
 
         [Fact]
@@ -50,11 +50,11 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             }
 
             Assert.Equal(TimeSpan.FromMinutes(30), result.Segments[8].EndUtc - result.Segments[8].StartUtc);
-            Assert.Equal(At(8, 30), result.NextCursorUtc);
+            Assert.Equal(At(9), result.NextCursorUtc);
         }
 
         [Fact]
-        public void Plan_OpenGapNoClosingEvent_FillsFullSegmentsOnlyAndLeavesRemainder()
+        public void Plan_OpenGapNoClosingEvent_SplitsToHorizonAndCursorReachesIt()
         {
             IReadOnlyList<DateTime> snapshots = Every(TimeSpan.FromMinutes(30), At(0), At(2, 30));
 
@@ -65,7 +65,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.Equal(At(1), result.Segments[0].EndUtc);
             Assert.Equal(At(1), result.Segments[1].StartUtc);
             Assert.Equal(At(2), result.Segments[1].EndUtc);
-            Assert.Equal(At(2), result.NextCursorUtc);
+            Assert.Equal(At(2, 30), result.NextCursorUtc);
         }
 
         [Fact]
@@ -76,7 +76,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             GapPlanResult result = GapPlanner.Plan(At(10), At(11), [At(10, 43)], snapshots, Max);
 
             Assert.Empty(result.Segments);
-            Assert.Equal(At(10, 43), result.NextCursorUtc);
+            Assert.Equal(At(11), result.NextCursorUtc);
         }
 
         [Fact]
@@ -118,7 +118,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             Assert.Equal(At(10, 20), result.Segments[0].EndUtc);
             Assert.Equal(At(10, 40), result.Segments[1].EndUtc);
-            Assert.Equal(2, result.Segments.Count);
+            Assert.Equal(At(11), result.Segments[2].EndUtc);
+            Assert.Equal(3, result.Segments.Count);
         }
 
         [Fact]
@@ -141,6 +142,50 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             Assert.Empty(result.Segments);
             Assert.Equal(At(11), result.NextCursorUtc);
+        }
+
+        [Fact]
+        public void Plan_OpenGapNoEvents_SplitsIntoMaxSegmentsEndingAtHorizon()
+        {
+            IReadOnlyList<DateTime> snapshots = Every(TimeSpan.FromMinutes(2), At(10), At(11, 30));
+
+            GapPlanResult result = GapPlanner.Plan(At(10), At(11, 30), [], snapshots, Max);
+
+            Assert.Equal(2, result.Segments.Count);
+            Assert.Equal(At(10), result.Segments[0].StartUtc);
+            Assert.Equal(At(11), result.Segments[0].EndUtc);
+            Assert.Equal(TimeSpan.FromMinutes(60), result.Segments[0].EndUtc - result.Segments[0].StartUtc);
+            Assert.Equal(At(11), result.Segments[1].StartUtc);
+            Assert.Equal(At(11, 30), result.Segments[1].EndUtc);
+            Assert.Equal(TimeSpan.FromMinutes(30), result.Segments[1].EndUtc - result.Segments[1].StartUtc);
+            Assert.Equal(At(11, 30), result.NextCursorUtc);
+        }
+
+        [Fact]
+        public void Plan_OpenGapRemainderWithOneSnapshot_WritesNothingButCursorReachesHorizon()
+        {
+            var snapshots = new[] { At(10, 10) };
+
+            GapPlanResult result = GapPlanner.Plan(At(10), At(10, 30), [], snapshots, Max);
+
+            Assert.Empty(result.Segments);
+            Assert.Equal(At(10, 30), result.NextCursorUtc);
+        }
+
+        [Fact]
+        public void Plan_ClosedGapThenOpenRemainder_OpenRemainderRunsFromEventToHorizon()
+        {
+            IReadOnlyList<DateTime> snapshots = Every(TimeSpan.FromMinutes(2), At(10), At(11, 30));
+
+            GapPlanResult result = GapPlanner.Plan(At(10), At(11, 30), [At(10, 20)], snapshots, Max);
+
+            Assert.Equal(3, result.Segments.Count);
+            Assert.Equal(At(10, 20), result.Segments[0].EndUtc);
+            Assert.Equal(At(10, 20), result.Segments[1].StartUtc);
+            Assert.Equal(At(11, 20), result.Segments[1].EndUtc);
+            Assert.Equal(At(11, 20), result.Segments[2].StartUtc);
+            Assert.Equal(At(11, 30), result.Segments[2].EndUtc);
+            Assert.Equal(At(11, 30), result.NextCursorUtc);
         }
     }
 }
