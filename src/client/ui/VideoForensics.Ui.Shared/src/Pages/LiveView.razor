@@ -93,44 +93,22 @@ else
         }
     </PageRightPanelContent>
 
-    <div class="live-view-grid">
-        @foreach (Guid id in ShownCameras)
+    <div class="live-view-layout">
+        @if (Primary is Guid primary)
         {
-            bool live = _liveSessions.ContainsKey(id) && !_startingDevices.Contains(id);
-            <div class="live-view-tile" data-testid="live-view-tile" data-device-id="@id.ToString("D")" @onclick="@(() => FocusStream(id))">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="small">@NameOf(id)</span>
-                    <SfButton Content="@(live ? L["Stop"] : L["Start"])"
-                        OnClick="@(async () => await ToggleLiveAsync(id))"
-                        CssClass="@(live ? "e-danger" : "e-primary")"
-                        Disabled="@(_startingDevices.Contains(id) || (!live && (_offlineIds.Contains(id) || AtCap)))" />
-                </div>
-
-                @if (!live && _offlineIds.Contains(id))
-                {
-                    <div class="text-warning small mb-1" role="status" data-testid="live-view-offline">@L["DeviceOffline"]</div>
-                }
-
-                @if (!live && AtCap)
-                {
-                    <div class="text-warning small mb-1" role="status" data-testid="live-view-cap">@L["LiveViewCapReached", MaxLiveStreams]</div>
-                }
-
-                @if (live)
-                {
-                    <div class="live-view-container">
-                        <MediaPlayer Live="true" ElementId="@PlayerIdFor(id)" Class="live-view-video" Autoplay="true" Muted="true" Controls="MediaPlayerControls.None" Fit="MediaFitMode.Cover" />
-                    </div>
-                }
-                else if (_stills.TryGetValue(id, out string? url) && !string.IsNullOrEmpty(url))
-                {
-                    <img class="live-view-still" src="@url" alt="@NameOf(id)" data-testid="live-view-still" />
-                }
-                else
-                {
-                    <div class="live-view-empty small text-muted">@L["NoStill"]</div>
-                }
+            <div class="live-view-primary-slot" data-testid="live-view-primary-slot">
+                @TileFor(primary, true)
             </div>
+
+            @if (ShownCameras.Count > 1)
+            {
+                <div class="live-view-secondary-row" data-testid="live-view-secondary-row">
+                    @foreach (Guid id in ShownCameras.Where(id => id != primary))
+                    {
+                        @TileFor(id, false)
+                    }
+                </div>
+            }
         }
     </div>
 }
@@ -158,6 +136,11 @@ else
     private HashSet<Guid> _offlineIds = [];
 
     // The media page's camera filter. An empty selection means the first cameras, as the media page shows them.
+
+    /// <summary>Key for the primary camera in the device's local layout prefs.</summary>
+    private const string PrimaryCameraKey = "vf.live-view.primary";
+    // The camera that fills the top half of the page, or null until one is chosen. Set from storage or a Make primary click.
+    private Guid? _primaryDeviceId;
 
     /// <summary>Key for this page's remembered camera choice in the device's local storage.</summary>
     private const string FilterPageKey = "live-view";
@@ -198,6 +181,68 @@ else
             ? CameraState.CameraIds
             : _cameraIds.Take(CameraSync.MaxTiles).ToList();
 
+    // The primary camera: the one that fills the top half. The stored choice is used while that camera is shown; otherwise the first shown camera.
+    private Guid? Primary =>
+        _primaryDeviceId is Guid stored && ShownCameras.Contains(stored)
+            ? stored
+            : ShownCameras.Count > 0 ? ShownCameras[0] : null;
+
+    // One camera's tile. A non-primary tile can be made primary; the primary tile cannot.
+    private RenderFragment TileFor(Guid id, bool isPrimary) => @<div class="live-view-tile" data-testid="live-view-tile" data-device-id="@id.ToString("D")" data-primary="@(isPrimary ? "true" : "false")" @onclick="@(() => FocusStream(id))">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small">@NameOf(id)</span>
+            <span class="d-flex gap-1">
+                <SfButton Content="@(_liveSessions.ContainsKey(id) && !_startingDevices.Contains(id) ? L["Stop"] : L["Start"])"
+                    OnClick="@(async () => await ToggleLiveAsync(id))"
+                    CssClass="@(_liveSessions.ContainsKey(id) && !_startingDevices.Contains(id) ? "e-danger" : "e-primary")"
+                    Disabled="@(_startingDevices.Contains(id) || (!(_liveSessions.ContainsKey(id) && !_startingDevices.Contains(id)) && (_offlineIds.Contains(id) || AtCap)))" />
+                @if (!isPrimary)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-light" data-testid="live-view-make-primary" @onclick="@(() => MakePrimaryAsync(id))" @onclick:stopPropagation="true">@L["MakePrimary"]</button>
+                }
+            </span>
+        </div>
+
+        @if (!(_liveSessions.ContainsKey(id) && !_startingDevices.Contains(id)) && _offlineIds.Contains(id))
+        {
+            <div class="text-warning small mb-1" role="status" data-testid="live-view-offline">@L["DeviceOffline"]</div>
+        }
+
+        @if (!(_liveSessions.ContainsKey(id) && !_startingDevices.Contains(id)) && AtCap)
+        {
+            <div class="text-warning small mb-1" role="status" data-testid="live-view-cap">@L["LiveViewCapReached", MaxLiveStreams]</div>
+        }
+
+        @if (_liveSessions.ContainsKey(id) && !_startingDevices.Contains(id))
+        {
+            <div class="live-view-container">
+                <MediaPlayer Live="true" ElementId="@PlayerIdFor(id)" Class="live-view-video" Autoplay="true" Muted="true" Controls="MediaPlayerControls.None" Fit="MediaFitMode.Cover" />
+            </div>
+        }
+        else if (_stills.TryGetValue(id, out string? url) && !string.IsNullOrEmpty(url))
+        {
+            <img class="live-view-still" src="@url" alt="@NameOf(id)" data-testid="live-view-still" />
+        }
+        else
+        {
+            <div class="live-view-empty small text-muted">@L["NoStill"]</div>
+        }
+    </div>;
+
+    // Makes a camera the primary one and remembers the choice on this device. A failed save keeps the choice for this page visit only.
+    private async Task MakePrimaryAsync(Guid deviceId)
+    {
+        _primaryDeviceId = deviceId;
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("vfLayoutPrefs.set", PrimaryCameraKey, deviceId.ToString("D"));
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning("Could not save the primary live-view camera: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+        }
+    }
+
     // True when the live streams fill the cap, so a camera that is not live cannot start.
     private bool AtCap => _liveSessions.Count >= MaxLiveStreams;
 
@@ -235,6 +280,20 @@ else
                         CameraState.SetCameras(restored);
                     }
                 }
+            }
+
+            // Restore the primary camera chosen on this device. Without a stored, existing camera the first camera is primary.
+            try
+            {
+                string? storedPrimary = await JsRuntime.InvokeAsync<string?>("vfLayoutPrefs.get", PrimaryCameraKey);
+                if (Guid.TryParse(storedPrimary, out Guid primaryId) && _cameraIds.Contains(primaryId))
+                {
+                    _primaryDeviceId = primaryId;
+                }
+            }
+            catch (JSException)
+            {
+                // Script not loaded on this host, or a pre-render pass - the first camera stays primary.
             }
 
             CameraState.OnChange += OnCameraSelectionChanged;
@@ -738,16 +797,32 @@ else
 }
 
 <style>
-.live-view-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+/* The primary camera fills the top half of the visible window; the others share the row below it. Nothing scrolls. */
+.live-view-layout {
+    display: flex;
+    flex-direction: column;
     gap: 0.75rem;
-    /* Fill the page width, so one camera stretches across it instead of sitting at its minimum size. */
     width: 100%;
+    height: calc(var(--vf-vh, 100vh) - 12rem);
     box-sizing: border-box;
 }
 
+.live-view-primary-slot {
+    flex: 1 1 50%;
+    min-height: 0;
+    display: flex;
+}
+
+.live-view-secondary-row {
+    flex: 1 1 50%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
 .live-view-tile {
+    height: 100%;
     background-color: #111;
     border-radius: 4px;
     padding: 0.5rem;

@@ -1,4 +1,5 @@
 using Bunit;
+using AngleSharp.Dom;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -725,6 +726,58 @@ public class LiveViewPageTests : BunitContext
         var session = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
         _ = session.SetupGet(s => s.SessionToken).Returns(SessionToken);
         _ = Services.AddScoped(_ => session.Object);
+    }
+
+    [Fact]
+    public void LiveView_TwoCameras_FirstCameraIsPrimaryAboveTheRow()
+    {
+        // Arrange and Act
+        AddCameras(Camera, Garage);
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+
+        // Assert: the first camera fills the primary slot; the other camera sits in the row below it
+        IElement primary = cut.Find("[data-testid='live-view-primary-slot']");
+        Assert.NotNull(primary.QuerySelector($"[data-testid='live-view-tile'][data-device-id='{Camera:D}']"));
+        IElement row = cut.Find("[data-testid='live-view-secondary-row']");
+        Assert.NotNull(row.QuerySelector($"[data-testid='live-view-tile'][data-device-id='{Garage:D}']"));
+        Assert.Null(row.QuerySelector($"[data-testid='live-view-tile'][data-device-id='{Camera:D}']"));
+    }
+
+    [Fact]
+    public void LiveView_StoredPrimary_IsShownAsPrimary()
+    {
+        // Arrange: the operator last made the second camera primary on this device
+        AddCameras(Camera, Garage);
+        JSInterop.Setup<string?>("vfLayoutPrefs.get", "vf.live-view.primary").SetResult(Garage.ToString("D"));
+
+        // Act
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+
+        // Assert
+        IElement primary = cut.Find("[data-testid='live-view-primary-slot']");
+        Assert.NotNull(primary.QuerySelector($"[data-testid='live-view-tile'][data-device-id='{Garage:D}']"));
+    }
+
+    [Fact]
+    public void LiveView_MakePrimary_MovesPrimaryAndStoresTheChoice()
+    {
+        // Arrange
+        AddCameras(Camera, Garage);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+
+        // Act: make the non-primary camera primary
+        cut.Find($"[data-testid='live-view-tile'][data-device-id='{Garage:D}'] [data-testid='live-view-make-primary']").Click();
+
+        // Assert: the slot moved, and the choice is written to the layout prefs
+        IElement primary = cut.Find("[data-testid='live-view-primary-slot']");
+        Assert.NotNull(primary.QuerySelector($"[data-testid='live-view-tile'][data-device-id='{Garage:D}']"));
+        Assert.Contains(JSInterop.Invocations, i => i.Identifier == "vfLayoutPrefs.set"
+            && (string?)i.Arguments[0] == "vf.live-view.primary"
+            && (string?)i.Arguments[1] == Garage.ToString("D"));
     }
 
     [Fact]
