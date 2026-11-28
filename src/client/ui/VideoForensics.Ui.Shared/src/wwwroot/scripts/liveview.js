@@ -1,7 +1,4 @@
 const SIGNALR_SCRIPT = "_content/VideoForensics.Client.Ui.Shared/lib/signalr/signalr.min.js";
-function notifyConnectionState(callbacks, methodName) {
-    callbacks.invokeMethodAsync(methodName).catch((err) => console.error(`[LiveView] Could not notify the page (${methodName}):`, err));
-}
 // One peer connection per live view session, keyed by session id. Recorded once negotiation succeeds.
 const peerConnections = new Map();
 /**
@@ -123,4 +120,48 @@ export function stopLiveView(sessionId) {
         console.log(`[LiveView] Closing peer connection`);
         pc.close();
     }
+}
+/**
+ * Pauses one live player and saves its current frame as a PNG download. Does nothing when the player has no frame yet.
+ * @param videoElementId - The live player's video element id.
+ * @param fileName - The file name for the download.
+ */
+export function grabLiveFrame(videoElementId, fileName) {
+    const video = document.getElementById(videoElementId);
+    if (!video || video.videoWidth === 0) {
+        return;
+    }
+    // Pause first, so the frame on screen is the frame saved.
+    video.pause();
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+        return;
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = fileName;
+    link.click();
+}
+/**
+ * Expands one live player to full screen, or leaves full screen when it is already showing one.
+ * @param videoElementId - The live player's video element id.
+ */
+export function toggleFullscreen(videoElementId) {
+    const video = document.getElementById(videoElementId);
+    if (!video) {
+        return;
+    }
+    if (document.fullscreenElement) {
+        void document.exitFullscreen();
+    }
+    else {
+        void video.requestFullscreen();
+    }
+}
+function notifyConnectionState(callbacks, methodName) {
+    callbacks.invokeMethodAsync(methodName).catch((err) => console.error(`[LiveView] Could not notify the page (${methodName}):`, err));
 }

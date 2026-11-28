@@ -59,6 +59,21 @@
   <data name="MakePrimary" xml:space="preserve">
     <value>Make primary</value>
   </data>
+  <data name="MenuGrabStill" xml:space="preserve">
+    <value>Grab still</value>
+  </data>
+  <data name="MenuOpenSingleView" xml:space="preserve">
+    <value>Open single view</value>
+  </data>
+  <data name="MenuFullScreen" xml:space="preserve">
+    <value>Full screen</value>
+  </data>
+  <data name="MenuCopyStillLink" xml:space="preserve">
+    <value>Copy still link</value>
+  </data>
+  <data name="GrabStillFailed" xml:space="preserve">
+    <value>Could not grab the still. Try again.</value>
+  </data>
   <data name="Connected" xml:space="preserve">
     <value>Connected</value>
   </data>

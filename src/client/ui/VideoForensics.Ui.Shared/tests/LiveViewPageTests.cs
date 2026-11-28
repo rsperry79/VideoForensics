@@ -1,6 +1,7 @@
 using Bunit;
 using AngleSharp.Dom;
 
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
@@ -118,6 +119,13 @@ public class LiveViewPageTests : BunitContext
 
     // Each live tile renders its player under its own element id, so a stream's element is found by device.
     private static string PlayerIdFor(Guid deviceId) => "liveViewPlayer-" + deviceId.ToString("D");
+
+    // Right-clicks a camera's video, which opens the video menu in place of the browser's.
+    private static Task RightClickTileAsync(IRenderedComponent<LiveView> cut, Guid deviceId)
+    {
+        IElement tile = cut.Find($"[data-testid='live-view-tile'][data-device-id='{deviceId:D}']");
+        return cut.InvokeAsync(() => tile.TriggerEventAsync("oncontextmenu", new MouseEventArgs()));
+    }
 
     private static void ClickTile(IRenderedComponent<LiveView> cut, Guid deviceId) =>
         cut.Find($"[data-testid='live-view-tile'][data-device-id='{deviceId:D}'] button").Click();
@@ -761,7 +769,7 @@ public class LiveViewPageTests : BunitContext
     }
 
     [Fact]
-    public void LiveView_MakePrimary_MovesPrimaryAndStoresTheChoice()
+    public async Task LiveView_MakePrimary_MovesPrimaryAndStoresTheChoice()
     {
         // Arrange
         AddCameras(Camera, Garage);
@@ -769,8 +777,9 @@ public class LiveViewPageTests : BunitContext
         IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
 
-        // Act: make the non-primary camera primary
-        cut.Find($"[data-testid='live-view-tile'][data-device-id='{Garage:D}'] [data-testid='live-view-make-primary']").Click();
+        // Act: make the non-primary camera primary from its video menu
+        await RightClickTileAsync(cut, Garage);
+        cut.Find("[data-testid='live-view-menu-make-primary']").Click();
 
         // Assert: the slot moved, and the choice is written to the layout prefs
         IElement primary = cut.Find("[data-testid='live-view-primary-slot']");
@@ -778,6 +787,112 @@ public class LiveViewPageTests : BunitContext
         Assert.Contains(JSInterop.Invocations, i => i.Identifier == "vfLayoutPrefs.set"
             && (string?)i.Arguments[0] == "vf.live-view.primary"
             && (string?)i.Arguments[1] == Garage.ToString("D"));
+    }
+
+    [Fact]
+    public async Task LiveView_RightClickTile_OpensTheVideoMenu()
+    {
+        // Arrange
+        AddCameras(Camera, Garage);
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+
+        // Act
+        await RightClickTileAsync(cut, Garage);
+
+        // Assert: the menu offers the video actions in place of the browser menu
+        IElement menu = cut.Find("[data-testid='live-view-menu']");
+        Assert.NotNull(menu.QuerySelector("[data-testid='live-view-menu-make-primary']"));
+        Assert.NotNull(menu.QuerySelector("[data-testid='live-view-menu-grab-still']"));
+        Assert.NotNull(menu.QuerySelector("[data-testid='live-view-menu-open-single']"));
+        Assert.NotNull(menu.QuerySelector("[data-testid='live-view-menu-fullscreen']"));
+        Assert.NotNull(menu.QuerySelector("[data-testid='live-view-menu-copy-link']"));
+    }
+
+    [Fact]
+    public async Task LiveView_MenuOnPrimaryCamera_HasNoMakePrimary()
+    {
+        // Arrange
+        AddCameras(Camera, Garage);
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+
+        // Act
+        await RightClickTileAsync(cut, Camera);
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='live-view-menu-make-primary']"));
+    }
+
+    [Fact]
+    public async Task LiveView_MenuCopyStillLink_IsDisabledUntilAStillExists()
+    {
+        // Arrange
+        AddCameras(Camera);
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+
+        // Act
+        await RightClickTileAsync(cut, Camera);
+
+        // Assert: no still has been grabbed yet, so there is no link to copy
+        Assert.True(cut.Find("[data-testid='live-view-menu-copy-link']").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task LiveView_MenuGrabStill_PausesAndDownloadsTheLiveFrame()
+    {
+        // Arrange: one camera live
+        AddCameras(Camera);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        await RightClickTileAsync(cut, Camera);
+
+        // Act
+        cut.Find("[data-testid='live-view-menu-grab-still']").Click();
+
+        // Assert: the browser pauses the live player and saves its frame, the one on that camera's tile
+        cut.WaitForAssertion(() => Assert.Contains(JSInterop.Invocations,
+            i => i.Identifier == "grabLiveFrame" && (string?)i.Arguments[0] == PlayerIdFor(Camera)));
+    }
+
+    [Fact]
+    public async Task LiveView_MenuFullScreen_ExpandsTheLivePlayer()
+    {
+        // Arrange: one camera live
+        AddCameras(Camera);
+        SetupFakeLiveViewModule();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='live-view-tile']")));
+        ClickTile(cut, Camera);
+        WaitForLive(cut, Camera);
+        await RightClickTileAsync(cut, Camera);
+
+        // Act
+        cut.Find("[data-testid='live-view-menu-fullscreen']").Click();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Contains(JSInterop.Invocations,
+            i => i.Identifier == "toggleFullscreen" && (string?)i.Arguments[0] == PlayerIdFor(Camera)));
+    }
+
+    [Fact]
+    public async Task LiveView_MenuOpenSingleView_ClosesTheMenu()
+    {
+        // Arrange
+        AddCameras(Camera, Garage);
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("[data-testid='live-view-tile']").Count));
+        await RightClickTileAsync(cut, Garage);
+
+        // Act
+        cut.Find("[data-testid='live-view-menu-open-single']").Click();
+
+        // Assert
+        Assert.Empty(cut.FindAll("[data-testid='live-view-menu']"));
     }
 
     [Fact]

@@ -7,6 +7,7 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Web
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Review
@@ -113,6 +114,22 @@ else
     </div>
 }
 
+@if (_menuDeviceId is Guid menuId)
+{
+    <div class="live-view-menu-scrim" @onclick="CloseMenu"></div>
+    <div class="live-view-menu" data-testid="live-view-menu" style="@($"left:{_menuX}px;top:{_menuY}px")">
+        @if (Primary != menuId)
+        {
+            <button type="button" class="live-view-menu-item" data-testid="live-view-menu-make-primary" @onclick="@(() => MakePrimaryFromMenuAsync(menuId))">@L["MakePrimary"]</button>
+        }
+        <button type="button" class="live-view-menu-item" data-testid="live-view-menu-grab-still" disabled="@(!IsLive(menuId))" @onclick="@(() => GrabStillAsync(menuId))">@L["MenuGrabStill"]</button>
+        <button type="button" class="live-view-menu-item" data-testid="live-view-menu-open-single" @onclick="@(() => OpenSingleView(menuId))">@L["MenuOpenSingleView"]</button>
+        <button type="button" class="live-view-menu-item" data-testid="live-view-menu-fullscreen" disabled="@(!IsLive(menuId))" @onclick="@(() => FullScreenAsync(menuId))">@L["MenuFullScreen"]</button>
+        @* A still link needs a stored still; grabbing a live frame keeps it only in the browser, so the link stays unavailable. *@
+        <button type="button" class="live-view-menu-item" data-testid="live-view-menu-copy-link" disabled>@L["MenuCopyStillLink"]</button>
+    </div>
+}
+
 @code {
     // The most streams that can be live at once. The server enforces the same cap; the page disables Start first.
     private const int MaxLiveStreams = 4;
@@ -181,6 +198,73 @@ else
             ? CameraState.CameraIds
             : _cameraIds.Take(CameraSync.MaxTiles).ToList();
 
+    // The video menu for one camera: opened by right-click, closed by a click outside it or by choosing an item.
+    private Guid? _menuDeviceId;
+    private double _menuX;
+    private double _menuY;
+
+    private bool IsLive(Guid id) => _liveSessions.ContainsKey(id) && !_startingDevices.Contains(id);
+
+    private void OpenMenu(Guid id, MouseEventArgs e)
+    {
+        _menuDeviceId = id;
+        _menuX = e.ClientX;
+        _menuY = e.ClientY;
+    }
+
+    private void CloseMenu() => _menuDeviceId = null;
+
+    private async Task MakePrimaryFromMenuAsync(Guid id)
+    {
+        CloseMenu();
+        await MakePrimaryAsync(id);
+    }
+
+    private void OpenSingleView(Guid id)
+    {
+        CloseMenu();
+        FocusStream(id);
+    }
+
+    // Pauses the live player and saves its current frame as a PNG download. The browser does the capture; nothing is stored on the server.
+    private async Task GrabStillAsync(Guid id)
+    {
+        CloseMenu();
+        if (!IsLive(id) || _jsModule is null)
+        {
+            return;
+        }
+
+        string fileName = $"{string.Concat(NameOf(id).Where(c => !System.IO.Path.GetInvalidFileNameChars().Contains(c)))}-{DateTime.Now:yyyyMMdd-HHmmss}.png";
+        try
+        {
+            await _jsModule.InvokeVoidAsync("grabLiveFrame", PlayerIdFor(id), fileName);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogError("Could not grab a live-view still: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+            _error = L["GrabStillFailed"];
+        }
+    }
+
+    private async Task FullScreenAsync(Guid id)
+    {
+        CloseMenu();
+        if (!IsLive(id) || _jsModule is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _jsModule.InvokeVoidAsync("toggleFullscreen", PlayerIdFor(id));
+        }
+        catch (JSException ex)
+        {
+            Logger.LogError("Could not open full screen: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+        }
+    }
+
     // The primary camera: the one that fills the top half. The stored choice is used while that camera is shown; otherwise the first shown camera.
     private Guid? Primary =>
         _primaryDeviceId is Guid stored && ShownCameras.Contains(stored)
@@ -188,7 +272,7 @@ else
             : ShownCameras.Count > 0 ? ShownCameras[0] : null;
 
     // One camera's tile. A non-primary tile can be made primary; the primary tile cannot.
-    private RenderFragment TileFor(Guid id, bool isPrimary) => @<div class="live-view-tile" data-testid="live-view-tile" data-device-id="@id.ToString("D")" data-primary="@(isPrimary ? "true" : "false")" @onclick="@(() => FocusStream(id))">
+    private RenderFragment TileFor(Guid id, bool isPrimary) => @<div class="live-view-tile" data-testid="live-view-tile" data-device-id="@id.ToString("D")" data-primary="@(isPrimary ? "true" : "false")" @onclick="@(() => FocusStream(id))" @oncontextmenu="@((MouseEventArgs e) => OpenMenu(id, e))" @oncontextmenu:preventDefault="true">
         <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="small">@NameOf(id)</span>
             <span class="d-flex gap-1">
@@ -196,10 +280,6 @@ else
                     OnClick="@(async () => await ToggleLiveAsync(id))"
                     CssClass="@(_liveSessions.ContainsKey(id) && !_startingDevices.Contains(id) ? "e-danger" : "e-primary")"
                     Disabled="@(_startingDevices.Contains(id) || (!(_liveSessions.ContainsKey(id) && !_startingDevices.Contains(id)) && (_offlineIds.Contains(id) || AtCap)))" />
-                @if (!isPrimary)
-                {
-                    <button type="button" class="btn btn-sm btn-outline-light" data-testid="live-view-make-primary" @onclick="@(() => MakePrimaryAsync(id))" @onclick:stopPropagation="true">@L["MakePrimary"]</button>
-                }
             </span>
         </div>
 
@@ -866,5 +946,40 @@ div.live-view-container > div.media-player {
     max-width: 100%;
     max-height: 100%;
     object-fit: cover;
+}
+/* The video menu covers the page; a click on the scrim behind it closes it. */
+.live-view-menu-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+}
+
+.live-view-menu {
+    position: fixed;
+    z-index: 1050;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    padding: 0.25rem;
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 6px;
+}
+
+.live-view-menu-item {
+    background: none;
+    border: 0;
+    color: #eee;
+    text-align: left;
+    padding: 0.35rem 0.6rem;
+    border-radius: 4px;
+}
+
+.live-view-menu-item:hover:not(:disabled) {
+    background-color: #333;
+}
+
+.live-view-menu-item:disabled {
+    color: #777;
 }
 </style>
