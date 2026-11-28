@@ -9,16 +9,17 @@ Grab still on a live camera saves the frame as a still in the evidence store and
 ## Decisions
 
 - **Media kind: `Still`** (existing `MediaKinds.Still`, already used by review-page stills). Not `Snapshot`: snapshot queries, roll-up, repeat-marking and `GetLatestSnapshotHashAsync` would then pick up live grabs and could change how provider snapshots are skipped.
-- **Link access: per-camera rule.** The server has no per-camera check today. Unit 2 adds one. Enforced on the still route for every request.
+- **Access: Review role or higher** (existing `VideoForensicsPolicies.Review`). Unit 0 found no per-camera operator grant in the app, and the user chose role-based access. Camera-level limits are not in scope.
 - **Audit: yes.** Each stored still writes an action-log entry with the operator and time. The row records the capturing operator.
 - **Stored file is JPEG**, hashed server-side from the received bytes. The PNG download is unchanged and stays client-side.
 - **Failed upload** shows an error and leaves Copy still link disabled. The PNG download still happens.
 - **Only a live camera** can be grabbed, as now.
 
-## Unit 0: confirm before code (no commit)
+## Unit 0: done (findings, no code)
 
-- Find where a per-camera grant lives. If no user-to-camera grant exists, stop and ask the user how grants should be modelled before Unit 2. Do not invent a table.
-- Confirm the link route. Use an app route (the still viewer page) that fetches a fresh content ticket after sign-in. Do not copy the ticket URL: it expires after 10 minutes and works for anyone holding it.
+- Operators have roles only (ReadOnly, Review, Admin, SuperAdmin). No operator-to-camera grant exists. `CaseDevice` is case scope, not operator access. `RingLocationSharedUser*` is provider-side Ring sharing, not app access.
+- Decision: role-based access, Review or higher.
+- Link route: a new still viewer page. It asks for sign-in, then fetches a fresh content ticket. The copied link is the page, not the ticket URL (the ticket expires after 10 minutes).
 
 ## Unit 1: data write path (`src/data/common`, `src/data/database`)
 
@@ -51,15 +52,15 @@ Done when: lite gate passes on touched projects; commit on the unit branch.
 
 Files:
 - `src/client/web/VideoForensics.WebApp/src/Api/MediaApiEndpoints.cs`: new `POST /api/v1/media/live-stills/{deviceId}`. Follow the existing `/api/v1/media/{id}/stills` pattern: `MaintenanceEndpointFilter`, `VideoForensicsPolicies.Review`, media rate limit.
-- New still-read route, anonymous-allowed with a fresh ticket, or signed-in only, following the existing content route pattern (`MediaApiEndpoints.cs:103`). Decide in Unit 0 which.
-- Per-camera rule: a `ICameraAccessService` in the server layer, checked on every still request and on the upload.
+- Still read: the content route (`MediaApiEndpoints.cs:103`) with a fresh ticket issued to a signed-in Review-role operator. The viewer page calls it; the copied link is the viewer page.
+- Access on upload and read: `VideoForensicsPolicies.Review`. No per-camera check.
 - Kestrel and form body limits on the upload route; size cap 20 MB (same as the review still).
 - Validation at the boundary: non-empty, size cap, JPEG magic bytes, and a decode check.
 
 Tests (`src/client/web/VideoForensics.WebApp/tests/Api/`):
 - Valid JPEG returns 200 with an id.
 - PNG, truncated JPEG, empty body, oversized body are each rejected.
-- Anonymous gets 401. Signed-in without the camera gets 403. With the camera gets 200.
+- Anonymous gets 401. Signed-in below Review gets 403. Review or higher gets 200.
 - Expired ticket gets 401. A ticket for another item is rejected.
 - Maintenance mode blocks the upload.
 - Action-log entry is written with the operator.
