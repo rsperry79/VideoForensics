@@ -23,10 +23,11 @@ Grab still on a live camera saves the frame as a still in the evidence store and
 
 ## Unit 1: data write path (`src/data/common`, `src/data/database`)
 
-Files:
-- `src/data/common/src/Contracts/ILiveStillStore.cs` (new): `Task<Guid> StoreAsync(Guid deviceId, Guid operatorId, byte[] jpeg, CancellationToken ct)`.
-- `src/data/common/src/Entities/MediaKinds.cs`: no change; use `Still`.
-- `src/data/database/src/Repositories/...`: `LiveStillStore` implementation, injects `IMediaItemWriteRepository` directly (as the existing writers do), not through `UnitOfWork`.
+Built (done, tests pass):
+- Location moved to `src/server/core`: the store needs the media root and the storage provider, which live in the server layer, not the data layer.
+- `src/server/core/src/Contracts/ILiveStillStore.cs` and `src/server/core/src/Services/LiveStillStore.cs`, tests in `src/server/core/tests/Services/LiveStillStoreTests.cs` (12 tests).
+- Deviation: no `MediaStillCapture` row. That table needs a source media item, and a live frame has none. The operator goes to the action log (`CaptureLiveStill`), because a media row has no operator field.
+- Deviation: each file name carries the still id, so two stills never share a path and a failed insert deletes only its own file.
 
 Behaviour:
 - SHA-256 of the received bytes, lowercase hex.
