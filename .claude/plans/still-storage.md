@@ -68,7 +68,7 @@ Tests (`src/client/web/VideoForensics.WebApp/tests/Api/`):
 
 Done when: lite gate passes; commit.
 
-## Unit 3: client grab and link (`src/client/ui/VideoForensics.Ui.Shared`)
+## Unit 3: client grab and link (in progress) (`src/client/ui/VideoForensics.Ui.Shared`)
 
 Files:
 - `src/ts/liveview.ts`: `grabLiveFrame` returns the frame as a Blob (`canvas.toBlob`) and keeps the PNG download. Change the C# call at `LiveView.razor` from `InvokeVoidAsync` to `InvokeAsync`.

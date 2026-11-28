@@ -2,11 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.WebApp.Auth;
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Api.Contracts.Repositories;
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -31,13 +27,7 @@ namespace VideoForensics.Client.WebApp.Api
         public static async Task<IResult> UploadAsync(
             Guid deviceId,
             HttpRequest request,
-            ILiveStillStore stills,
-            IDeviceRepository devices,
-            ILocationRepository locations,
-            IProviderAccountRepository accounts,
-            IAccountDeviceRepository accountDevices,
-            IForensicsConfigurationService configuration,
-            IStorageLocationProvider storageLocation,
+            ILiveStillCaptureService capture,
             HttpContext context,
             CancellationToken ct)
         {
@@ -59,35 +49,12 @@ namespace VideoForensics.Client.WebApp.Api
                 return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
             }
 
-            DeviceDto? device = await devices.GetAsync(deviceId, ct);
-            if (device is null)
-            {
-                return Results.NotFound();
-            }
-
-            LocationRecordDto? location = await locations.GetAsync(device.LocationId, ct);
-            string? providerName = await FindProviderNameAsync(device.Id, accounts, accountDevices, ct);
-            if (providerName is null)
-            {
-                return Results.NotFound();
-            }
-
-            IForensicsConfiguration config = await configuration.LoadConfigurationAsync(string.Empty, ct);
-            string mediaRoot = storageLocation.GetEffectiveRoot(StorageCategory.Media, config.DownloadLocation);
-
-            LiveStillResult result = await stills.StoreAsync(new LiveStillRequest(
-                device.Id,
-                mediaRoot,
-                providerName,
-                location?.Name ?? string.Empty,
-                device.Name,
-                DateTime.UtcNow,
-                jpeg,
-                operatorId), ct);
+            LiveStillResult result = await capture.CaptureAsync(deviceId, jpeg, operatorId, ct);
 
             return result.Error switch
             {
                 LiveStillError.None => Results.Created($"/api/v1/media/{result.MediaItemId}/still", new { id = result.MediaItemId }),
+                LiveStillError.NotFound => Results.NotFound(),
                 LiveStillError.InvalidInput => Results.BadRequest(result.Message),
                 LiveStillError.Conflict => Results.Conflict(result.Message),
                 _ => Results.Problem(detail: result.Message, statusCode: StatusCodes.Status500InternalServerError)
@@ -114,25 +81,6 @@ namespace VideoForensics.Client.WebApp.Api
 
             Stream content = await storage.OpenReadStreamAsync(item.FilePath, ct);
             return Results.Stream(content, JpegContentType);
-        }
-
-        /// <summary>The provider name of the account that can see this camera, or null when no account can.</summary>
-        private static async Task<string?> FindProviderNameAsync(
-            Guid deviceId,
-            IProviderAccountRepository accounts,
-            IAccountDeviceRepository accountDevices,
-            CancellationToken ct)
-        {
-            foreach (ProviderAccountDto account in await accounts.ListAsync(ct))
-            {
-                IReadOnlyList<Device> visible = await accountDevices.ListByProviderAccountAsync(account.Id, ct);
-                if (visible.Any(d => d.Id == deviceId))
-                {
-                    return account.ProviderName;
-                }
-            }
-
-            return null;
         }
 
         /// <summary>Reads the body up to <paramref name="limit"/> bytes. Returns null when the body is longer, so the caller can refuse it.</summary>

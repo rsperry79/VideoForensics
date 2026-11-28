@@ -4,6 +4,7 @@ using Moq;
 
 using System.Security.Cryptography;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;

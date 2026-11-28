@@ -71,6 +71,9 @@
   <data name="MenuCopyStillLink" xml:space="preserve">
     <value>Copy still link</value>
   </data>
+  <data name="CopyStillLinkFailed" xml:space="preserve">
+    <value>The still link could not be copied.</value>
+  </data>
   <data name="GrabStillFailed" xml:space="preserve">
     <value>Could not grab the still. Try again.</value>
   </data>

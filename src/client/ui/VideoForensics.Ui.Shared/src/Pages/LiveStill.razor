@@ -1,0 +1,17 @@
+@page "/live-still/{StillId:guid}"
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<LiveStill> L
+
+<PageTitle>@L["Title"]</PageTitle>
+
+<div class="live-still-page" data-testid="live-still-page">
+    <h2 class="live-still-title">@L["Title"]</h2>
+    <p class="live-still-note text-muted small">@L["Note"]</p>
+    <img class="live-still-image" data-testid="live-still-image" src="/api/v1/media/@StillId/still" alt="@L["Alt"]" />
+</div>
+
+@code {
+    /// <summary>The stored still's media item id, from the link.</summary>
+    [Parameter]
+    public Guid StillId { get; set; }
+}

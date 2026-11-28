@@ -628,6 +628,9 @@ namespace VideoForensics.Client.Hosting
                     serviceProvider.GetRequiredService<IMediaPathResolver>(),
                     serviceProvider.GetRequiredService<IActionLogRepository>()));
 
+            // Live-view grab still: the server-side capture (resolves the camera, then stores through ILiveStillStore).
+            _ = services.AddScoped<VideoForensics.Client.Common.Contracts.ILiveStillCaptureService, VideoForensics.Client.Core.Services.LiveStillCaptureService>();
+
             // IMemoryCache backs the short-lived auth caches registered below (WebAuthn ceremonies, 2FA pending
             // logins, login attempts). Registered here so every server-tier host gets it, not only WebApp.
             _ = services.AddMemoryCache();
@@ -840,7 +843,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<VideoForensics.Client.Ui.Shared.Services.IFolderBrowserEndpoint, Remote.RemoteFolderBrowserEndpoint>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMediaContentUrlProvider, Remote.RemoteMediaContentUrlProvider>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IMediaStillCaptureService, Remote.RemoteMediaStillCaptureService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaStillCaptureService, Remote.RemoteMediaStillCaptureService>(c => c.BaseAddress = serverAddress);            _ = services.AddHttpClient<VideoForensics.Client.Common.Contracts.ILiveStillCaptureService, Remote.RemoteLiveStillCaptureService>(c => c.BaseAddress = serverAddress);
+
             // IAdminOperatorService/ISecurityEventsService live in VideoForensics.Client.Common.Contracts,
             // not VideoForensics.Client.Hosting.Contracts (the "Contracts." shorthand above) - unlike the lockout/
             // two-factor policy services, these are also injected directly by Ui.Shared Razor pages (the
